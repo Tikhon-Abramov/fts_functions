@@ -1,0 +1,29 @@
+[Unit]
+Description=Registry Functions API
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=registry
+Group=registry
+WorkingDirectory=/opt/registry-functions/apps/api
+EnvironmentFile=/opt/registry-functions/apps/api/.env
+ExecStart=/usr/bin/node dist/main.js
+Restart=on-failure
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/registry-functions/apps/api/logs
+MemoryMax=1G
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=registry-api
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,9 @@
+{
+  "schemaFile": "http://localhost:3000/api/json",
+  "apiFile": "./baseApi.ts",
+  "apiImport": "baseApi",
+  "outputFile": "./ftsFunctionsApi.ts",
+  "exportName": "ftsFunctionsApi",
+  "hooks": true,
+  "tag": true
+}
