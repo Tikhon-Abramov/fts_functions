@@ -157,6 +157,8 @@ export default function FeedbackPanel({
         ...row,
         ...normalizedDraft,
         isAccepted: localAccepted === undefined ? row?.isAccepted : localAccepted,
+        rejectComment:
+            localAccepted === null ? "" : (row?.rejectComment ?? rejectComment),
     };
 
     const status = savedLocally
@@ -219,6 +221,7 @@ export default function FeedbackPanel({
 
         setSavedLocally(true);
         setLocalAccepted(null);
+        setRejectComment("");
         setEditMode(false);
     };
 
@@ -233,6 +236,7 @@ export default function FeedbackPanel({
 
         if (!ok) return;
 
+        setSavedLocally(true);
         setLocalAccepted(true);
     };
 
@@ -249,6 +253,7 @@ export default function FeedbackPanel({
 
         if (!ok) return;
 
+        setSavedLocally(true);
         setLocalAccepted(false);
         setRejectOpen(false);
     };
@@ -256,7 +261,8 @@ export default function FeedbackPanel({
     const handleRefill = () => {
         setEditMode(true);
         setLocalAccepted(null);
-        setSavedLocally(false);
+        setSavedLocally(true);
+        setRejectComment("");
     };
 
     return (
@@ -520,6 +526,7 @@ export default function FeedbackPanel({
 
                 <DialogActions>
                     <Button onClick={() => setRejectOpen(false)}>{"Отмена"}</Button>
+
                     <Button
                         color="error"
                         variant="contained"

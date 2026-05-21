@@ -4,7 +4,10 @@ import type {
     FtsFunctionCategory,
 } from "src/entities/fts-function/model";
 import type { Link, Row } from "src/entities/fts-function/types";
-import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
+import type {
+    AcceptFtsFunctionDetailDto,
+    TypeResponseDto,
+} from "src/shared/api/ftsFunctionsApi";
 
 import { useCallback } from "react";
 
@@ -19,6 +22,7 @@ import {
     RightTab,
 } from "src/entities/fts-function/model";
 import {
+    useFtsFunctionControllerAcceptDetailV1Mutation,
     useFtsFunctionControllerCreateDetailV1Mutation,
     useFtsFunctionControllerCreateTreeEdgeV1Mutation,
     useFtsFunctionControllerDeleteTreeEdgeV1Mutation,
@@ -78,6 +82,7 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
 
     const [createDetail] = useFtsFunctionControllerCreateDetailV1Mutation();
     const [updateDetail] = useFtsFunctionControllerUpdateDetailV1Mutation();
+    const [acceptDetail] = useFtsFunctionControllerAcceptDetailV1Mutation();
     const [deleteDetail] = useFtsFunctionControllerSoftDeleteDetailV1Mutation();
     const [createTreeEdge] = useFtsFunctionControllerCreateTreeEdgeV1Mutation();
     const [deleteTreeEdge] = useFtsFunctionControllerDeleteTreeEdgeV1Mutation();
@@ -329,7 +334,11 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
             try {
                 await updateDetail({
                     detailId: Number(id),
-                    updateFtsFunctionDetailDto: dto,
+                    updateFtsFunctionDetailDto: {
+                        ...dto,
+                        isAccepted: null,
+                        rejectComment: null,
+                    },
                 }).unwrap();
 
                 dispatch(showSnackbar({ message: "Обратная связь сохранена" }));
@@ -347,31 +356,26 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
             isAccepted: boolean,
             rejectComment?: string,
         ): Promise<boolean> => {
-            const existing = rowMap.get(id);
+            const trimmedRejectComment = rejectComment?.trim() ?? "";
 
-            if (!existing) return false;
-
-            const dto = resolveDetailDto(
-                buildDetailInputFromRow(existing, {
-                    isAccepted,
-                    rejectComment: isAccepted ? "" : rejectComment?.trim() || "",
-                }),
-                typesAll,
-            );
-
-            if (!dto) {
+            if (!isAccepted && !trimmedRejectComment) {
                 dispatch(
                     showSnackbar({
-                        message: "Не удалось подготовить данные обратной связи",
+                        message: "Укажите причину отказа в согласовании",
                     }),
                 );
                 return false;
             }
 
+            const acceptFtsFunctionDetailDto: AcceptFtsFunctionDetailDto = {
+                isAccepted,
+                ...(isAccepted ? {} : { rejectComment: trimmedRejectComment }),
+            };
+
             try {
-                await updateDetail({
+                await acceptDetail({
                     detailId: Number(id),
-                    updateFtsFunctionDetailDto: dto,
+                    acceptFtsFunctionDetailDto,
                 }).unwrap();
 
                 dispatch(
@@ -386,7 +390,7 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
                 return false;
             }
         },
-        [rowMap, typesAll, updateDetail, dispatch],
+        [acceptDetail, dispatch],
     );
 
     return {

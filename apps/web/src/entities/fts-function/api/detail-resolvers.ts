@@ -225,13 +225,13 @@ export function resolveDetailDto(
     number: technologicalSolutionId !== null ? number : null,
     algorithm: technologicalSolutionId !== null ? algorithm : null,
 
-    ftsFunctionEffectivenessId:
-        includeFeedbackFields && ftsFunctionEffectivenessId !== null
-            ? ftsFunctionEffectivenessId
-            : null,
     feedbackSourceId:
         includeFeedbackFields && feedbackSourceId !== null
             ? feedbackSourceId
+            : null,
+    ftsFunctionEffectivenessId:
+        includeFeedbackFields && ftsFunctionEffectivenessId !== null
+            ? ftsFunctionEffectivenessId
             : null,
     ftsMethodologyStatusId:
         includeFeedbackFields && ftsMethodologyStatusId !== null
@@ -244,7 +244,13 @@ export function resolveDetailDto(
         ? item.initiatorRequisites?.trim() || null
         : null,
     deadline: includeFeedbackFields ? item.deadline?.trim() || null : null,
-    isAccepted: includeFeedbackFields ? item.isAccepted ?? null : null,
+
+    /**
+     * Важно для повторного заполнения после отказа:
+     * при сохранении обратной связи статус должен вернуться в null,
+     * чтобы бэк и следующий refetch показывали "на согласовании".
+     */
+    isAccepted: includeFeedbackFields ? (item.isAccepted ?? null) : null,
     rejectComment: includeFeedbackFields
         ? item.rejectComment?.trim() || null
         : null,
