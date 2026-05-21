@@ -792,7 +792,7 @@ export type FtsFunctionDetailedResponseDto = {
     algorithm?: string | null;
     problemDescription?: string | null;
     initiatorRequisites?: string | null;
-    deadline?: string | null;
+    deadline?: ((string | null) | (string | null)) | null;
     isAccepted?: boolean | null;
     rejectComment?: string | null;
     createdAt: string;
@@ -1160,7 +1160,7 @@ export type FtsFunctionDetailDetailedResponseDto = {
   algorithm?: string | null;
   problemDescription?: string | null;
   initiatorRequisites?: string | null;
-  deadline?: string | null;
+  deadline?: ((string | null) | (string | null)) | null;
   isAccepted?: boolean | null;
   rejectComment?: string | null;
   createdAt: string;
@@ -1455,7 +1455,7 @@ export type CreateFtsFunctionDetailDto = {
   algorithm?: string | null;
   problemDescription?: string | null;
   initiatorRequisites?: string | null;
-  deadline?: string | null;
+  deadline?: ((string | null) | (string | null)) | null;
 };
 export type UpdateFtsFunctionDetailDto = {
   ftsFunctionStepId?: string | number;
@@ -1478,7 +1478,7 @@ export type UpdateFtsFunctionDetailDto = {
   algorithm?: string | null;
   problemDescription?: string | null;
   initiatorRequisites?: string | null;
-  deadline?: string | null;
+  deadline?: ((string | null) | (string | null)) | null;
 };
 export type AcceptFtsFunctionDetailDto = {
   isAccepted: boolean;

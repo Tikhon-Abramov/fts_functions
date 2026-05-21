@@ -23,6 +23,7 @@ import {
     areFeedbackRequiredFieldsFilled,
     DETAIL_TYPE_CATEGORY,
     FEEDBACK_DETAIL_LABELS,
+    findTypeByCodeOrName,
     getFeedbackStatus,
     getTypeCodeOptionsByCategory,
     hasFeedback,
@@ -47,12 +48,12 @@ type FeedbackDraft = {
 export type FeedbackPanelProps = {
     row: Row | null;
     typesAll: TypeResponseDto[];
-    onSaveFeedback: (id: string, updates: Partial<Row>) => void;
+    onSaveFeedback: (id: string, updates: Partial<Row>) => Promise<boolean>;
     onSetFeedbackAcceptance: (
         id: string,
         isAccepted: boolean,
         rejectComment?: string,
-    ) => void;
+    ) => Promise<boolean>;
 };
 
 const emptyDraft: FeedbackDraft = {
@@ -96,6 +97,8 @@ export default function FeedbackPanel({
     const [rejectOpen, setRejectOpen] = useState(false);
     const [rejectComment, setRejectComment] = useState("");
     const [editMode, setEditMode] = useState(!hasFeedback(row));
+    const [saving, setSaving] = useState(false);
+    const [accepting, setAccepting] = useState(false);
 
     useEffect(() => {
         setDraft(buildDraft(row));
@@ -104,6 +107,8 @@ export default function FeedbackPanel({
         setRejectComment("");
         setRejectOpen(false);
         setEditMode(!hasFeedback(row));
+        setSaving(false);
+        setAccepting(false);
     }, [row?.id]);
 
     const feedbackSourceOptions = useMemo(
@@ -124,11 +129,33 @@ export default function FeedbackPanel({
         [typesAll],
     );
 
-    const canSave = areFeedbackRequiredFieldsFilled(draft);
+    const methodologyStatusOptions = useMemo(
+        () =>
+            getTypeCodeOptionsByCategory(
+                typesAll,
+                DETAIL_TYPE_CATEGORY.FTS_METHODOLOGY_STATUS,
+            ),
+        [typesAll],
+    );
+
+    const normalizedDraft = useMemo<FeedbackDraft>(() => {
+        const methodologyStatus = findTypeByCodeOrName(
+            typesAll,
+            DETAIL_TYPE_CATEGORY.FTS_METHODOLOGY_STATUS,
+            draft.methodologyPosition,
+        );
+
+        return {
+            ...draft,
+            methodologyPosition: methodologyStatus?.code ?? draft.methodologyPosition,
+        };
+    }, [draft, typesAll]);
+
+    const canSave = areFeedbackRequiredFieldsFilled(normalizedDraft);
 
     const effectiveRow: Partial<Row> = {
         ...row,
-        ...draft,
+        ...normalizedDraft,
         isAccepted: localAccepted === undefined ? row?.isAccepted : localAccepted,
     };
 
@@ -175,30 +202,53 @@ export default function FeedbackPanel({
         setDraft((prev) => ({ ...prev, [key]: value }));
     };
 
-    const handleSave = () => {
-        if (!canSave) return;
+    const handleSave = async () => {
+        if (!canSave || saving) return;
 
-        onSaveFeedback(row.id, {
-            ...draft,
+        setSaving(true);
+
+        const ok = await onSaveFeedback(row.id, {
+            ...normalizedDraft,
             isAccepted: null,
             rejectComment: "",
         });
+
+        setSaving(false);
+
+        if (!ok) return;
 
         setSavedLocally(true);
         setLocalAccepted(null);
         setEditMode(false);
     };
 
-    const handleAccept = () => {
-        onSetFeedbackAcceptance(row.id, true);
+    const handleAccept = async () => {
+        if (accepting) return;
+
+        setAccepting(true);
+
+        const ok = await onSetFeedbackAcceptance(row.id, true);
+
+        setAccepting(false);
+
+        if (!ok) return;
+
         setLocalAccepted(true);
     };
 
-    const handleReject = () => {
+    const handleReject = async () => {
         const comment = rejectComment.trim();
-        if (!comment) return;
 
-        onSetFeedbackAcceptance(row.id, false, comment);
+        if (!comment || accepting) return;
+
+        setAccepting(true);
+
+        const ok = await onSetFeedbackAcceptance(row.id, false, comment);
+
+        setAccepting(false);
+
+        if (!ok) return;
+
         setLocalAccepted(false);
         setRejectOpen(false);
     };
@@ -269,12 +319,12 @@ export default function FeedbackPanel({
                         gap: 1.5,
                     }}
                 >
-                    <FormControl size="small" fullWidth disabled={readonly}>
+                    <FormControl size="small" fullWidth disabled={readonly || saving}>
                         <InputLabel sx={formLabelSx(theme)}>
                             {`${FEEDBACK_DETAIL_LABELS.feedbackSource} *`}
                         </InputLabel>
                         <Select
-                            value={draft.feedbackSource}
+                            value={normalizedDraft.feedbackSource}
                             onChange={(e) => updateDraft("feedbackSource", e.target.value)}
                             label={`${FEEDBACK_DETAIL_LABELS.feedbackSource} *`}
                             sx={formSelectSx(theme)}
@@ -288,12 +338,12 @@ export default function FeedbackPanel({
                         </Select>
                     </FormControl>
 
-                    <FormControl size="small" fullWidth disabled={readonly}>
+                    <FormControl size="small" fullWidth disabled={readonly || saving}>
                         <InputLabel sx={formLabelSx(theme)}>
                             {`${FEEDBACK_DETAIL_LABELS.feedbackQualityMetric} *`}
                         </InputLabel>
                         <Select
-                            value={draft.feedbackQualityMetric}
+                            value={normalizedDraft.feedbackQualityMetric}
                             onChange={(e) =>
                                 updateDraft("feedbackQualityMetric", e.target.value)
                             }
@@ -311,57 +361,68 @@ export default function FeedbackPanel({
 
                     <TextField
                         label={`${FEEDBACK_DETAIL_LABELS.problemDescription} *`}
-                        value={draft.problemDescription}
+                        value={normalizedDraft.problemDescription}
                         onChange={(e) => updateDraft("problemDescription", e.target.value)}
                         multiline
                         rows={3}
                         fullWidth
                         size="small"
-                        disabled={readonly}
+                        disabled={readonly || saving}
                         sx={formInputSx(theme)}
                     />
 
                     <TextField
                         label={`${FEEDBACK_DETAIL_LABELS.initiatorRequisites} *`}
-                        value={draft.initiatorRequisites}
+                        value={normalizedDraft.initiatorRequisites}
                         onChange={(e) => updateDraft("initiatorRequisites", e.target.value)}
                         fullWidth
                         size="small"
-                        disabled={readonly}
+                        disabled={readonly || saving}
                         sx={formInputSx(theme)}
                     />
 
-                    <TextField
-                        label={`${FEEDBACK_DETAIL_LABELS.methodologyPosition} *`}
-                        value={draft.methodologyPosition}
-                        onChange={(e) => updateDraft("methodologyPosition", e.target.value)}
-                        fullWidth
-                        size="small"
-                        disabled={readonly}
-                        sx={formInputSx(theme)}
-                    />
+                    <FormControl size="small" fullWidth disabled={readonly || saving}>
+                        <InputLabel sx={formLabelSx(theme)}>
+                            {`${FEEDBACK_DETAIL_LABELS.methodologyPosition} *`}
+                        </InputLabel>
+                        <Select
+                            value={normalizedDraft.methodologyPosition}
+                            onChange={(e) =>
+                                updateDraft("methodologyPosition", e.target.value)
+                            }
+                            label={`${FEEDBACK_DETAIL_LABELS.methodologyPosition} *`}
+                            sx={formSelectSx(theme)}
+                            MenuProps={formMenuSx(theme)}
+                        >
+                            {methodologyStatusOptions.map((option) => (
+                                <MenuItem key={option.code} value={option.code}>
+                                    {option.name}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
 
                     <TextField
                         label={`${FEEDBACK_DETAIL_LABELS.deadline} *`}
-                        value={draft.deadline}
+                        value={normalizedDraft.deadline}
                         onChange={(e) => updateDraft("deadline", e.target.value)}
                         type="date"
                         fullWidth
                         size="small"
-                        disabled={readonly}
+                        disabled={readonly || saving}
                         sx={formInputSx(theme)}
                         InputLabelProps={{ shrink: true }}
                     />
 
                     <TextField
                         label={`${FEEDBACK_DETAIL_LABELS.initiatorAcceptance} *`}
-                        value={draft.initiatorAcceptance}
+                        value={normalizedDraft.initiatorAcceptance}
                         onChange={(e) => updateDraft("initiatorAcceptance", e.target.value)}
                         multiline
                         rows={2}
                         fullWidth
                         size="small"
-                        disabled={readonly}
+                        disabled={readonly || saving}
                         sx={formInputSx(theme)}
                     />
                 </Box>
@@ -378,7 +439,7 @@ export default function FeedbackPanel({
                     {editMode && (
                         <Button
                             variant="contained"
-                            disabled={!canSave}
+                            disabled={!canSave || saving}
                             onClick={handleSave}
                             fullWidth
                             sx={{
@@ -391,7 +452,7 @@ export default function FeedbackPanel({
                                 },
                             }}
                         >
-                            {"Сохранить"}
+                            {saving ? "Сохранение..." : "Сохранить"}
                         </Button>
                     )}
 
@@ -400,6 +461,7 @@ export default function FeedbackPanel({
                             <Button
                                 variant="contained"
                                 onClick={handleAccept}
+                                disabled={accepting}
                                 fullWidth
                                 sx={{
                                     textTransform: "none",
@@ -414,6 +476,7 @@ export default function FeedbackPanel({
                                 variant="outlined"
                                 color="error"
                                 onClick={() => setRejectOpen(true)}
+                                disabled={accepting}
                                 fullWidth
                                 sx={{ textTransform: "none" }}
                             >
@@ -460,7 +523,7 @@ export default function FeedbackPanel({
                     <Button
                         color="error"
                         variant="contained"
-                        disabled={!rejectComment.trim()}
+                        disabled={!rejectComment.trim() || accepting}
                         onClick={handleReject}
                     >
                         {"Не согласовано"}

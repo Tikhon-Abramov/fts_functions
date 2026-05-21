@@ -1,4 +1,8 @@
-import type { FunctionRecord, Link, Row } from "src/entities/fts-function/types";
+import type {
+  FunctionRecord,
+  Link,
+  Row,
+} from "src/entities/fts-function/types";
 import type {
   FtsFunctionControllerListV1ApiResponse,
   FtsFunctionDetailedResponseDto,
@@ -163,15 +167,17 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
     basis: detail.basis ?? "",
     artifactUsage: detail.artifactUsage ?? "",
     purpose: detail.purpose ?? "",
+
     technologicalSolution: detail.technologicalSolution?.code ?? "",
     number: detail.number ?? "",
     responsible: detail.responsible?.name ?? "",
     algorithm: detail.algorithm ?? "",
+
     feedbackSource: detail.feedbackSource?.code ?? "",
     feedbackQualityMetric: detail.ftsFunctionEffectiveness?.code ?? "",
     problemDescription: detail.problemDescription ?? "",
     initiatorRequisites: detail.initiatorRequisites ?? "",
-    methodologyPosition: detail.ftsMethodologyStatus?.name ?? "",
+    methodologyPosition: detail.ftsMethodologyStatus?.code ?? "",
     deadline: detail.deadline?.slice(0, 10) ?? "",
     initiatorAcceptance: extra.initiatorAcceptance ?? "",
     isAccepted: detail.isAccepted ?? null,

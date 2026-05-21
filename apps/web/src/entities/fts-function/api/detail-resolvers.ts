@@ -9,6 +9,7 @@ import type { Row } from "src/entities/fts-function/types";
 import type {
   CreateFtsFunctionDetailDto,
   TypeResponseDto,
+  UpdateFtsFunctionDetailDto,
 } from "src/shared/api/ftsFunctionsApi";
 
 import { findTypeIdByCode } from "src/entities/fts-function/api/mappers";
@@ -16,11 +17,15 @@ import {
   areFeedbackRequiredFieldsFilled,
   areTechnologyRequiredFieldsFilled,
   DETAIL_TYPE_CATEGORY,
-  FEEDBACK_BACKEND_FIELDS,
+  findTypeByCodeOrName,
   hasFeedback,
   isActualActionCategory,
   type TypeCategory,
 } from "src/entities/fts-function/lib/detail-technology";
+
+export type ResolvedDetailDto = CreateFtsFunctionDetailDto &
+    UpdateFtsFunctionDetailDto &
+    Record<string, unknown>;
 
 export type DetailInput = {
   step: FtsFunctionStep;
@@ -34,10 +39,12 @@ export type DetailInput = {
   basis?: string | undefined;
   artifactUsage?: string | undefined;
   purpose?: string | undefined;
+
   technologicalSolution?: string | undefined;
   number?: string | undefined;
   responsible?: string | undefined;
   algorithm?: string | undefined;
+
   feedbackSource?: string | undefined;
   feedbackQualityMetric?: string | undefined;
   problemDescription?: string | undefined;
@@ -81,23 +88,13 @@ function findTypeIdByCategoryAndCodeOrName(
     category: TypeCategory,
     value: string,
 ): number | null {
-  const trimmed = value.trim();
-
-  if (!trimmed) return null;
-
-  return (
-      (types ?? []).find(
-          (type) =>
-              type.category === category &&
-              (type.code === trimmed || type.name === trimmed),
-      )?.id ?? null
-  );
+  return findTypeByCodeOrName(types, category, value)?.id ?? null;
 }
 
 export function resolveDetailDto(
     item: DetailInput,
     types: TypeResponseDto[] | undefined,
-): (CreateFtsFunctionDetailDto & Record<string, unknown>) | null {
+): ResolvedDetailDto | null {
   if (!item.actionLabel) return null;
 
   const stepId = findTypeIdByCode(types, item.step);
@@ -132,9 +129,9 @@ export function resolveDetailDto(
     );
   }
 
-  const includeTechnologyFields = isActualActionCategory(item.category);
+  const includeActualActionFields = isActualActionCategory(item.category);
 
-  const technologicalSolutionCode = includeTechnologyFields
+  const technologicalSolutionCode = includeActualActionFields
       ? trimValue(item.technologicalSolution)
       : "";
 
@@ -166,8 +163,7 @@ export function resolveDetailDto(
     if (responsibleId === null) return null;
   }
 
-  const includeFeedbackFields =
-      isActualActionCategory(item.category) && hasFeedback(item);
+  const includeFeedbackFields = includeActualActionFields && hasFeedback(item);
 
   const feedbackSourceCode = includeFeedbackFields
       ? trimValue(item.feedbackSource)
@@ -187,40 +183,31 @@ export function resolveDetailDto(
           ? findTypeIdByCodeOrNull(types, feedbackQualityMetricCode)
           : null;
 
-  const methodologyPosition = trimValue(item.methodologyPosition);
+  const methodologyPosition = includeFeedbackFields
+      ? trimValue(item.methodologyPosition)
+      : "";
 
-  const ftsMethodologyStatusId: string | number | null =
-      includeFeedbackFields && methodologyPosition
-          ? findTypeIdByCategoryAndCodeOrName(
-              types,
-              DETAIL_TYPE_CATEGORY.FTS_METHODOLOGY_STATUS,
-              methodologyPosition,
-          )
-          : null;
+  const ftsMethodologyStatusId: string | number | null = methodologyPosition
+      ? findTypeIdByCategoryAndCodeOrName(
+          types,
+          DETAIL_TYPE_CATEGORY.FTS_METHODOLOGY_STATUS,
+          methodologyPosition,
+      )
+      : null;
 
   if (includeFeedbackFields) {
     if (!areFeedbackRequiredFieldsFilled(item)) return null;
-    if (feedbackSourceId === null || ftsFunctionEffectivenessId === null) {
+
+    if (
+        feedbackSourceId === null ||
+        ftsFunctionEffectivenessId === null ||
+        ftsMethodologyStatusId === null
+    ) {
       return null;
     }
   }
 
-  const feedbackPayload: Record<string, unknown> = includeFeedbackFields
-      ? {
-        feedbackSourceId,
-        ftsFunctionEffectivenessId,
-        ftsMethodologyStatusId,
-        problemDescription: item.problemDescription?.trim() || null,
-        initiatorRequisites: item.initiatorRequisites?.trim() || null,
-        deadline: item.deadline?.trim() || null,
-        isAccepted: item.isAccepted ?? null,
-        rejectComment: item.rejectComment?.trim() || null,
-        [FEEDBACK_BACKEND_FIELDS.initiatorAcceptance]:
-        item.initiatorAcceptance?.trim() || null,
-      }
-      : {};
-
-  const dto: CreateFtsFunctionDetailDto & Record<string, unknown> = {
+  const dto: ResolvedDetailDto = {
     ftsFunctionStepId: stepId,
     ftsFunctionCategoryId: categoryId,
     ftsFunctionActionTypeId: actionId,
@@ -232,11 +219,35 @@ export function resolveDetailDto(
     basis: item.basis?.trim() || null,
     artifactUsage: item.artifactUsage?.trim() || null,
     purpose: item.purpose?.trim() || null,
+
     technologicalSolutionId,
     responsibleId,
     number: technologicalSolutionId !== null ? number : null,
     algorithm: technologicalSolutionId !== null ? algorithm : null,
-    ...feedbackPayload,
+
+    ftsFunctionEffectivenessId:
+        includeFeedbackFields && ftsFunctionEffectivenessId !== null
+            ? ftsFunctionEffectivenessId
+            : null,
+    feedbackSourceId:
+        includeFeedbackFields && feedbackSourceId !== null
+            ? feedbackSourceId
+            : null,
+    ftsMethodologyStatusId:
+        includeFeedbackFields && ftsMethodologyStatusId !== null
+            ? ftsMethodologyStatusId
+            : null,
+    problemDescription: includeFeedbackFields
+        ? item.problemDescription?.trim() || null
+        : null,
+    initiatorRequisites: includeFeedbackFields
+        ? item.initiatorRequisites?.trim() || null
+        : null,
+    deadline: includeFeedbackFields ? item.deadline?.trim() || null : null,
+    isAccepted: includeFeedbackFields ? item.isAccepted ?? null : null,
+    rejectComment: includeFeedbackFields
+        ? item.rejectComment?.trim() || null
+        : null,
   };
 
   return dto;
@@ -260,10 +271,12 @@ export function buildDetailInputFromRow(
     basis: merged.basis,
     artifactUsage: merged.artifactUsage,
     purpose: merged.purpose,
+
     technologicalSolution: merged.technologicalSolution,
     number: merged.number,
     responsible: merged.responsible,
     algorithm: merged.algorithm,
+
     feedbackSource: merged.feedbackSource,
     feedbackQualityMetric: merged.feedbackQualityMetric,
     problemDescription: merged.problemDescription,

@@ -34,10 +34,6 @@ export const FEEDBACK_DETAIL_LABELS = {
     initiatorAcceptance: "Акцепт автора инициативы",
 } as const;
 
-export const FEEDBACK_BACKEND_FIELDS = {
-    initiatorAcceptance: "initiatorAcceptance",
-} as const;
-
 export type TechnologyFieldsShape = Pick<
     Row,
     "technologicalSolution" | "number" | "responsible" | "algorithm"
@@ -75,6 +71,22 @@ export function getTypeNameOptionsByCategory(
 ): string[] {
     return getTypeCodeOptionsByCategory(typesAll, category).map(
         (item) => item.name,
+    );
+}
+
+export function findTypeByCodeOrName(
+    typesAll: TypeResponseDto[] | undefined,
+    category: TypeCategory,
+    value: string | undefined | null,
+): TypeResponseDto | undefined {
+    const normalized = value?.trim();
+
+    if (!normalized) return undefined;
+
+    return (typesAll ?? []).find(
+        (item) =>
+            item.category === category &&
+            (item.code === normalized || item.name === normalized),
     );
 }
 

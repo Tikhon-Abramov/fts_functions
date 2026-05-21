@@ -4,24 +4,38 @@ import z from 'zod';
 import { Category } from '@prisma-client';
 
 const intFromStringOrNumber = z
-  .union([z.string(), z.number()])
-  .transform((v) => (typeof v === 'string' ? Number(v) : v))
-  .pipe(z.number().int());
+    .union([z.string(), z.number()])
+    .transform((v) => (typeof v === 'string' ? Number(v) : v))
+    .pipe(z.number().int());
 
 const positiveInt = intFromStringOrNumber.pipe(z.number().int().positive());
 
 const idArrayQuery = z
-  .union([z.string(), z.number(), z.array(z.union([z.string(), z.number()]))])
-  .transform((v) => (Array.isArray(v) ? v : [v]))
-  .pipe(z.array(intFromStringOrNumber.pipe(z.number().int().positive())));
+    .union([z.string(), z.number(), z.array(z.union([z.string(), z.number()]))])
+    .transform((v) => (Array.isArray(v) ? v : [v]))
+    .pipe(z.array(intFromStringOrNumber.pipe(z.number().int().positive())));
 
 const boolFromString = z
-  .union([z.string(), z.boolean()])
-  .transform((v) => {
-    if (typeof v === 'boolean') return v;
-    return v === 'true' || v === '1';
-  })
-  .pipe(z.boolean());
+    .union([z.string(), z.boolean()])
+    .transform((v) => {
+      if (typeof v === 'boolean') return v;
+      return v === 'true' || v === '1';
+    })
+    .pipe(z.boolean());
+
+const dateFromJson = z
+    .union([z.string(), z.date()])
+    .transform((v) => {
+      if (v instanceof Date) return v;
+
+      const raw = v.trim();
+      const normalized = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+          ? `${raw}T00:00:00.000Z`
+          : raw;
+
+      return new Date(normalized);
+    })
+    .pipe(z.date());
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // PATH PARAMS
@@ -60,6 +74,7 @@ export const FtsFunctionListQuerySchema = z.object({
   ftsFunctionMarkerIds: idArrayQuery.optional(),
   curatorCentralOfficeIds: idArrayQuery.optional(),
   managerInterregionalInspectionIds: idArrayQuery.optional(),
+
   // Numeric filters on FtsFunction.id — backing the DataGrid "ID" column's
   // filter operators (=, !=, >, >=, <, <=, isAnyOf).
   ids: idArrayQuery.optional(),
@@ -68,13 +83,16 @@ export const FtsFunctionListQuerySchema = z.object({
   idGte: positiveInt.optional(),
   idLt: positiveInt.optional(),
   idLte: positiveInt.optional(),
+
   includeDeleted: boolFromString.optional(),
   search: z.string().trim().min(1).max(256).optional(),
   sortBy: z.enum(['createdAt', 'updatedAt', 'id']).optional(),
   sortDir: z.enum(['asc', 'desc']).optional(),
 });
 
-export class FtsFunctionListQueryDto extends createZodDto(FtsFunctionListQuerySchema) {}
+export class FtsFunctionListQueryDto extends createZodDto(
+    FtsFunctionListQuerySchema,
+) {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // BODY DTOs — FtsFunction
@@ -93,8 +111,13 @@ export const CreateFtsFunctionSchema = z.object({
 
 export const UpdateFtsFunctionSchema = CreateFtsFunctionSchema.partial();
 
-export class CreateFtsFunctionDto extends createZodDto(CreateFtsFunctionSchema) {}
-export class UpdateFtsFunctionDto extends createZodDto(UpdateFtsFunctionSchema) {}
+export class CreateFtsFunctionDto extends createZodDto(
+    CreateFtsFunctionSchema,
+) {}
+
+export class UpdateFtsFunctionDto extends createZodDto(
+    UpdateFtsFunctionSchema,
+) {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // BODY DTOs — FtsFunctionDetail
@@ -121,22 +144,30 @@ export const CreateFtsFunctionDetailSchema = z.object({
   algorithm: z.string().nullable().optional(),
   problemDescription: z.string().nullable().optional(),
   initiatorRequisites: z.string().nullable().optional(),
-  deadline: z.date().nullable().optional(),
+  deadline: dateFromJson.nullable().optional(),
 });
 
-export const UpdateFtsFunctionDetailSchema = CreateFtsFunctionDetailSchema.partial();
+export const UpdateFtsFunctionDetailSchema =
+    CreateFtsFunctionDetailSchema.partial();
 
-export class CreateFtsFunctionDetailDto extends createZodDto(CreateFtsFunctionDetailSchema) {}
-export class UpdateFtsFunctionDetailDto extends createZodDto(UpdateFtsFunctionDetailSchema) {}
+export class CreateFtsFunctionDetailDto extends createZodDto(
+    CreateFtsFunctionDetailSchema,
+) {}
+
+export class UpdateFtsFunctionDetailDto extends createZodDto(
+    UpdateFtsFunctionDetailSchema,
+) {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const AcceptFtsFunctionDetailSchema = z.object({
   isAccepted: z.boolean(),
   rejectComment: z.string().optional(),
-})
+});
 
-export class AcceptFtsFunctionDetailDto extends createZodDto(AcceptFtsFunctionDetailSchema) {}
+export class AcceptFtsFunctionDetailDto extends createZodDto(
+    AcceptFtsFunctionDetailSchema,
+) {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // BODY DTOs — FtsFunctionTree
@@ -148,7 +179,9 @@ export const CreateFtsFunctionTreeSchema = z.object({
   relationTypeId: positiveInt,
 });
 
-export class CreateFtsFunctionTreeDto extends createZodDto(CreateFtsFunctionTreeSchema) {}
+export class CreateFtsFunctionTreeDto extends createZodDto(
+    CreateFtsFunctionTreeSchema,
+) {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // RESPONSE DTOs
@@ -184,18 +217,18 @@ export const FtsFunctionBaseResponseSchema = z.object({
 });
 
 // List items extend the base shape with a minimal projection of the DTI
-// join — backs the registry table's "Стратегия Д" column. Field name and
-// nesting mirror Prisma's `dtis: { dti: {...} }[]` payload (see
+// join — backs the registry table's "Стратегия Д" column.
+// Field name and nesting mirror Prisma's `dtis: { dti: {...} }[]` payload (see
 // `ftsFunctionListSelect`).
 const FtsFunctionListItemResponseSchema = FtsFunctionBaseResponseSchema.extend({
   dtis: z.array(
-    z.object({
-      dti: z.object({
-        id: z.number(),
-        name: z.string(),
-        code: z.string(),
+      z.object({
+        dti: z.object({
+          id: z.number(),
+          name: z.string(),
+          code: z.string(),
+        }),
       }),
-    }),
   ),
 });
 
@@ -228,7 +261,7 @@ const FtsFunctionDetailBaseResponseSchema = z.object({
   algorithm: z.string().nullable().optional(),
   problemDescription: z.string().nullable().optional(),
   initiatorRequisites: z.string().nullable().optional(),
-  deadline: z.date().nullable().optional(),
+  deadline: dateFromJson.nullable().optional(),
   isAccepted: z.boolean().nullable().optional(),
   rejectComment: z.string().nullable().optional(),
   createdAt: z.date(),
@@ -245,45 +278,50 @@ const FtsFunctionTreeEdgeResponseSchema = z.object({
   relationType: typeMinimalSchema,
 });
 
-const FtsFunctionDetailDetailedResponseSchema = FtsFunctionDetailBaseResponseSchema.extend({
-  ftsFunctionStep: typeMinimalSchema,
-  ftsFunctionCategory: typeMinimalSchema.nullable(),
-  ftsFunctionComplexity: typeMinimalSchema.nullable(),
-  ftsFunctionExecutionFrequency: typeMinimalSchema.nullable(),
-  whoPerformsAction: typeMinimalSchema.nullable(),
-  ftsFunctionActionType: typeMinimalSchema.nullable(),
-  ftsFunctionEffectiveness: typeMinimalSchema.nullable(),
-  technologicalSolution: typeMinimalSchema.nullable(),
-  feedbackSources: z.array(
-    z.object({ feedbackSource: typeMinimalSchema })
-  ),
-  responsible: typeMinimalSchema.nullable(),
-  ftsMethodologyStatus: typeMinimalSchema.nullable(),
-});
+const FtsFunctionDetailDetailedResponseSchema =
+    FtsFunctionDetailBaseResponseSchema.extend({
+      ftsFunctionStep: typeMinimalSchema,
+      ftsFunctionCategory: typeMinimalSchema.nullable(),
+      ftsFunctionComplexity: typeMinimalSchema.nullable(),
+      ftsFunctionExecutionFrequency: typeMinimalSchema.nullable(),
+      whoPerformsAction: typeMinimalSchema.nullable(),
+      ftsFunctionActionType: typeMinimalSchema.nullable(),
+      ftsFunctionEffectiveness: typeMinimalSchema.nullable(),
+      technologicalSolution: typeMinimalSchema.nullable(),
+      feedbackSources: z.array(
+          z.object({
+            feedbackSource: typeMinimalSchema,
+          }),
+      ),
+      responsible: typeMinimalSchema.nullable(),
+      ftsMethodologyStatus: typeMinimalSchema.nullable(),
+    });
 
-const FtsFunctionDetailInDetailedResponseSchema = FtsFunctionDetailDetailedResponseSchema.extend({
-  parents: z.array(FtsFunctionTreeEdgeResponseSchema),
-  children: z.array(FtsFunctionTreeEdgeResponseSchema),
-});
+const FtsFunctionDetailInDetailedResponseSchema =
+    FtsFunctionDetailDetailedResponseSchema.extend({
+      parents: z.array(FtsFunctionTreeEdgeResponseSchema),
+      children: z.array(FtsFunctionTreeEdgeResponseSchema),
+    });
 
-export const FtsFunctionDetailedResponseSchema = FtsFunctionBaseResponseSchema.extend({
-  ftsCentralization: typeMinimalSchema,
-  ftsFunctionName: typeMinimalSchema,
-  competencyCenter: typeMinimalSchema,
-  ftsFunctionMarker: typeMinimalSchema,
-  curatorCentralOffice: userMinimalSchema,
-  managerInterregionalInspection: userMinimalSchema,
-  departmentHeadCentralOffice: userMinimalSchema,
-  departmentHeadInterregionalInspection: userMinimalSchema,
-  dtis: z.array(
-    z.object({
-      dtiId: z.number(),
-      createdAt: z.date(),
-      dti: typeMinimalSchema,
-    }),
-  ),
-  ftsFunctionDetails: z.array(FtsFunctionDetailInDetailedResponseSchema),
-});
+export const FtsFunctionDetailedResponseSchema =
+    FtsFunctionBaseResponseSchema.extend({
+      ftsCentralization: typeMinimalSchema,
+      ftsFunctionName: typeMinimalSchema,
+      competencyCenter: typeMinimalSchema,
+      ftsFunctionMarker: typeMinimalSchema,
+      curatorCentralOffice: userMinimalSchema,
+      managerInterregionalInspection: userMinimalSchema,
+      departmentHeadCentralOffice: userMinimalSchema,
+      departmentHeadInterregionalInspection: userMinimalSchema,
+      dtis: z.array(
+          z.object({
+            dtiId: z.number(),
+            createdAt: z.date(),
+            dti: typeMinimalSchema,
+          }),
+      ),
+      ftsFunctionDetails: z.array(FtsFunctionDetailInDetailedResponseSchema),
+    });
 
 export const FtsFunctionTreeResponseSchema = z.object({
   parentFtsFunctionId: z.number(),
@@ -306,15 +344,30 @@ export const BatchAttachDtisRequestSchema = z.object({
   dtiIds: z.array(z.number().int().positive()).min(0),
 });
 
-export class BatchAttachDtisRequestDto extends createZodDto(BatchAttachDtisRequestSchema) {}
+export class BatchAttachDtisRequestDto extends createZodDto(
+    BatchAttachDtisRequestSchema,
+) {}
 
-export class FtsFunctionBaseResponseDto extends createZodDto(FtsFunctionBaseResponseSchema) {}
-export class FtsFunctionListResponseDto extends createZodDto(FtsFunctionListResponseSchema) {}
+export class FtsFunctionBaseResponseDto extends createZodDto(
+    FtsFunctionBaseResponseSchema,
+) {}
+
+export class FtsFunctionListResponseDto extends createZodDto(
+    FtsFunctionListResponseSchema,
+) {}
+
 export class FtsFunctionDetailedResponseDto extends createZodDto(
-  FtsFunctionDetailedResponseSchema,
+    FtsFunctionDetailedResponseSchema,
 ) {}
+
 export class FtsFunctionDetailDetailedResponseDto extends createZodDto(
-  FtsFunctionDetailDetailedResponseSchema,
+    FtsFunctionDetailDetailedResponseSchema,
 ) {}
-export class FtsFunctionTreeResponseDto extends createZodDto(FtsFunctionTreeResponseSchema) {}
-export class FtsFunctionToDtiResponseDto extends createZodDto(FtsFunctionToDtiResponseSchema) {}
+
+export class FtsFunctionTreeResponseDto extends createZodDto(
+    FtsFunctionTreeResponseSchema,
+) {}
+
+export class FtsFunctionToDtiResponseDto extends createZodDto(
+    FtsFunctionToDtiResponseSchema,
+) {}
