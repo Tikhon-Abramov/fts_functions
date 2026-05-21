@@ -135,9 +135,11 @@ export function mapFtsFunctionApiToFunctionRecord(
 
 type DetailItem = FtsFunctionDetailedResponseDto["ftsFunctionDetails"][number];
 
-export function mapFtsFunctionDetailApiToRow(
-    detail: DetailItem,
-): Row | null {
+type DetailItemExtra = DetailItem & {
+  initiatorAcceptance?: string | null;
+};
+
+export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
   const step = asStep(detail.ftsFunctionStep?.code);
   const category = asCategory(detail.ftsFunctionCategory?.code);
   const action = asAction(detail.ftsFunctionActionType?.code);
@@ -146,6 +148,7 @@ export function mapFtsFunctionDetailApiToRow(
 
   const frequency = asFrequency(detail.ftsFunctionExecutionFrequency?.code);
   const complexity = asComplexity(detail.ftsFunctionComplexity?.code);
+  const extra = detail as DetailItemExtra;
 
   return {
     id: String(detail.id),
@@ -164,6 +167,15 @@ export function mapFtsFunctionDetailApiToRow(
     number: detail.number ?? "",
     responsible: detail.responsible?.name ?? "",
     algorithm: detail.algorithm ?? "",
+    feedbackSource: detail.feedbackSource?.code ?? "",
+    feedbackQualityMetric: detail.ftsFunctionEffectiveness?.code ?? "",
+    problemDescription: detail.problemDescription ?? "",
+    initiatorRequisites: detail.initiatorRequisites ?? "",
+    methodologyPosition: detail.ftsMethodologyStatus?.name ?? "",
+    deadline: detail.deadline?.slice(0, 10) ?? "",
+    initiatorAcceptance: extra.initiatorAcceptance ?? "",
+    isAccepted: detail.isAccepted ?? null,
+    rejectComment: detail.rejectComment ?? "",
   };
 }
 

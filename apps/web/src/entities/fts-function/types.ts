@@ -21,25 +21,20 @@ export type Row = {
   artifactUsage?: string;
   purpose?: string;
 
-  /**
-   * Type.code из справочника TECHNOLOGICAL_SOLUTION.
-   */
   technologicalSolution?: string;
-
-  /**
-   * Номер ПЗ / АЗ.
-   */
   number?: string;
-
-  /**
-   * Type.name из справочника RESPONSIBLE.
-   */
   responsible?: string;
-
-  /**
-   * Алгоритм срабатывания.
-   */
   algorithm?: string;
+
+  feedbackSource?: string;
+  feedbackQualityMetric?: string;
+  problemDescription?: string;
+  initiatorRequisites?: string;
+  methodologyPosition?: string;
+  deadline?: string;
+  initiatorAcceptance?: string;
+  isAccepted?: boolean | null;
+  rejectComment?: string;
 };
 
 export type Link = {

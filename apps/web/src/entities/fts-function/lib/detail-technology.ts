@@ -8,21 +8,53 @@ export type TypeCategory = TypeResponseDto["category"];
 export const DETAIL_TYPE_CATEGORY = {
     WHO_PERFORMS_ACTION: "WHO_PERFORMS_ACTION",
     FTS_FUNCTION_ACTION_TYPE: "FTS_FUNCTION_ACTION_TYPE",
+    FTS_FUNCTION_EFFECTIVENESS: "FTS_FUNCTION_EFFECTIVENESS",
     TECHNOLOGICAL_SOLUTION: "TECHNOLOGICAL_SOLUTION",
+    FEEDBACK_SOURCE: "FEEDBACK_SOURCE",
     RESPONSIBLE: "RESPONSIBLE",
+    FTS_METHODOLOGY_STATUS: "FTS_METHODOLOGY_STATUS",
 } as const satisfies Record<string, TypeCategory>;
 
 export const TECHNOLOGY_DETAIL_LABELS = {
     technologicalSolution: "Технологическое решение",
     number: "Номер ПЗ / АЗ",
-    responsible: "Ответственный",
+    responsible: "Ответственный КЦА / ГНИТС / МЮА",
     algorithm: "Алгоритм срабатывания",
+} as const;
+
+export const FEEDBACK_DETAIL_LABELS = {
+    feedbackSource: "Источник обратной связи",
+    feedbackQualityMetric: "Метрики качества процесса в рамках обратной связи",
+    problemDescription:
+        "Описание проблемы с указанием источника, метрики, способа решения",
+    initiatorRequisites: "Реквизиты автора инициативы",
+    methodologyPosition:
+        "Методологическая позиция ЦА ФНС России (поддержано/нет)",
+    deadline: "Срок реализации доработки",
+    initiatorAcceptance: "Акцепт автора инициативы",
+} as const;
+
+export const FEEDBACK_BACKEND_FIELDS = {
+    initiatorAcceptance: "initiatorAcceptance",
 } as const;
 
 export type TechnologyFieldsShape = Pick<
     Row,
     "technologicalSolution" | "number" | "responsible" | "algorithm"
 >;
+
+export type FeedbackFieldsShape = Pick<
+    Row,
+    | "feedbackSource"
+    | "feedbackQualityMetric"
+    | "problemDescription"
+    | "initiatorRequisites"
+    | "methodologyPosition"
+    | "deadline"
+    | "initiatorAcceptance"
+>;
+
+export type FeedbackStatus = "pending" | "accepted" | "rejected";
 
 export function isActualActionCategory(
     category: string | undefined | null,
@@ -62,4 +94,41 @@ export function areTechnologyRequiredFieldsFilled(
         fields.responsible?.trim() &&
         fields.algorithm?.trim(),
     );
+}
+
+export function hasFeedback(row: Partial<Row> | null | undefined): boolean {
+    if (!row) return false;
+
+    return Boolean(
+        row.feedbackSource?.trim() ||
+        row.feedbackQualityMetric?.trim() ||
+        row.problemDescription?.trim() ||
+        row.initiatorRequisites?.trim() ||
+        row.methodologyPosition?.trim() ||
+        row.deadline?.trim() ||
+        row.initiatorAcceptance?.trim(),
+    );
+}
+
+export function areFeedbackRequiredFieldsFilled(
+    fields: Partial<FeedbackFieldsShape>,
+): boolean {
+    return Boolean(
+        fields.feedbackSource?.trim() &&
+        fields.feedbackQualityMetric?.trim() &&
+        fields.problemDescription?.trim() &&
+        fields.initiatorRequisites?.trim() &&
+        fields.methodologyPosition?.trim() &&
+        fields.deadline?.trim() &&
+        fields.initiatorAcceptance?.trim(),
+    );
+}
+
+export function getFeedbackStatus(
+    row: Partial<Row> | null | undefined,
+): FeedbackStatus | null {
+    if (!hasFeedback(row)) return null;
+    if (row?.isAccepted === true) return "accepted";
+    if (row?.isAccepted === false) return "rejected";
+    return "pending";
 }

@@ -20,6 +20,16 @@ export const RowField = {
   NUMBER: "number",
   RESPONSIBLE: "responsible",
   ALGORITHM: "algorithm",
+  FEEDBACK_SOURCE: "feedbackSource",
+  FEEDBACK_QUALITY_METRIC: "feedbackQualityMetric",
+  PROBLEM_DESCRIPTION: "problemDescription",
+  INITIATOR_REQUISITES: "initiatorRequisites",
+  METHODOLOGY_POSITION: "methodologyPosition",
+  DEADLINE: "deadline",
+  INITIATOR_ACCEPTANCE: "initiatorAcceptance",
+  IS_ACCEPTED: "isAccepted",
+  REJECT_COMMENT: "rejectComment",
 } as const;
 
-export type RowField = (typeof RowField)[keyof typeof RowField];
+export type RowFieldName = (typeof RowField)[keyof typeof RowField];
+export type RowField = RowFieldName;
