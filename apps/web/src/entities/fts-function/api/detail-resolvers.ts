@@ -225,10 +225,14 @@ export function resolveDetailDto(
     number: technologicalSolutionId !== null ? number : null,
     algorithm: technologicalSolutionId !== null ? algorithm : null,
 
-    feedbackSourceId:
+    /**
+     * Backend хранит источник обратной связи через join-связь,
+     * поэтому отправляем именно feedbackSourceIds.
+     */
+    feedbackSourceIds:
         includeFeedbackFields && feedbackSourceId !== null
-            ? feedbackSourceId
-            : null,
+            ? [feedbackSourceId]
+            : [],
     ftsFunctionEffectivenessId:
         includeFeedbackFields && ftsFunctionEffectivenessId !== null
             ? ftsFunctionEffectivenessId
@@ -245,11 +249,6 @@ export function resolveDetailDto(
         : null,
     deadline: includeFeedbackFields ? item.deadline?.trim() || null : null,
 
-    /**
-     * Важно для повторного заполнения после отказа:
-     * при сохранении обратной связи статус должен вернуться в null,
-     * чтобы бэк и следующий refetch показывали "на согласовании".
-     */
     isAccepted: includeFeedbackFields ? (item.isAccepted ?? null) : null,
     rejectComment: includeFeedbackFields
         ? item.rejectComment?.trim() || null
