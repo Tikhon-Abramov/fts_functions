@@ -7,10 +7,13 @@ import {
   COMPLEXITIES,
   PERIODICITIES,
 } from "src/entities/fts-function/constants";
+import {
+  DETAIL_TYPE_CATEGORY,
+  TECHNOLOGY_DETAIL_LABELS,
+  type TypeCategory,
+} from "src/entities/fts-function/lib/detail-technology";
 import { RowField } from "src/entities/fts-function/model";
-import { TECHNOLOGY_DETAIL_LABELS } from "src/entities/fts-function/lib/detail-technology";
 import { I18N } from "src/shared/i18n";
-import { Category } from "@registry/shared/enums";
 
 export const FieldKind = {
   SELECT_CODE: "SELECT_CODE",
@@ -32,7 +35,7 @@ export type ExtraFieldConfig = {
   label?: string;
   kind: FieldKind;
   options?: readonly SelectCodeOption[];
-  typeCategory?: Category;
+  typeCategory?: TypeCategory;
   testId: string;
 };
 
@@ -70,7 +73,7 @@ export const PRIMARY_FIELDS: ExtraFieldConfig[] = [
     key: RowField.WHO,
     labelKey: I18N.field.who,
     kind: FieldKind.AUTOCOMPLETE_FROM_TYPES,
-    typeCategory: Category.WHO_PERFORMS_ACTION,
+    typeCategory: DETAIL_TYPE_CATEGORY.WHO_PERFORMS_ACTION,
     testId: "details-panel-who",
   },
   {
@@ -128,7 +131,7 @@ export const TECHNOLOGY_FIELDS: ExtraFieldConfig[] = [
     key: RowField.TECHNOLOGICAL_SOLUTION,
     label: TECHNOLOGY_DETAIL_LABELS.technologicalSolution,
     kind: FieldKind.SELECT_TYPE_CODE,
-    typeCategory: Category.TECHNOLOGICAL_SOLUTION,
+    typeCategory: DETAIL_TYPE_CATEGORY.TECHNOLOGICAL_SOLUTION,
     testId: "details-panel-technological-solution",
   },
   {
@@ -141,7 +144,7 @@ export const TECHNOLOGY_FIELDS: ExtraFieldConfig[] = [
     key: RowField.RESPONSIBLE,
     label: TECHNOLOGY_DETAIL_LABELS.responsible,
     kind: FieldKind.AUTOCOMPLETE_FROM_TYPES,
-    typeCategory: Category.RESPONSIBLE,
+    typeCategory: DETAIL_TYPE_CATEGORY.RESPONSIBLE,
     testId: "details-panel-responsible",
   },
   {

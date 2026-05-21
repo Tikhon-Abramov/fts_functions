@@ -22,8 +22,7 @@ export type Row = {
   purpose?: string;
 
   /**
-   * DB type.code from Category.TECHNOLOGICAL_SOLUTION.
-   * Label is resolved through `findTypeNameByCode(typesAll, value)`.
+   * Type.code из справочника TECHNOLOGICAL_SOLUTION.
    */
   technologicalSolution?: string;
 
@@ -33,7 +32,7 @@ export type Row = {
   number?: string;
 
   /**
-   * Type.name from Category.RESPONSIBLE.
+   * Type.name из справочника RESPONSIBLE.
    */
   responsible?: string;
 
@@ -45,9 +44,9 @@ export type Row = {
 
 export type Link = {
   id: string;
-  sourceId: string;
-  targetId: string;
-  relationType: FtsFunctionRelationType;
+  fromId: string;
+  toId: string;
+  kind: FtsFunctionRelationType;
 };
 
 export type FunctionRecord = {

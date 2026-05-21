@@ -1,15 +1,21 @@
 import type { Row } from "src/entities/fts-function/types";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 
-import { findTypeNameByCode } from "src/entities/fts-function/api/mappers";
-import { Category } from "@registry/shared/enums";
+import { FtsFunctionCategory } from "src/entities/fts-function/model";
 
-export const FACTUAL_ACTION_NAME = "Фактическое действие";
+export type TypeCategory = TypeResponseDto["category"];
+
+export const DETAIL_TYPE_CATEGORY = {
+    WHO_PERFORMS_ACTION: "WHO_PERFORMS_ACTION",
+    FTS_FUNCTION_ACTION_TYPE: "FTS_FUNCTION_ACTION_TYPE",
+    TECHNOLOGICAL_SOLUTION: "TECHNOLOGICAL_SOLUTION",
+    RESPONSIBLE: "RESPONSIBLE",
+} as const satisfies Record<string, TypeCategory>;
 
 export const TECHNOLOGY_DETAIL_LABELS = {
     technologicalSolution: "Технологическое решение",
     number: "Номер ПЗ / АЗ",
-    responsible: "Ответственный КЦА / ГНИТС / МЮА",
+    responsible: "Ответственный",
     algorithm: "Алгоритм срабатывания",
 } as const;
 
@@ -18,30 +24,22 @@ export type TechnologyFieldsShape = Pick<
     "technologicalSolution" | "number" | "responsible" | "algorithm"
 >;
 
-function normalize(value: string | undefined | null): string {
-    return String(value ?? "").trim().toLocaleLowerCase("ru-RU");
-}
-
-export function isFactualActionCode(
-    actionCode: string | undefined | null,
-    typesAll: TypeResponseDto[] | undefined,
+export function isActualActionCategory(
+    category: string | undefined | null,
 ): boolean {
-    if (!actionCode || !typesAll?.length) return false;
-
-    const dbName = findTypeNameByCode(typesAll, actionCode);
-    return normalize(dbName) === normalize(FACTUAL_ACTION_NAME);
+    return category === FtsFunctionCategory.ACTUAL_ACTION;
 }
 
 export function getTypeCodeOptionsByCategory(
     typesAll: TypeResponseDto[] | undefined,
-    category: Category,
+    category: TypeCategory,
 ): TypeResponseDto[] {
     return (typesAll ?? []).filter((item) => item.category === category);
 }
 
 export function getTypeNameOptionsByCategory(
     typesAll: TypeResponseDto[] | undefined,
-    category: Category,
+    category: TypeCategory,
 ): string[] {
     return getTypeCodeOptionsByCategory(typesAll, category).map(
         (item) => item.name,
@@ -64,19 +62,4 @@ export function areTechnologyRequiredFieldsFilled(
         fields.responsible?.trim() &&
         fields.algorithm?.trim(),
     );
-}
-
-export function cleanupTechnologyFields<T extends Partial<TechnologyFieldsShape>>(
-    fields: T,
-    enabled: boolean,
-): T {
-    if (enabled && fields.technologicalSolution?.trim()) return fields;
-
-    return {
-        ...fields,
-        technologicalSolution: "",
-        number: "",
-        responsible: "",
-        algorithm: "",
-    };
 }

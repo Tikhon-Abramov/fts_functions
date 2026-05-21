@@ -12,13 +12,12 @@ import type {
 } from "src/shared/api/ftsFunctionsApi";
 
 import { findTypeIdByCode } from "src/entities/fts-function/api/mappers";
-import { Category } from "@registry/shared/enums";
-
-const DetailTypeCategory = {
-  WHO_PERFORMS_ACTION: Category.WHO_PERFORMS_ACTION,
-  TECHNOLOGICAL_SOLUTION: "TECHNOLOGICAL_SOLUTION",
-  RESPONSIBLE: "RESPONSIBLE",
-} as const;
+import {
+  areTechnologyRequiredFieldsFilled,
+  DETAIL_TYPE_CATEGORY,
+  isActualActionCategory,
+  type TypeCategory,
+} from "src/entities/fts-function/lib/detail-technology";
 
 export type DetailInput = {
   step: FtsFunctionStep;
@@ -42,9 +41,16 @@ function trimValue(value: string | undefined): string {
   return value?.trim() ?? "";
 }
 
+function findTypeIdByCodeOrNull(
+    types: TypeResponseDto[] | undefined,
+    code: string,
+): number | null {
+  return findTypeIdByCode(types, code) ?? null;
+}
+
 function findTypeIdByCategoryAndName(
     types: TypeResponseDto[] | undefined,
-    category: string,
+    category: TypeCategory,
     name: string,
 ): number | null {
   const trimmed = name.trim();
@@ -53,7 +59,7 @@ function findTypeIdByCategoryAndName(
 
   return (
       (types ?? []).find(
-          (type) => String(type.category) === category && type.name === trimmed,
+          (type) => type.category === category && type.name === trimmed,
       )?.id ?? null
   );
 }
@@ -71,6 +77,7 @@ export function resolveDetailDto(
   if (stepId == null || categoryId == null || actionId == null) return null;
 
   let complexityId: number | null = null;
+
   if (item.complexity) {
     const id = findTypeIdByCode(types, item.complexity);
     if (id == null) return null;
@@ -78,6 +85,7 @@ export function resolveDetailDto(
   }
 
   let frequencyId: number | null = null;
+
   if (item.periodicity) {
     const id = findTypeIdByCode(types, item.periodicity);
     if (id == null) return null;
@@ -85,22 +93,27 @@ export function resolveDetailDto(
   }
 
   let whoPerformsActionId: number | null = null;
+
   if (item.who && item.who.trim().length > 0) {
-    const id = findTypeIdByCategoryAndName(
+    whoPerformsActionId = findTypeIdByCategoryAndName(
         types,
-        DetailTypeCategory.WHO_PERFORMS_ACTION,
+        DETAIL_TYPE_CATEGORY.WHO_PERFORMS_ACTION,
         item.who,
     );
-
-    if (id != null) whoPerformsActionId = id;
   }
 
-  const technologicalSolutionCode = trimValue(item.technologicalSolution);
-  const technologicalSolutionId = technologicalSolutionCode
-      ? findTypeIdByCode(types, technologicalSolutionCode)
-      : null;
+  const includeTechnologyFields = isActualActionCategory(item.category);
 
-  if (technologicalSolutionCode && technologicalSolutionId == null) {
+  const technologicalSolutionCode = includeTechnologyFields
+      ? trimValue(item.technologicalSolution)
+      : "";
+
+  const technologicalSolutionId: string | number | null =
+      technologicalSolutionCode.length > 0
+          ? findTypeIdByCodeOrNull(types, technologicalSolutionCode)
+          : null;
+
+  if (technologicalSolutionCode && technologicalSolutionId === null) {
     return null;
   }
 
@@ -108,21 +121,22 @@ export function resolveDetailDto(
   const responsibleName = trimValue(item.responsible);
   const algorithm = trimValue(item.algorithm);
 
-  let responsibleId: number | null = null;
+  let responsibleId: string | number | null = null;
 
-  if (technologicalSolutionId != null) {
+  if (technologicalSolutionId !== null) {
+    if (!areTechnologyRequiredFieldsFilled(item)) return null;
     if (!number || !responsibleName || !algorithm) return null;
 
     responsibleId = findTypeIdByCategoryAndName(
         types,
-        DetailTypeCategory.RESPONSIBLE,
+        DETAIL_TYPE_CATEGORY.RESPONSIBLE,
         responsibleName,
     );
 
-    if (responsibleId == null) return null;
+    if (responsibleId === null) return null;
   }
 
-  const dto: CreateFtsFunctionDetailDto & Record<string, unknown> = {
+  return {
     ftsFunctionStepId: stepId,
     ftsFunctionCategoryId: categoryId,
     ftsFunctionActionTypeId: actionId,
@@ -136,11 +150,9 @@ export function resolveDetailDto(
     purpose: item.purpose?.trim() || null,
     technologicalSolutionId,
     responsibleId,
-    number: technologicalSolutionId != null ? number : null,
-    algorithm: technologicalSolutionId != null ? algorithm : null,
+    number: technologicalSolutionId !== null ? number : null,
+    algorithm: technologicalSolutionId !== null ? algorithm : null,
   };
-
-  return dto;
 }
 
 export function buildDetailInputFromRow(

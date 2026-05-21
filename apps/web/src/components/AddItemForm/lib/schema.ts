@@ -10,7 +10,6 @@ import {
   FtsFunctionComplexity,
   FtsFunctionExecutionFrequency,
 } from "src/entities/fts-function/model";
-import { cleanupTechnologyFields } from "src/entities/fts-function/lib/detail-technology";
 import { z } from "zod";
 
 const categoryEnum = z.enum(
@@ -90,22 +89,29 @@ export function fieldsToData(
     fields: StepFields,
     includeTechnologyFields: boolean,
 ) {
-  const normalized = cleanupTechnologyFields(fields, includeTechnologyFields);
+  const technologySelected =
+      includeTechnologyFields && fields.technologicalSolution.trim().length > 0;
 
   return {
-    category: normalized.category,
-    detailText: normalized.detailText.trim(),
-    who: emptyToUndefined(normalized.who),
-    actionLabel: normalized.actionLabel,
-    periodicity: normalized.periodicity,
-    complexity: normalized.complexity,
-    artifact: emptyToUndefined(normalized.artifact),
-    basis: emptyToUndefined(normalized.basis),
-    artifactUsage: emptyToUndefined(normalized.artifactUsage),
-    purpose: emptyToUndefined(normalized.purpose),
-    technologicalSolution: emptyToUndefined(normalized.technologicalSolution),
-    number: emptyToUndefined(normalized.number),
-    responsible: emptyToUndefined(normalized.responsible),
-    algorithm: emptyToUndefined(normalized.algorithm),
+    category: fields.category,
+    detailText: fields.detailText.trim(),
+    who: emptyToUndefined(fields.who),
+    actionLabel: fields.actionLabel,
+    periodicity: fields.periodicity,
+    complexity: fields.complexity,
+    artifact: emptyToUndefined(fields.artifact),
+    basis: emptyToUndefined(fields.basis),
+    artifactUsage: emptyToUndefined(fields.artifactUsage),
+    purpose: emptyToUndefined(fields.purpose),
+    technologicalSolution: technologySelected
+        ? emptyToUndefined(fields.technologicalSolution)
+        : undefined,
+    number: technologySelected ? emptyToUndefined(fields.number) : undefined,
+    responsible: technologySelected
+        ? emptyToUndefined(fields.responsible)
+        : undefined,
+    algorithm: technologySelected
+        ? emptyToUndefined(fields.algorithm)
+        : undefined,
   };
 }

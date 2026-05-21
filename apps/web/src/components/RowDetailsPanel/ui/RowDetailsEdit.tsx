@@ -25,7 +25,7 @@ import {
     getTypeCodeOptionsByCategory,
     getTypeNameOptionsByCategory,
     hasTechnologicalSolution,
-    isFactualActionCode,
+    isActualActionCategory,
 } from "src/entities/fts-function/lib/detail-technology";
 import { RowField } from "src/entities/fts-function/model";
 import { useTranslation } from "src/shared/i18n";
@@ -69,15 +69,12 @@ export function RowDetailsEdit({
     const theme = useTheme();
     const c = theme.custom;
 
-    const isFactualAction = isFactualActionCode(
-        draft.actionLabel ?? "",
-        typesAll,
-    );
+    const isActualAction = isActualActionCategory(draft.category ?? "");
     const technologySelected = hasTechnologicalSolution(draft);
     const technologyValid =
-        !isFactualAction || areTechnologyRequiredFieldsFilled(draft);
+        !isActualAction || areTechnologyRequiredFieldsFilled(draft);
 
-    const editFields = isFactualAction
+    const editFields = isActualAction
         ? [...PRIMARY_FIELDS, ...EXTRA_FIELDS, ...TECHNOLOGY_FIELDS]
         : [...PRIMARY_FIELDS, ...EXTRA_FIELDS];
 
@@ -333,7 +330,11 @@ function DraftField({
                 </MenuItem>
 
                 {(field.options ?? []).map((opt) => (
-                    <MenuItem key={opt.value} value={opt.value} sx={{ fontSize: "0.78rem" }}>
+                    <MenuItem
+                        key={opt.value}
+                        value={opt.value}
+                        sx={{ fontSize: "0.78rem" }}
+                    >
                         {findTypeNameByCode(typesAll, opt.value)}
                     </MenuItem>
                 ))}
@@ -378,7 +379,7 @@ function AutocompleteField({
             onInputChange={(_, v) => onChange(v)}
             size="small"
             fullWidth
-            componentsProps={{
+            slotProps={{
                 paper: {
                     sx: {
                         bgcolor: c.bgMenu,

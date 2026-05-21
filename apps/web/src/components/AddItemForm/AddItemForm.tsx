@@ -18,7 +18,7 @@ import {
 } from "src/entities/fts-function/model";
 import {
     areTechnologyRequiredFieldsFilled,
-    isFactualActionCode,
+    isActualActionCategory,
 } from "src/entities/fts-function/lib/detail-technology";
 import { MAX_PER_CATEGORY } from "src/shared/config/ui";
 import { I18N, useTranslation } from "src/shared/i18n";
@@ -78,11 +78,8 @@ function countByStepCategory(
     return rows.filter((r) => r.step === step && r.category === cat).length;
 }
 
-function isStepTechnologyValid(
-    fields: StepFields,
-    typesAll: TypeResponseDto[],
-): boolean {
-    if (!isFactualActionCode(fields.actionLabel, typesAll)) return true;
+function isStepTechnologyValid(fields: StepFields): boolean {
+    if (!isActualActionCategory(fields.category)) return true;
     return areTechnologyRequiredFieldsFilled(fields);
 }
 
@@ -116,8 +113,8 @@ export default function AddItemForm({
     const s2Filled = isStepFilled(s2);
     const bothFilled = s1Filled && s2Filled;
 
-    const s1TechnologyValid = isStepTechnologyValid(s1, typesAll);
-    const s2TechnologyValid = isStepTechnologyValid(s2, typesAll);
+    const s1TechnologyValid = isStepTechnologyValid(s1);
+    const s2TechnologyValid = isStepTechnologyValid(s2);
 
     const s1Count = countByStepCategory(
         allRows,
@@ -178,36 +175,18 @@ export default function AddItemForm({
 
         const { s1: v1, s2: v2 } = getValues();
 
-        const includeS1Technology = isFactualActionCode(v1.actionLabel, typesAll);
-        const includeS2Technology = isFactualActionCode(v2.actionLabel, typesAll);
+        const includeS1Technology = isActualActionCategory(v1.category);
+        const includeS2Technology = isActualActionCategory(v2.category);
 
         const canS1 =
             isStepFilled(v1) &&
             !s1LimitReached &&
-            areTechnologyRequiredFieldsFilled(
-                includeS1Technology
-                    ? v1
-                    : {
-                        technologicalSolution: "",
-                        number: "",
-                        responsible: "",
-                        algorithm: "",
-                    },
-            );
+            (!includeS1Technology || areTechnologyRequiredFieldsFilled(v1));
 
         const canS2 =
             isStepFilled(v2) &&
             !s2LimitReached &&
-            areTechnologyRequiredFieldsFilled(
-                includeS2Technology
-                    ? v2
-                    : {
-                        technologicalSolution: "",
-                        number: "",
-                        responsible: "",
-                        algorithm: "",
-                    },
-            );
+            (!includeS2Technology || areTechnologyRequiredFieldsFilled(v2));
 
         if (!canS1 && !canS2) return;
 
@@ -293,7 +272,7 @@ export default function AddItemForm({
                 <StepTabBody
                     control={control}
                     step={StepKey.S1}
-                    fields={s1 as StepFields}
+                    fields={s1}
                     currentCount={s1Count}
                     limitReached={s1LimitReached}
                     filled={s1Filled}
@@ -306,7 +285,7 @@ export default function AddItemForm({
                 <StepTabBody
                     control={control}
                     step={StepKey.S2}
-                    fields={s2 as StepFields}
+                    fields={s2}
                     currentCount={s2Count}
                     limitReached={s2LimitReached}
                     filled={s2Filled}
