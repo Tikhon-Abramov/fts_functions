@@ -17,6 +17,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+
 import { findTypeNameByCode } from "src/entities/fts-function/api/mappers";
 import {
   ACTIONS,
@@ -24,6 +25,13 @@ import {
   COMPLEXITIES,
   PERIODICITIES,
 } from "src/entities/fts-function/constants";
+import {
+  getTypeCodeOptionsByCategory,
+  getTypeNameOptionsByCategory,
+  hasTechnologicalSolution,
+  isFactualActionCode,
+  TECHNOLOGY_DETAIL_LABELS,
+} from "src/entities/fts-function/lib/detail-technology";
 import { MAX_PER_CATEGORY } from "src/shared/config/ui";
 import { I18N, useTranslation } from "src/shared/i18n";
 import { FieldLabel } from "src/shared/ui/form/FieldLabel";
@@ -33,19 +41,15 @@ import {
   formMenuSx,
   formSelectSx,
 } from "src/shared/ui/styles/form";
-
 import { Category } from "@registry/shared/enums";
 
-/**
- * Step-key registry (Class 2). The two RHF object roots that hold per-step
- * form fields. Co-located here because the form's schema shape (`{ s1, s2 }`)
- * is the only meaningful definition.
- */
 export const StepKey = {
   S1: "s1",
   S2: "s2",
 } as const;
+
 export type StepKey = (typeof StepKey)[keyof typeof StepKey];
+
 type RHFFieldName = `${StepKey}.${keyof StepFields}`;
 
 export type StepTabBodyProps = {
@@ -60,157 +64,215 @@ export type StepTabBodyProps = {
 };
 
 export function StepTabBody({
-  control,
-  step,
-  fields,
-  limitReached,
-  filled,
-  typesAll,
-  theme,
-}: StepTabBodyProps) {
+                              control,
+                              step,
+                              fields,
+                              limitReached,
+                              filled,
+                              typesAll,
+                              theme,
+                            }: StepTabBodyProps) {
   const { t } = useTranslation();
   const c = theme.custom;
-  // DB-driven `who` options — names from `Type.name` filtered by category.
+
   const whoOptions = useMemo(
-    () =>
-      typesAll
-        .filter((tt) => tt.category === Category.WHO_PERFORMS_ACTION)
-        .map((tt) => tt.name),
-    [typesAll],
+      () => getTypeNameOptionsByCategory(typesAll, Category.WHO_PERFORMS_ACTION),
+      [typesAll],
   );
+
+  const responsibleOptions = useMemo(
+      () => getTypeNameOptionsByCategory(typesAll, Category.RESPONSIBLE),
+      [typesAll],
+  );
+
+  const technologicalSolutionOptions = useMemo(
+      () => getTypeCodeOptionsByCategory(typesAll, Category.TECHNOLOGICAL_SOLUTION),
+      [typesAll],
+  );
+
+  const isFactualAction = isFactualActionCode(fields.actionLabel, typesAll);
+  const technologySelected = hasTechnologicalSolution(fields);
 
   return (
-    <Box
-      sx={{
-        flex: 1,
-        overflow: "auto",
-        px: 2,
-        display: "flex",
-        flexDirection: "column",
-        gap: 1.5,
-        pb: 1,
-      }}
-    >
-      {limitReached && filled && (
-        <Typography
-          variant="caption"
-          sx={{ color: theme.palette.warning.main, fontSize: "0.68rem" }}
-        >
-          {t(I18N.addItem.limitReached, {
-            limit: MAX_PER_CATEGORY,
-            category: findTypeNameByCode(typesAll, fields.category),
-          })}
-        </Typography>
-      )}
-
-      <FieldLabel fontSize="0.58rem" bold>
-        {"Основные поля"}
-      </FieldLabel>
-
-      <RHFCodeSelect
-        control={control}
-        name={`${step}.category`}
-        label={"Категория"}
-        options={CATEGORIES}
-        typesAll={typesAll}
-        testId={`add-detail-category-${step}`}
-        theme={theme}
-      />
-
-      <Controller
-        control={control}
-        name={`${step}.detailText`}
-        render={({ field }) => (
-          <TextField
-            {...field}
-            label={"Детализация *"}
-            multiline
-            rows={2}
-            fullWidth
-            size="small"
-            sx={formInputSx(theme)}
-            data-testid={`add-detail-text-${step}`}
-          />
+      <Box
+          sx={{
+            flex: 1,
+            overflow: "auto",
+            px: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.5,
+            pb: 1,
+          }}
+      >
+        {limitReached && filled && (
+            <Typography
+                variant="caption"
+                sx={{ color: theme.palette.warning.main, fontSize: "0.68rem" }}
+            >
+              {t(I18N.addItem.limitReached, {
+                limit: MAX_PER_CATEGORY,
+                category: findTypeNameByCode(typesAll, fields.category),
+              })}
+            </Typography>
         )}
-      />
 
-      <RHFAutocomplete
-        control={control}
-        name={`${step}.who`}
-        label={"Кто делает"}
-        options={whoOptions}
-        testId={`add-detail-who-${step}`}
-        theme={theme}
-      />
+        <FieldLabel fontSize="0.58rem" bold>
+          {"Основные поля"}
+        </FieldLabel>
 
-      <RHFCodeSelect
-        control={control}
-        name={`${step}.actionLabel`}
-        label={"Что делать"}
-        options={ACTIONS}
-        typesAll={typesAll}
-        testId={`add-detail-action-${step}`}
-        theme={theme}
-      />
+        <RHFCodeSelect
+            control={control}
+            name={`${step}.category`}
+            label={"Категория"}
+            options={CATEGORIES}
+            typesAll={typesAll}
+            testId={`add-detail-category-${step}`}
+            theme={theme}
+        />
 
-      <Divider sx={{ borderColor: c.borderLight, my: 0.5 }} />
-      <FieldLabel fontSize="0.58rem" bold>
-        {"Дополнительные сведения"}
-      </FieldLabel>
+        <Controller
+            control={control}
+            name={`${step}.detailText`}
+            render={({ field }) => (
+                <TextField
+                    {...field}
+                    label={"Детализация *"}
+                    multiline
+                    rows={2}
+                    fullWidth
+                    size="small"
+                    sx={formInputSx(theme)}
+                    data-testid={`add-detail-text-${step}`}
+                />
+            )}
+        />
 
-      <RHFCodeSelect
-        control={control}
-        name={`${step}.periodicity`}
-        label={"Периодичность"}
-        options={PERIODICITIES}
-        typesAll={typesAll}
-        testId={`select-periodicity-${step}`}
-        theme={theme}
-      />
-      <RHFCodeSelect
-        control={control}
-        name={`${step}.complexity`}
-        label={"Сложность"}
-        options={COMPLEXITIES}
-        typesAll={typesAll}
-        testId={`select-complexity-${step}`}
-        theme={theme}
-      />
-      <RHFTextInput
-        control={control}
-        name={`${step}.artifact`}
-        label={"Артефакт"}
-        testId={`input-artifact-${step}`}
-        theme={theme}
-      />
-      <RHFTextInput
-        control={control}
-        name={`${step}.basis`}
-        label={"Основание"}
-        testId={`input-basis-${step}`}
-        theme={theme}
-      />
-      <RHFTextInput
-        control={control}
-        name={`${step}.artifactUsage`}
-        label={"Как используется артефакт"}
-        testId={`input-artifact-usage-${step}`}
-        multiline
-        theme={theme}
-      />
-      <RHFTextInput
-        control={control}
-        name={`${step}.purpose`}
-        label={"Зачем выполняется"}
-        testId={`input-purpose-${step}`}
-        multiline
-        theme={theme}
-      />
-    </Box>
+        <RHFAutocomplete
+            control={control}
+            name={`${step}.who`}
+            label={"Кто делает"}
+            options={whoOptions}
+            testId={`add-detail-who-${step}`}
+            theme={theme}
+        />
+
+        <RHFCodeSelect
+            control={control}
+            name={`${step}.actionLabel`}
+            label={"Что делать"}
+            options={ACTIONS}
+            typesAll={typesAll}
+            testId={`add-detail-action-${step}`}
+            theme={theme}
+        />
+
+        <Divider sx={{ borderColor: c.borderLight, my: 0.5 }} />
+
+        <FieldLabel fontSize="0.58rem" bold>
+          {"Дополнительные сведения"}
+        </FieldLabel>
+
+        <RHFCodeSelect
+            control={control}
+            name={`${step}.periodicity`}
+            label={"Периодичность"}
+            options={PERIODICITIES}
+            typesAll={typesAll}
+            testId={`add-detail-periodicity-${step}`}
+            theme={theme}
+        />
+
+        <RHFCodeSelect
+            control={control}
+            name={`${step}.complexity`}
+            label={"Сложность"}
+            options={COMPLEXITIES}
+            typesAll={typesAll}
+            testId={`add-detail-complexity-${step}`}
+            theme={theme}
+        />
+
+        <RHFTextInput
+            control={control}
+            name={`${step}.artifact`}
+            label={"Артефакт"}
+            testId={`add-detail-artifact-${step}`}
+            theme={theme}
+        />
+
+        <RHFTextInput
+            control={control}
+            name={`${step}.basis`}
+            label={"Основание"}
+            testId={`add-detail-basis-${step}`}
+            theme={theme}
+        />
+
+        <RHFTextInput
+            control={control}
+            name={`${step}.artifactUsage`}
+            label={"Использование артефакта"}
+            testId={`add-detail-artifact-usage-${step}`}
+            multiline
+            theme={theme}
+        />
+
+        <RHFTextInput
+            control={control}
+            name={`${step}.purpose`}
+            label={"Цель"}
+            testId={`add-detail-purpose-${step}`}
+            multiline
+            theme={theme}
+        />
+
+        {isFactualAction && (
+            <>
+              <Divider sx={{ borderColor: c.borderLight, my: 0.5 }} />
+
+              <RHFTypeCodeSelect
+                  control={control}
+                  name={`${step}.technologicalSolution`}
+                  label={TECHNOLOGY_DETAIL_LABELS.technologicalSolution}
+                  options={technologicalSolutionOptions}
+                  testId={`add-detail-technological-solution-${step}`}
+                  theme={theme}
+              />
+
+              <RHFTextInput
+                  control={control}
+                  name={`${step}.number`}
+                  label={`${TECHNOLOGY_DETAIL_LABELS.number}${technologySelected ? " *" : ""}`}
+                  testId={`add-detail-number-${step}`}
+                  disabled={!technologySelected}
+                  theme={theme}
+              />
+
+              <RHFAutocomplete
+                  control={control}
+                  name={`${step}.responsible`}
+                  label={`${TECHNOLOGY_DETAIL_LABELS.responsible}${technologySelected ? " *" : ""}`}
+                  options={responsibleOptions}
+                  testId={`add-detail-responsible-${step}`}
+                  disabled={!technologySelected}
+                  theme={theme}
+              />
+
+              <RHFTextInput
+                  control={control}
+                  name={`${step}.algorithm`}
+                  label={`${TECHNOLOGY_DETAIL_LABELS.algorithm}${technologySelected ? " *" : ""}`}
+                  testId={`add-detail-algorithm-${step}`}
+                  disabled={!technologySelected}
+                  multiline
+                  theme={theme}
+              />
+            </>
+        )}
+      </Box>
   );
 }
-
-// ---- inline RHF helpers (Class 26: take theme/t as props) ----
 
 type RHFCodeSelectProps<T extends string> = {
   control: Control<AddItemFormValues>;
@@ -223,42 +285,99 @@ type RHFCodeSelectProps<T extends string> = {
 };
 
 export function RHFCodeSelect<T extends string>({
-  control,
-  name,
-  label,
-  options,
-  typesAll,
-  testId,
-  theme,
-}: RHFCodeSelectProps<T>) {
+                                                  control,
+                                                  name,
+                                                  label,
+                                                  options,
+                                                  typesAll,
+                                                  testId,
+                                                  theme,
+                                                }: RHFCodeSelectProps<T>) {
   return (
-    <Controller
-      control={control}
-      name={name as FieldPath<AddItemFormValues>}
-      render={({ field }) => (
-        <FormControl size="small" fullWidth>
-          <InputLabel sx={formLabelSx(theme)}>{label}</InputLabel>
-          <Select
-            value={(field.value as string) ?? ""}
-            onChange={(e) => field.onChange(e.target.value)}
-            label={label}
-            sx={formSelectSx(theme)}
-            MenuProps={formMenuSx(theme)}
-            data-testid={testId}
-          >
-            {options.map((o) => (
-              <MenuItem
-                key={o}
-                value={o}
-                sx={{ fontSize: "0.78rem", minHeight: 28, py: 0.25 }}
-              >
-                {findTypeNameByCode(typesAll, o)}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      )}
-    />
+      <Controller
+          control={control}
+          name={name as FieldPath<AddItemFormValues>}
+          render={({ field }) => (
+              <FormControl size="small" fullWidth>
+                <InputLabel sx={formLabelSx(theme)}>{label}</InputLabel>
+                <Select
+                    value={field.value ?? ""}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    label={label}
+                    sx={formSelectSx(theme)}
+                    MenuProps={formMenuSx(theme)}
+                    data-testid={testId}
+                >
+                  {options.map((o) => (
+                      <MenuItem key={o} value={o} sx={{ fontSize: "0.78rem" }}>
+                        {findTypeNameByCode(typesAll, o)}
+                      </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+          )}
+      />
+  );
+}
+
+type RHFTypeCodeSelectProps = {
+  control: Control<AddItemFormValues>;
+  name: RHFFieldName;
+  label: string;
+  options: TypeResponseDto[];
+  testId: string;
+  theme: Theme;
+};
+
+function RHFTypeCodeSelect({
+                             control,
+                             name,
+                             label,
+                             options,
+                             testId,
+                             theme,
+                           }: RHFTypeCodeSelectProps) {
+  const c = theme.custom;
+
+  return (
+      <Controller
+          control={control}
+          name={name as FieldPath<AddItemFormValues>}
+          render={({ field }) => (
+              <FormControl size="small" fullWidth>
+                <InputLabel sx={formLabelSx(theme)}>{label}</InputLabel>
+                <Select
+                    value={field.value ?? ""}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    label={label}
+                    sx={formSelectSx(theme)}
+                    MenuProps={formMenuSx(theme)}
+                    data-testid={testId}
+                >
+                  <MenuItem
+                      value=""
+                      sx={{
+                        fontSize: "0.78rem",
+                        fontStyle: "italic",
+                        color: c.textDim,
+                      }}
+                  >
+                    {"— не выбрано —"}
+                  </MenuItem>
+
+                  {options.map((option) => (
+                      <MenuItem
+                          key={option.code}
+                          value={option.code}
+                          sx={{ fontSize: "0.78rem" }}
+                      >
+                        {option.name}
+                      </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+          )}
+      />
   );
 }
 
@@ -268,35 +387,37 @@ type RHFTextInputProps = {
   label: string;
   testId: string;
   multiline?: boolean;
+  disabled?: boolean;
   theme: Theme;
 };
 
 function RHFTextInput({
-  control,
-  name,
-  label,
-  testId,
-  multiline = false,
-  theme,
-}: RHFTextInputProps) {
+                        control,
+                        name,
+                        label,
+                        testId,
+                        multiline = false,
+                        disabled = false,
+                        theme,
+                      }: RHFTextInputProps) {
   return (
-    <Controller
-      control={control}
-      name={name as FieldPath<AddItemFormValues>}
-      render={({ field }) => (
-        <TextField
-          {...field}
-          value={(field.value as string) ?? ""}
-          label={label}
-          fullWidth
-          size="small"
-          multiline={multiline}
-          rows={multiline ? 2 : undefined}
-          sx={formInputSx(theme)}
-          data-testid={testId}
-        />
-      )}
-    />
+      <Controller
+          control={control}
+          name={name as FieldPath<AddItemFormValues>}
+          render={({ field }) => (
+              <TextField
+                  {...field}
+                  label={label}
+                  multiline={multiline}
+                  rows={multiline ? 2 : undefined}
+                  fullWidth
+                  size="small"
+                  disabled={disabled}
+                  sx={formInputSx(theme)}
+                  data-testid={testId}
+              />
+          )}
+      />
   );
 }
 
@@ -306,83 +427,73 @@ type RHFAutocompleteProps = {
   label: string;
   options: readonly string[];
   testId: string;
+  disabled?: boolean;
   theme: Theme;
 };
 
 function RHFAutocomplete({
-  control,
-  name,
-  label,
-  options,
-  testId,
-  theme,
-}: RHFAutocompleteProps) {
+                           control,
+                           name,
+                           label,
+                           options,
+                           testId,
+                           disabled = false,
+                           theme,
+                         }: RHFAutocompleteProps) {
   const c = theme.custom;
 
   return (
-    <Controller
-      control={control}
-      name={name as FieldPath<AddItemFormValues>}
-      render={({ field }) => (
-        <Autocomplete
-          freeSolo
-          options={options}
-          value={(field.value as string) ?? ""}
-          onChange={(_, v) => field.onChange(v ?? "")}
-          onInputChange={(_, v) => field.onChange(v)}
-          size="small"
-          fullWidth
-          slotProps={{
-            paper: {
-              sx: {
-                bgcolor: c.bgMenu,
-                color: c.textBody,
-                border: `1px solid ${c.borderMain}`,
-              },
-            },
-            listbox: {
-              sx: {
-                py: 0,
-                "& .MuiAutocomplete-option": {
-                  minHeight: 28,
-                  fontSize: "0.78rem",
-                  py: 0.25,
-                },
-              },
-            },
-          }}
-          renderOption={(props, option) => {
-            const { key, ...rest } = props as typeof props & { key?: string };
-            return (
-              <li key={key ?? option} {...rest}>
-                <Tooltip title={option} placement="right">
-                  <Typography
-                    component="span"
-                    sx={{
-                      fontSize: "0.78rem",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      maxWidth: "100%",
-                      display: "block",
-                    }}
-                  >
-                    {option}
-                  </Typography>
-                </Tooltip>
-              </li>
-            );
-          }}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label={label}
-              sx={formInputSx(theme)}
-              data-testid={testId}
-            />
+      <Controller
+          control={control}
+          name={name as FieldPath<AddItemFormValues>}
+          render={({ field }) => (
+              <Autocomplete
+                  freeSolo
+                  disabled={disabled}
+                  options={options}
+                  value={field.value ?? ""}
+                  onChange={(_, v) => field.onChange(v ?? "")}
+                  onInputChange={(_, v) => field.onChange(v)}
+                  size="small"
+                  fullWidth
+                  slotProps={{
+                    paper: {
+                      sx: {
+                        bgcolor: c.bgMenu,
+                        color: c.textBody,
+                        border: `1px solid ${c.borderMain}`,
+                      },
+                    },
+                    listbox: {
+                      sx: {
+                        py: 0,
+                        "& .MuiAutocomplete-option": {
+                          minHeight: 28,
+                          fontSize: "0.78rem",
+                          py: 0.25,
+                        },
+                      },
+                    },
+                  }}
+                  renderOption={(props, option) => {
+                    const { key, ...rest } = props as typeof props & { key?: string };
+
+                    return (
+                        <Tooltip key={key ?? option} title={option} placement="right">
+                          <li {...rest}>{option}</li>
+                        </Tooltip>
+                    );
+                  }}
+                  renderInput={(params) => (
+                      <TextField
+                          {...params}
+                          label={label}
+                          sx={formInputSx(theme)}
+                          data-testid={testId}
+                      />
+                  )}
+              />
           )}
-        />
-      )}
-    />
+      />
   );
 }

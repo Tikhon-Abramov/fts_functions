@@ -170,6 +170,11 @@ export class FtsFunctionService {
     await this.ensureFtsFunctionAlive(ftsFunctionId);
     await this.validateFtsFunctionDetailWrite(dto as unknown as Record<string, number | undefined>);
 
+    let feedbackSources: Prisma.FtsFunctionDetailToFeedbackSourceCreateManyFtsFunctionDetailInput[] | undefined;
+    if (dto.feedbackSourceIds?.length) {
+      feedbackSources = dto.feedbackSourceIds.map(feedbackSourceId => ({ feedbackSourceId }));
+    }
+
     return this.prisma.ftsFunctionDetail.create({
       data: {
         ftsFunctionId,
@@ -181,6 +186,11 @@ export class FtsFunctionService {
         ftsFunctionActionTypeId: dto.ftsFunctionActionTypeId ?? null,
         ftsFunctionEffectivenessId: dto.ftsFunctionEffectivenessId ?? null,
         ftsFunctionDetails: dto.ftsFunctionDetails ?? null,
+        feedbackSources: feedbackSources && {
+          createMany: {
+            data: feedbackSources
+          }
+        },
         basis: dto.basis ?? null,
         artifact: dto.artifact ?? null,
         artifactUsage: dto.artifactUsage ?? null,
@@ -197,9 +207,23 @@ export class FtsFunctionService {
     await this.ensureDetailAlive(detailId);
     await this.validateFtsFunctionDetailWrite(dto as unknown as Record<string, number | undefined>);
 
+    const { feedbackSourceIds, ...data } = dto;
+
+    let feedbackSources: Prisma.FtsFunctionDetailToFeedbackSourceCreateManyFtsFunctionDetailInput[] | undefined;
+    if (feedbackSourceIds?.length) {
+      feedbackSources = feedbackSourceIds.map(feedbackSourceId => ({ feedbackSourceId }));
+    }
+
     return this.prisma.ftsFunctionDetail.update({
       where: { id: detailId },
-      data: stripUndefined(dto as unknown as Record<string, unknown>),
+      data: {
+        ...stripUndefined(data as unknown as Record<string, unknown>),
+        feedbackSources: feedbackSources && {
+          createMany: {
+            data: feedbackSources
+          }
+        },
+      },
       select: ftsFunctionDetailDetailedSelect,
     });
   }
@@ -210,6 +234,19 @@ export class FtsFunctionService {
     return this.prisma.ftsFunctionDetail.update({
       where: { id: detailId },
       data: { isDeleted: true, deletedAt: new Date() },
+      select: ftsFunctionDetailDetailedSelect,
+    });
+  }
+
+  async acceptDetail(detailId: number, isAccepted: boolean, rejectComment?: string): Promise<FtsFunctionDetailDetailedEntity> {
+    await this.ensureDetailAlive(detailId);
+
+    return this.prisma.ftsFunctionDetail.update({
+      where: { id: detailId },
+      data: {
+        isAccepted, 
+        rejectComment: (!isAccepted && !!rejectComment) ? rejectComment : undefined,
+      },
       select: ftsFunctionDetailDetailedSelect,
     });
   }

@@ -37,7 +37,7 @@ export const ftsFunctionListSelect = {
   ...ftsFunctionBaseSelect,
   dtis: {
     select: {
-      dti: { select: { id: true, name: true, code: true } },
+      dti: { select: typeMinimalSelect },
     },
   },
 } as const satisfies Prisma.FtsFunctionSelect;
@@ -54,7 +54,6 @@ export const ftsFunctionDetailBaseSelect = {
   ftsFunctionEffectivenessId: true,
   ftsFunctionDetails: true,
   technologicalSolutionId: true,
-  feedbackSourceId: true,
   responsibleId: true,
   ftsMethodologyStatusId: true,
   basis: true,
@@ -104,7 +103,11 @@ export const ftsFunctionDetailedSelect = {
       ftsFunctionActionType: { select: typeMinimalSelect },
       ftsFunctionEffectiveness: { select: typeMinimalSelect },
       technologicalSolution: { select: typeMinimalSelect },
-      feedbackSource: { select: typeMinimalSelect },
+      feedbackSources: { 
+        select: { 
+          feedbackSource: { select: typeMinimalSelect },
+         },
+      },
       responsible: { select: typeMinimalSelect },
       ftsMethodologyStatus: { select: typeMinimalSelect },
 
@@ -140,7 +143,11 @@ export const ftsFunctionDetailDetailedSelect = {
   ftsFunctionActionType: { select: typeMinimalSelect },
   ftsFunctionEffectiveness: { select: typeMinimalSelect },
   technologicalSolution: { select: typeMinimalSelect },
-  feedbackSource: { select: typeMinimalSelect },
+  feedbackSources: { 
+    select: { 
+      feedbackSource: { select: typeMinimalSelect },
+      },
+  },
   responsible: { select: typeMinimalSelect },
   ftsMethodologyStatus: { select: typeMinimalSelect },
 } as const satisfies Prisma.FtsFunctionDetailSelect;

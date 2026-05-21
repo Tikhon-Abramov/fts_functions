@@ -183,6 +183,10 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
     basis: detail.basis ?? "",
     artifactUsage: detail.artifactUsage ?? "",
     purpose: detail.purpose ?? "",
+    technologicalSolution: detail.technologicalSolution?.code ?? "",
+    number: detail.number ?? "",
+    responsible: detail.responsible?.name ?? "",
+    algorithm: detail.algorithm ?? "",
   };
 }
 

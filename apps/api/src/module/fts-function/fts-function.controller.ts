@@ -5,6 +5,8 @@ import { ZodValidationPipe } from '@common/pipes/validation.pipe';
 import { SWAGGER_DESCRIPTION } from '@common/strings';
 
 import {
+  AcceptFtsFunctionDetailDto,
+  AcceptFtsFunctionDetailSchema,
   BatchAttachDtisRequestDto,
   BatchAttachDtisRequestSchema,
   CreateFtsFunctionDetailDto,
@@ -142,12 +144,23 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionDetailDetailedResponseDto)
   updateDetail(
-    @Param(new ZodValidationPipe(DetailIdParamSchema))
-    params: DetailIdParamDto,
-    @Body(new ZodValidationPipe(UpdateFtsFunctionDetailSchema))
-    body: UpdateFtsFunctionDetailDto,
+    @Param(new ZodValidationPipe(DetailIdParamSchema)) params: DetailIdParamDto,
+    @Body(new ZodValidationPipe(UpdateFtsFunctionDetailSchema)) body: UpdateFtsFunctionDetailDto,
   ): Promise<FtsFunctionDetailDetailedResponseDto> {
     return this.service.updateDetail(params.detailId, body);
+  }
+  
+  @Patch('details/accept/:detailId')
+  @ApiOkResponse({
+    description: SWAGGER_DESCRIPTION.RESOURCE_UPDATED,
+    schema: { $ref: getSchemaPath(FtsFunctionDetailDetailedResponseDto) },
+  })
+  @ApiExtraModels(FtsFunctionDetailDetailedResponseDto)
+  acceptDetail(
+    @Param(new ZodValidationPipe(DetailIdParamSchema)) params: DetailIdParamDto,
+    @Body(new ZodValidationPipe(AcceptFtsFunctionDetailSchema)) body: AcceptFtsFunctionDetailDto,
+  ): Promise<FtsFunctionDetailDetailedResponseDto> {
+    return this.service.acceptDetail(params.detailId, body.isAccepted, body.rejectComment);
   }
 
   @Delete('details/:detailId')

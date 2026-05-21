@@ -22,17 +22,39 @@
     "noImplicitOverride": true,
     "useUnknownInCatchVariables": true,
     "noPropertyAccessFromIndexSignature": true,
-    "exactOptionalPropertyTypes": true,
+    "exactOptionalPropertyTypes": false,
     "noUncheckedIndexedAccess": true,
     "paths": {
-      "@common/*": ["./src/common/*"],
-      "@prisma-generated/*": ["./src/generated/prisma/*"],
-      "@src/*": ["./src/*"],
-      "@db/*": ["./db/*"],
-      "@prisma-client": ["./src/generated/prisma/client"],
-      "@prisma-class": ["./src/generated/prisma-class"]
+      "@common/*": [
+        "./src/common/*"
+      ],
+      "@prisma-generated/*": [
+        "./src/generated/prisma/*"
+      ],
+      "@src/*": [
+        "./src/*"
+      ],
+      "@db/*": [
+        "./db/*"
+      ],
+      "@prisma-client": [
+        "./src/generated/prisma/client"
+      ],
+      "@prisma-class": [
+        "./src/generated/prisma-class"
+      ]
     }
   },
-  "include": ["shared", "src", "test", "db", "prettier.config"],
-  "exclude": ["dist", "node_modules", "eslint.config.ts"]
+  "include": [
+    "shared",
+    "src",
+    "test",
+    "db",
+    "prettier.config"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "eslint.config.ts"
+  ]
 }

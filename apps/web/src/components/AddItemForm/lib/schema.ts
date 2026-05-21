@@ -10,22 +10,26 @@ import {
   FtsFunctionComplexity,
   FtsFunctionExecutionFrequency,
 } from "src/entities/fts-function/model";
+import { cleanupTechnologyFields } from "src/entities/fts-function/lib/detail-technology";
 import { z } from "zod";
 
 const categoryEnum = z.enum(
-  CATEGORIES as [FtsFunctionCategory, ...FtsFunctionCategory[]],
+    CATEGORIES as [FtsFunctionCategory, ...FtsFunctionCategory[]],
 );
+
 const actionEnum = z.enum(
-  ACTIONS as [FtsFunctionActionType, ...FtsFunctionActionType[]],
+    ACTIONS as [FtsFunctionActionType, ...FtsFunctionActionType[]],
 );
+
 const periodicityEnum = z.enum(
-  PERIODICITIES as [
-    FtsFunctionExecutionFrequency,
-    ...FtsFunctionExecutionFrequency[],
-  ],
+    PERIODICITIES as [
+      FtsFunctionExecutionFrequency,
+      ...FtsFunctionExecutionFrequency[],
+    ],
 );
+
 const complexityEnum = z.enum(
-  COMPLEXITIES as [FtsFunctionComplexity, ...FtsFunctionComplexity[]],
+    COMPLEXITIES as [FtsFunctionComplexity, ...FtsFunctionComplexity[]],
 );
 
 export const stepFieldsSchema = z.object({
@@ -39,6 +43,10 @@ export const stepFieldsSchema = z.object({
   basis: z.string(),
   artifactUsage: z.string(),
   purpose: z.string(),
+  technologicalSolution: z.string(),
+  number: z.string(),
+  responsible: z.string(),
+  algorithm: z.string(),
 });
 
 export type StepFields = z.infer<typeof stepFieldsSchema>;
@@ -62,33 +70,42 @@ export function emptyStep(): StepFields {
     basis: "",
     artifactUsage: "",
     purpose: "",
+    technologicalSolution: "",
+    number: "",
+    responsible: "",
+    algorithm: "",
   };
 }
 
 export function isStepFilled(s: StepFields | undefined): boolean {
-  // `s` is `undefined` for one render between mount and RHF defaults
-  // propagating (REGRESSION: 2026-04-25 modal crash). Use full optional
-  // chaining so `s.detailText` is never read on `undefined`.
-  const trimmed = s?.detailText?.trim();
-  return Boolean(trimmed && trimmed.length > 0);
+  return Boolean(s?.detailText?.trim());
 }
 
-function trimOrUndefined(s: string): string | undefined {
-  const trimmed = s.trim();
-  return trimmed || undefined;
+function emptyToUndefined(value: string | undefined): string | undefined {
+  const trimmed = value?.trim() ?? "";
+  return trimmed ? trimmed : undefined;
 }
 
-export function fieldsToData(fields: StepFields) {
+export function fieldsToData(
+    fields: StepFields,
+    includeTechnologyFields: boolean,
+) {
+  const normalized = cleanupTechnologyFields(fields, includeTechnologyFields);
+
   return {
-    category: fields.category,
-    detailText: fields.detailText.trim(),
-    who: trimOrUndefined(fields.who),
-    actionLabel: fields.actionLabel,
-    periodicity: fields.periodicity,
-    complexity: fields.complexity,
-    artifact: trimOrUndefined(fields.artifact),
-    basis: trimOrUndefined(fields.basis),
-    artifactUsage: trimOrUndefined(fields.artifactUsage),
-    purpose: trimOrUndefined(fields.purpose),
+    category: normalized.category,
+    detailText: normalized.detailText.trim(),
+    who: emptyToUndefined(normalized.who),
+    actionLabel: normalized.actionLabel,
+    periodicity: normalized.periodicity,
+    complexity: normalized.complexity,
+    artifact: emptyToUndefined(normalized.artifact),
+    basis: emptyToUndefined(normalized.basis),
+    artifactUsage: emptyToUndefined(normalized.artifactUsage),
+    purpose: emptyToUndefined(normalized.purpose),
+    technologicalSolution: emptyToUndefined(normalized.technologicalSolution),
+    number: emptyToUndefined(normalized.number),
+    responsible: emptyToUndefined(normalized.responsible),
+    algorithm: emptyToUndefined(normalized.algorithm),
   };
 }

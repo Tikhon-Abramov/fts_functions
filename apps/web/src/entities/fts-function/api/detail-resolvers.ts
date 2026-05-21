@@ -12,16 +12,14 @@ import type {
 } from "src/shared/api/ftsFunctionsApi";
 
 import { findTypeIdByCode } from "src/entities/fts-function/api/mappers";
-
 import { Category } from "@registry/shared/enums";
 
-// ---------- types ----------
+const DetailTypeCategory = {
+  WHO_PERFORMS_ACTION: Category.WHO_PERFORMS_ACTION,
+  TECHNOLOGICAL_SOLUTION: "TECHNOLOGICAL_SOLUTION",
+  RESPONSIBLE: "RESPONSIBLE",
+} as const;
 
-/**
- * UI-shaped detail payload used by the detailization modal's Add / Update
- * flows. Every enum field already holds the backend code — `resolveDetailDto`
- * just looks up the matching Type.id by code.
- */
 export type DetailInput = {
   step: FtsFunctionStep;
   category: FtsFunctionCategory;
@@ -34,60 +32,97 @@ export type DetailInput = {
   basis?: string | undefined;
   artifactUsage?: string | undefined;
   purpose?: string | undefined;
+  technologicalSolution?: string | undefined;
+  number?: string | undefined;
+  responsible?: string | undefined;
+  algorithm?: string | undefined;
 };
 
-// ---------- functions ----------
+function trimValue(value: string | undefined): string {
+  return value?.trim() ?? "";
+}
 
-/**
- * Resolve a UI `DetailInput` into the backend `CreateFtsFunctionDetailDto`.
- *
- * Pure: the result depends solely on the passed-in `item` and `types`
- * dictionary. Returns `null` when any required dictionary id is missing
- * (usually because `/constants/type` hasn't returned yet) — callers should
- * surface a snackbar rather than submit.
- */
+function findTypeIdByCategoryAndName(
+    types: TypeResponseDto[] | undefined,
+    category: string,
+    name: string,
+): number | null {
+  const trimmed = name.trim();
+
+  if (!trimmed) return null;
+
+  return (
+      (types ?? []).find(
+          (type) => String(type.category) === category && type.name === trimmed,
+      )?.id ?? null
+  );
+}
+
 export function resolveDetailDto(
-  item: DetailInput,
-  types: TypeResponseDto[] | undefined,
+    item: DetailInput,
+    types: TypeResponseDto[] | undefined,
 ): CreateFtsFunctionDetailDto | null {
   if (!item.actionLabel) return null;
+
   const stepId = findTypeIdByCode(types, item.step);
   const categoryId = findTypeIdByCode(types, item.category);
   const actionId = findTypeIdByCode(types, item.actionLabel);
+
   if (stepId == null || categoryId == null || actionId == null) return null;
 
-  // Optional fields: null when user left empty (legitimate), but a failed
-  // dictionary lookup on a *provided* value must wait (return null DTO so the
-  // caller surfaces "dicts loading"). Resolve to `number | null` explicitly so
-  // the DTO type doesn't widen to `undefined`.
   let complexityId: number | null = null;
   if (item.complexity) {
     const id = findTypeIdByCode(types, item.complexity);
     if (id == null) return null;
     complexityId = id;
   }
+
   let frequencyId: number | null = null;
   if (item.periodicity) {
     const id = findTypeIdByCode(types, item.periodicity);
     if (id == null) return null;
     frequencyId = id;
   }
-  // `who` is the display NAME (Type.name) the user picked from the autocomplete
-  // (e.g. "ФНС", "ТНО / ПРД"). Look it up in the types dict to get the FK id.
-  // Empty string = user cleared = persist null.
+
   let whoPerformsActionId: number | null = null;
   if (item.who && item.who.trim().length > 0) {
-    const trimmed = item.who.trim();
-    const match = (types ?? []).find(
-      (tt) =>
-        tt.category === Category.WHO_PERFORMS_ACTION && tt.name === trimmed,
+    const id = findTypeIdByCategoryAndName(
+        types,
+        DetailTypeCategory.WHO_PERFORMS_ACTION,
+        item.who,
     );
-    if (match) whoPerformsActionId = match.id;
-    // No match: free-text the user typed isn't in the dict — drop silently
-    // (alternative: return null to surface a "pick from list" snackbar; for
-    // now we tolerate free-form to avoid blocking saves on typos).
+
+    if (id != null) whoPerformsActionId = id;
   }
-  return {
+
+  const technologicalSolutionCode = trimValue(item.technologicalSolution);
+  const technologicalSolutionId = technologicalSolutionCode
+      ? findTypeIdByCode(types, technologicalSolutionCode)
+      : null;
+
+  if (technologicalSolutionCode && technologicalSolutionId == null) {
+    return null;
+  }
+
+  const number = trimValue(item.number);
+  const responsibleName = trimValue(item.responsible);
+  const algorithm = trimValue(item.algorithm);
+
+  let responsibleId: number | null = null;
+
+  if (technologicalSolutionId != null) {
+    if (!number || !responsibleName || !algorithm) return null;
+
+    responsibleId = findTypeIdByCategoryAndName(
+        types,
+        DetailTypeCategory.RESPONSIBLE,
+        responsibleName,
+    );
+
+    if (responsibleId == null) return null;
+  }
+
+  const dto: CreateFtsFunctionDetailDto & Record<string, unknown> = {
     ftsFunctionStepId: stepId,
     ftsFunctionCategoryId: categoryId,
     ftsFunctionActionTypeId: actionId,
@@ -99,18 +134,21 @@ export function resolveDetailDto(
     basis: item.basis?.trim() || null,
     artifactUsage: item.artifactUsage?.trim() || null,
     purpose: item.purpose?.trim() || null,
+    technologicalSolutionId,
+    responsibleId,
+    number: technologicalSolutionId != null ? number : null,
+    algorithm: technologicalSolutionId != null ? algorithm : null,
   };
+
+  return dto;
 }
 
-/**
- * Merge the existing `Row` with the partial `updates` and produce the shape
- * expected by `resolveDetailDto`. Pure.
- */
 export function buildDetailInputFromRow(
-  existing: Row,
-  updates: Partial<Row>,
+    existing: Row,
+    updates: Partial<Row>,
 ): DetailInput {
   const merged = { ...existing, ...updates };
+
   return {
     step: merged.step,
     category: merged.category,
@@ -123,5 +161,9 @@ export function buildDetailInputFromRow(
     basis: merged.basis,
     artifactUsage: merged.artifactUsage,
     purpose: merged.purpose,
+    technologicalSolution: merged.technologicalSolution,
+    number: merged.number,
+    responsible: merged.responsible,
+    algorithm: merged.algorithm,
   };
 }

@@ -1,11 +1,13 @@
-import { Close } from "@mui/icons-material";
+import { Add, Close } from "@mui/icons-material";
 import {
   Box,
+  Button,
   DialogTitle,
   IconButton,
   Typography,
   useTheme,
 } from "@mui/material";
+
 import { I18N, useTranslation } from "src/shared/i18n";
 
 export const DETAIL_HEADER_TEST_IDS = {
@@ -14,6 +16,7 @@ export const DETAIL_HEADER_TEST_IDS = {
   STEP1_COUNT: "text-step1-row-count",
   STEP2_COUNT: "text-step2-row-count",
   LINK_COUNT: "text-link-count",
+  ADD: "button-add-detail-row",
   CLOSE: "button-close-modal",
 } as const;
 
@@ -22,18 +25,16 @@ export type DetailHeaderProps = {
   step1Count: number;
   step2Count: number;
   linkCount: number;
+  onAdd: () => void;
   onClose: () => void;
 };
 
-/**
- * Modal title bar: localized title, dynamic subtitle, three counter chips,
- * and a close button.
- */
 export function DetailHeader({
   title,
   step1Count,
   step2Count,
   linkCount,
+  onAdd,
   onClose,
 }: DetailHeaderProps) {
   const { t } = useTranslation();
@@ -61,6 +62,7 @@ export function DetailHeader({
         >
           {"Детализация"}
         </Typography>
+
         <Typography
           variant="body2"
           sx={{ color: c.textMuted, fontSize: "0.75rem" }}
@@ -69,6 +71,7 @@ export function DetailHeader({
           {title}
         </Typography>
       </Box>
+
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         {[
           {
@@ -96,6 +99,28 @@ export function DetailHeader({
             {t(i18nKey, { count })}
           </Typography>
         ))}
+
+        <Button
+          onClick={onAdd}
+          variant="contained"
+          size="small"
+          sx={{
+            textTransform: "none",
+            fontSize: "0.78rem",
+            bgcolor: c.selectedBg,
+            color: c.markerGreen,
+            boxShadow: "none",
+            "&:hover": {
+              color: c.bgMenu,
+              bgcolor: c.markerGreen,
+              boxShadow: "none",
+            },
+          }}
+          data-testid={DETAIL_HEADER_TEST_IDS.ADD}
+        >
+          {"Добавить"}
+        </Button>
+
         <IconButton
           onClick={onClose}
           sx={{ color: c.textSecondary, "&:hover": { color: c.textBright } }}

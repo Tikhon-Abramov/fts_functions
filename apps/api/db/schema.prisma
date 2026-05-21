@@ -64,9 +64,9 @@ enum Category {
   FTS_COMPETENCY_CENTER // Категория "Центр компетенции"
   FTS_DTI // Категория "DTI"
   FTS_FUNCTION_RELATION_TYPE // Категория "Тип связи"
-  
   TECHNOLOGICAL_SOLUTION // Категория "Технологическое решение"
-  FEEDBACK_SOURCE // Категория "источник обратной связи"
+  FEEDBACK_SOURCE // Категория "Источник обратной связи"
+  FEEDBACK_QUALITY_METRICS // Категория "Метрики качества обратной связи"
   RESPONSIBLE // Категория "Ответственный в технологическом решении"
   FTS_METHODOLOGY_STATUS // Категория "Методологическая позиция ЦА ФНС России (поддержано/нет)
 }
@@ -290,6 +290,9 @@ model Type {
   /// Связи с функциями ФНС
   ftsFunctions FtsFunctionToDti[]
 
+  /// Связи с детализациями функций ФНС
+  feedbackSourcesToFtsFunctionDetails FtsFunctionDetailToFeedbackSource[]
+
   /// Связи с таблицей функций ФНС
   ftsCentralizationToFtsFunctions FtsFunction[] @relation("fts_function__fts_centralization")
   ftsFunctionNameToFtsFunctions   FtsFunction[] @relation("fts_function__fts_function_name")
@@ -305,7 +308,6 @@ model Type {
   ftsFunctionActionTypeToFtsFunctionDetails         FtsFunctionDetail[] @relation("fts_function_details__fts_function_action_type")
   ftsFunctionEffectivenessToFtsFunctionDetails      FtsFunctionDetail[] @relation("fts_function_details__fts_function_effectiveness")
   technologicalSolutionToFtsFunctionDetails         FtsFunctionDetail[] @relation("technological_solution__fts_function_action_type")
-  feedbackSourceToFtsFunctionDetails                FtsFunctionDetail[] @relation("feedback_source__fts_function_action_type")
   responsibleToFtsFunctionDetails                   FtsFunctionDetail[] @relation("responsible__fts_function_action_type")
   ftsMethodologyStatusToFtsFunctionDetails          FtsFunctionDetail[] @relation("fts_methodology_status__fts_function_action_type")
   ftsFunctionTree                                   FtsFunctionTree[]
@@ -336,6 +338,27 @@ model FtsFunctionToDti {
   @@id([ftsFunctionId, dtiId])
   @@index([dtiId])
   @@map("fts_function_to_dtis")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Таблица связки детализаций функций с набором источников обратной связи
+model FtsFunctionDetailToFeedbackSource {
+  /// Уникальный идентификатор функции ФНС
+  ftsFunctionDetailId Int      @map("fts_function_detail_id")
+  /// Уникальный идентификатор DTI
+  feedbackSourceId         Int      @map("feedback_source_id")
+  /// Дата создания связи
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  /// Связь с таблицей функций ФНС
+  ftsFunctionDetail FtsFunctionDetail @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
+  /// Связь с таблицей типов
+  feedbackSource    Type              @relation(fields: [feedbackSourceId], references: [id])
+
+  @@id([ftsFunctionDetailId, feedbackSourceId])
+  @@index([feedbackSourceId])
+  @@map("fts_function_detail_to_feedback_sources")
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -425,8 +448,6 @@ model FtsFunctionDetail {
   ftsFunctionEffectivenessId      Int?      @map("fts_function_effectiveness_id")
   /// Уникальный идентификатор технологического решения
   technologicalSolutionId         Int?      @map("technological_solution_id")
-  /// Уникальный идентификатор источника обратной связи
-  feedbackSourceId                Int?      @map("feedback_source_id")
   /// Уникальный идентификатор ответственного в технологическом решении
   responsibleId                   Int?      @map("responsible_id")
   /// Детализация функции ФНС
@@ -476,9 +497,10 @@ model FtsFunctionDetail {
   ftsFunctionActionType         Type? @relation("fts_function_details__fts_function_action_type", fields: [ftsFunctionActionTypeId], references: [id])
   ftsFunctionEffectiveness      Type? @relation("fts_function_details__fts_function_effectiveness", fields: [ftsFunctionEffectivenessId], references: [id])
   technologicalSolution         Type? @relation("technological_solution__fts_function_action_type", fields: [technologicalSolutionId], references: [id])
-  feedbackSource                Type? @relation("feedback_source__fts_function_action_type", fields: [feedbackSourceId], references: [id])
   responsible                   Type? @relation("responsible__fts_function_action_type", fields: [responsibleId], references: [id])
   ftsMethodologyStatus          Type? @relation("fts_methodology_status__fts_function_action_type", fields: [ftsMethodologyStatusId], references: [id])
+
+  feedbackSources FtsFunctionDetailToFeedbackSource[]
 
   parents  FtsFunctionTree[] @relation("data_parents")
   children FtsFunctionTree[] @relation("data_children")
@@ -492,7 +514,6 @@ model FtsFunctionDetail {
   @@index([whoPerformsActionId])
   @@index([ftsFunctionEffectivenessId])
   @@index([technologicalSolutionId])
-  @@index([feedbackSourceId])
   @@index([responsibleId])
   @@index([ftsMethodologyStatusId])
   @@index([deadline])

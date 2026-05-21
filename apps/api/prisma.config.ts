@@ -1,6 +1,6 @@
-import * as path from 'node:path';
+import * as path from "node:path";
 import * as dotenv from 'dotenv';
-import { defineConfig } from 'prisma/config';
+import { defineConfig } from 'prisma/config'
 
 dotenv.config();
 
@@ -34,15 +34,15 @@ function resolveDatabaseUrl(): string {
 }
 
 export default defineConfig({
-  schema: path.join('db', 'schema.prisma'),
+  schema: path.join("db", "schema.prisma"),
   migrations: {
-    path: path.join('db', 'migrations'),
+    path: path.join("db", "migrations"),
     seed: `ts-node -r tsconfig-paths/register db/seeds/index.ts`,
   },
   typedSql: {
-    path: path.join('db', 'queries'),
+    path: path.join("db", "queries"),
   },
   datasource: {
     url: resolveDatabaseUrl(),
   },
-});
+})

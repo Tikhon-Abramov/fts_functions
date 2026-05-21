@@ -336,60 +336,44 @@ const data: Prisma.TypeCreateManyInput[] = [
   { code: 'CONTROLS', category: 'FTS_FUNCTION_RELATION_TYPE', name: 'Контролирует' },
 ];
 
+
 const additionally: Prisma.TypeCreateManyInput[] = [
-  { code: 'AUTOMATIC_TASK', category: 'TECHNOLOGICAL_SOLUTION', name: 'Автоматическое задание' },
-  {
-    code: 'USER_TASK',
-    category: 'TECHNOLOGICAL_SOLUTION',
-    name: 'Пользовательское задание (в т.ч. любое действие по отработке документов в АИС)',
-  },
-  { code: 'EXTRACTION', category: 'TECHNOLOGICAL_SOLUTION', name: 'Выборка' },
-  {
-    code: 'FNS_INTERACTION_SERVICE',
-    category: 'TECHNOLOGICAL_SOLUTION',
-    name: 'Сервис «ФНС-Взаимодействие»',
-  },
-  { code: 'REQUEST_PROCESSING', category: 'TECHNOLOGICAL_SOLUTION', name: 'Отработка обращения' },
+  { code: 'AUTOMATIC_TASK',          category: 'TECHNOLOGICAL_SOLUTION', name: 'Автоматическое задание' },
+  { code: 'USER_TASK',               category: 'TECHNOLOGICAL_SOLUTION', name: 'Пользовательское задание (в т.ч. любое действие по отработке документов в АИС)' },
+  { code: 'EXTRACTION',              category: 'TECHNOLOGICAL_SOLUTION', name: 'Выборка' },
+  { code: 'FNS_INTERACTION_SERVICE', category: 'TECHNOLOGICAL_SOLUTION', name: 'Сервис «ФНС-Взаимодействие»' },
+  { code: 'REQUEST_PROCESSING',      category: 'TECHNOLOGICAL_SOLUTION', name: 'Отработка обращения' },
 
-  {
-    code: 'CA_COORDINATOR_PROPOSALS',
-    category: 'FEEDBACK_SOURCE',
-    name: 'Собранные координатором ЦА и менеджером МИУДОЛ предложения ЦК (в т.ч. в рамках рабочих групп, выездов на гэмбу и пр.)',
-  },
-  {
-    code: 'CA_CHAT_FEEDBACK',
-    category: 'FEEDBACK_SOURCE',
-    name: 'Обратная связь ЦК/ТНО в чате «Централизация функций по работе с долгом»',
-  },
-  {
-    code: 'EXPERT_COMMUNITY_PROPOSALS',
-    category: 'FEEDBACK_SOURCE',
-    name: 'Предложения Экспертного сообщества ФНС России',
-  },
-  {
-    code: 'OFFLINE_MEETINGS_SUMMARY',
-    category: 'FEEDBACK_SOURCE',
-    name: 'Саммари очных совещаний с ЦК',
-  },
-  {
-    code: 'KNOWN_SOFTWARE_IMPROVEMENTS',
-    category: 'FEEDBACK_SOURCE',
-    name: 'Доработки ПО, известные СП ЦА ФНС России',
-  },
-  {
-    code: 'PROCESS_MININING_RESULTS',
-    category: 'FEEDBACK_SOURCE',
-    name: 'Результаты процесс-майнинга, таск-майнинга',
-  },
+  { code: 'CA_COORDINATOR_PROPOSALS',    category: 'FEEDBACK_SOURCE', name: 'Собранные координатором ЦА и менеджером МИУДОЛ предложения ЦК (в т.ч. в рамках рабочих групп, выездов на гэмбу и пр.)' },
+  { code: 'CA_CHAT_FEEDBACK',            category: 'FEEDBACK_SOURCE', name: 'Обратная связь ЦК/ТНО в чате «Централизация функций по работе с долгом»' },
+  { code: 'EXPERT_COMMUNITY_PROPOSALS',  category: 'FEEDBACK_SOURCE', name: 'Предложения Экспертного сообщества ФНС России' },
+  { code: 'OFFLINE_MEETINGS_SUMMARY',    category: 'FEEDBACK_SOURCE', name: 'Саммари очных совещаний с ЦК' },
+  { code: 'KNOWN_SOFTWARE_IMPROVEMENTS', category: 'FEEDBACK_SOURCE', name: 'Доработки ПО, известные СП ЦА ФНС России' },
+  { code: 'PROCESS_MININING_RESULTS',    category: 'FEEDBACK_SOURCE', name: 'Результаты процесс-майнинга, таск-майнинга' },
 
-  { code: 'KCA', category: 'RESPONSIBLE', name: 'КЦА' },
+  { code: 'SLOW', category: 'FEEDBACK_QUALITY_METRICS', name: 'Долго' },
+  { code: 'SUBOPTIMAL', category: 'FEEDBACK_QUALITY_METRICS', name: 'Неоптимально' },
+  { code: 'REDUNDANT', category: 'FEEDBACK_QUALITY_METRICS', name: 'Лишнее' },
+  { code: 'NOT_WORKING', category: 'FEEDBACK_QUALITY_METRICS', name: 'Не работает' },
+
+  { code: 'KCA',   category: 'RESPONSIBLE', name: 'КЦА' },
   { code: 'GNITS', category: 'RESPONSIBLE', name: 'ГНИТС' },
-  { code: 'MUA', category: 'RESPONSIBLE', name: 'МЮА' },
+  { code: 'MUA',   category: 'RESPONSIBLE', name: 'МЮА' },
 
-  { code: 'SUPPORTED', category: 'FTS_METHODOLOGY_STATUS', name: 'Поддержано' },
+  { code: 'SUPPORTED',     category: 'FTS_METHODOLOGY_STATUS', name: 'Поддержано' },
   { code: 'NOT_SUPPORTED', category: 'FTS_METHODOLOGY_STATUS', name: 'Нет' },
 ];
 
+
+
 export async function constantsSeed(prisma: PrismaClient) {
+  const codes = additionally.map(({code}) => code);
+
+  await prisma.type.deleteMany({
+    where: {
+      code: { in: codes },
+    },
+  });
+  
   await prisma.type.createMany({ data: additionally });
 }
