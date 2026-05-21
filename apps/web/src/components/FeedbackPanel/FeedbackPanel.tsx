@@ -3,6 +3,9 @@ import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 
 import { useEffect, useMemo, useState } from "react";
 import {
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
     Box,
     Button,
     Chip,
@@ -18,12 +21,12 @@ import {
     Typography,
     useTheme,
 } from "@mui/material";
+import { ExpandMore } from "@mui/icons-material";
 
 import {
     areFeedbackRequiredFieldsFilled,
     DETAIL_TYPE_CATEGORY,
     FEEDBACK_DETAIL_LABELS,
-    findTypeByCodeOrName,
     getFeedbackStatus,
     getTypeCodeOptionsByCategory,
     hasFeedback,
@@ -43,6 +46,13 @@ type FeedbackDraft = {
     methodologyPosition: string;
     deadline: string;
     initiatorAcceptance: string;
+};
+
+type FeedbackHistoryItem = {
+    id: string;
+    from: string;
+    to: string;
+    comment?: string;
 };
 
 export type FeedbackPanelProps = {
@@ -80,6 +90,38 @@ function buildDraft(row: Row | null): FeedbackDraft {
     };
 }
 
+function buildInitialHistory(row: Row | null): FeedbackHistoryItem[] {
+    if (!row || !hasFeedback(row)) return [];
+
+    const status = getFeedbackStatus(row);
+    const history: FeedbackHistoryItem[] = [
+        {
+            id: `${row.id}-initial-pending`,
+            from: "Не заполнено",
+            to: "На согласовании",
+        },
+    ];
+
+    if (status === "accepted") {
+        history.push({
+            id: `${row.id}-accepted`,
+            from: "На согласовании",
+            to: "Согласовано",
+        });
+    }
+
+    if (status === "rejected") {
+        history.push({
+            id: `${row.id}-rejected`,
+            from: "На согласовании",
+            to: "Не согласовано",
+            comment: row.rejectComment || undefined,
+        });
+    }
+
+    return history;
+}
+
 export default function FeedbackPanel({
                                           row,
                                           typesAll,
@@ -99,6 +141,9 @@ export default function FeedbackPanel({
     const [editMode, setEditMode] = useState(!hasFeedback(row));
     const [saving, setSaving] = useState(false);
     const [accepting, setAccepting] = useState(false);
+    const [localHistory, setLocalHistory] = useState<FeedbackHistoryItem[]>(() =>
+        buildInitialHistory(row),
+    );
 
     useEffect(() => {
         setDraft(buildDraft(row));
@@ -109,6 +154,7 @@ export default function FeedbackPanel({
         setEditMode(!hasFeedback(row));
         setSaving(false);
         setAccepting(false);
+        setLocalHistory(buildInitialHistory(row));
     }, [row?.id]);
 
     const feedbackSourceOptions = useMemo(
@@ -129,33 +175,11 @@ export default function FeedbackPanel({
         [typesAll],
     );
 
-    const methodologyStatusOptions = useMemo(
-        () =>
-            getTypeCodeOptionsByCategory(
-                typesAll,
-                DETAIL_TYPE_CATEGORY.FTS_METHODOLOGY_STATUS,
-            ),
-        [typesAll],
-    );
-
-    const normalizedDraft = useMemo<FeedbackDraft>(() => {
-        const methodologyStatus = findTypeByCodeOrName(
-            typesAll,
-            DETAIL_TYPE_CATEGORY.FTS_METHODOLOGY_STATUS,
-            draft.methodologyPosition,
-        );
-
-        return {
-            ...draft,
-            methodologyPosition: methodologyStatus?.code ?? draft.methodologyPosition,
-        };
-    }, [draft, typesAll]);
-
-    const canSave = areFeedbackRequiredFieldsFilled(normalizedDraft);
+    const canSave = areFeedbackRequiredFieldsFilled(draft);
 
     const effectiveRow: Partial<Row> = {
         ...row,
-        ...normalizedDraft,
+        ...draft,
         isAccepted: localAccepted === undefined ? row?.isAccepted : localAccepted,
         rejectComment:
             localAccepted === null ? "" : (row?.rejectComment ?? rejectComment),
@@ -204,13 +228,25 @@ export default function FeedbackPanel({
         setDraft((prev) => ({ ...prev, [key]: value }));
     };
 
+    const appendHistory = (item: Omit<FeedbackHistoryItem, "id">) => {
+        setLocalHistory((prev) => [
+            ...prev,
+            {
+                ...item,
+                id: `${row.id}-${Date.now()}-${prev.length}`,
+            },
+        ]);
+    };
+
     const handleSave = async () => {
         if (!canSave || saving) return;
+
+        const wasRejected = row.isAccepted === false || localAccepted === false;
 
         setSaving(true);
 
         const ok = await onSaveFeedback(row.id, {
-            ...normalizedDraft,
+            ...draft,
             isAccepted: null,
             rejectComment: "",
         });
@@ -223,6 +259,11 @@ export default function FeedbackPanel({
         setLocalAccepted(null);
         setRejectComment("");
         setEditMode(false);
+
+        appendHistory({
+            from: wasRejected ? "Не согласовано" : "Не заполнено",
+            to: "На согласовании",
+        });
     };
 
     const handleAccept = async () => {
@@ -238,6 +279,11 @@ export default function FeedbackPanel({
 
         setSavedLocally(true);
         setLocalAccepted(true);
+
+        appendHistory({
+            from: "На согласовании",
+            to: "Согласовано",
+        });
     };
 
     const handleReject = async () => {
@@ -256,6 +302,12 @@ export default function FeedbackPanel({
         setSavedLocally(true);
         setLocalAccepted(false);
         setRejectOpen(false);
+
+        appendHistory({
+            from: "На согласовании",
+            to: "Не согласовано",
+            comment,
+        });
     };
 
     const handleRefill = () => {
@@ -330,7 +382,7 @@ export default function FeedbackPanel({
                             {`${FEEDBACK_DETAIL_LABELS.feedbackSource} *`}
                         </InputLabel>
                         <Select
-                            value={normalizedDraft.feedbackSource}
+                            value={draft.feedbackSource}
                             onChange={(e) => updateDraft("feedbackSource", e.target.value)}
                             label={`${FEEDBACK_DETAIL_LABELS.feedbackSource} *`}
                             sx={formSelectSx(theme)}
@@ -349,7 +401,7 @@ export default function FeedbackPanel({
                             {`${FEEDBACK_DETAIL_LABELS.feedbackQualityMetric} *`}
                         </InputLabel>
                         <Select
-                            value={normalizedDraft.feedbackQualityMetric}
+                            value={draft.feedbackQualityMetric}
                             onChange={(e) =>
                                 updateDraft("feedbackQualityMetric", e.target.value)
                             }
@@ -367,7 +419,7 @@ export default function FeedbackPanel({
 
                     <TextField
                         label={`${FEEDBACK_DETAIL_LABELS.problemDescription} *`}
-                        value={normalizedDraft.problemDescription}
+                        value={draft.problemDescription}
                         onChange={(e) => updateDraft("problemDescription", e.target.value)}
                         multiline
                         rows={3}
@@ -379,7 +431,7 @@ export default function FeedbackPanel({
 
                     <TextField
                         label={`${FEEDBACK_DETAIL_LABELS.initiatorRequisites} *`}
-                        value={normalizedDraft.initiatorRequisites}
+                        value={draft.initiatorRequisites}
                         onChange={(e) => updateDraft("initiatorRequisites", e.target.value)}
                         fullWidth
                         size="small"
@@ -387,30 +439,19 @@ export default function FeedbackPanel({
                         sx={formInputSx(theme)}
                     />
 
-                    <FormControl size="small" fullWidth disabled={readonly || saving}>
-                        <InputLabel sx={formLabelSx(theme)}>
-                            {`${FEEDBACK_DETAIL_LABELS.methodologyPosition} *`}
-                        </InputLabel>
-                        <Select
-                            value={normalizedDraft.methodologyPosition}
-                            onChange={(e) =>
-                                updateDraft("methodologyPosition", e.target.value)
-                            }
-                            label={`${FEEDBACK_DETAIL_LABELS.methodologyPosition} *`}
-                            sx={formSelectSx(theme)}
-                            MenuProps={formMenuSx(theme)}
-                        >
-                            {methodologyStatusOptions.map((option) => (
-                                <MenuItem key={option.code} value={option.code}>
-                                    {option.name}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                    <TextField
+                        label={`${FEEDBACK_DETAIL_LABELS.methodologyPosition} *`}
+                        value={draft.methodologyPosition}
+                        onChange={(e) => updateDraft("methodologyPosition", e.target.value)}
+                        fullWidth
+                        size="small"
+                        disabled={readonly || saving}
+                        sx={formInputSx(theme)}
+                    />
 
                     <TextField
                         label={`${FEEDBACK_DETAIL_LABELS.deadline} *`}
-                        value={normalizedDraft.deadline}
+                        value={draft.deadline}
                         onChange={(e) => updateDraft("deadline", e.target.value)}
                         type="date"
                         fullWidth
@@ -422,7 +463,7 @@ export default function FeedbackPanel({
 
                     <TextField
                         label={`${FEEDBACK_DETAIL_LABELS.initiatorAcceptance} *`}
-                        value={normalizedDraft.initiatorAcceptance}
+                        value={draft.initiatorAcceptance}
                         onChange={(e) => updateDraft("initiatorAcceptance", e.target.value)}
                         multiline
                         rows={2}
@@ -431,6 +472,68 @@ export default function FeedbackPanel({
                         disabled={readonly || saving}
                         sx={formInputSx(theme)}
                     />
+
+                    <Accordion
+                        disableGutters
+                        sx={{
+                            mt: 0.5,
+                            bgcolor: "transparent",
+                            color: c.textBody,
+                            border: `1px solid ${c.borderLight}`,
+                            boxShadow: "none",
+                            "&:before": { display: "none" },
+                        }}
+                    >
+                        <AccordionSummary
+                            expandIcon={<ExpandMore sx={{ color: c.textSecondary }} />}
+                            sx={{
+                                minHeight: 36,
+                                "& .MuiAccordionSummary-content": { my: 0.75 },
+                            }}
+                        >
+                            <Typography
+                                variant="caption"
+                                sx={{
+                                    color: c.textSecondary,
+                                    fontWeight: 600,
+                                    fontSize: "0.72rem",
+                                }}
+                            >
+                                {"История согласования"}
+                            </Typography>
+                        </AccordionSummary>
+
+                        <AccordionDetails sx={{ pt: 0, pb: 1.5 }}>
+                            {localHistory.length === 0 ? (
+                                <Typography sx={{ color: c.textDim, fontSize: "0.75rem" }}>
+                                    {"История пока отсутствует"}
+                                </Typography>
+                            ) : (
+                                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                                    {localHistory.map((item) => (
+                                        <Box key={item.id}>
+                                            <Typography sx={{ color: c.textBody, fontSize: "0.75rem" }}>
+                                                {`${item.from} → ${item.to}`}
+                                            </Typography>
+
+                                            {item.comment && (
+                                                <Typography
+                                                    sx={{
+                                                        color: c.textMuted,
+                                                        fontSize: "0.7rem",
+                                                        whiteSpace: "pre-wrap",
+                                                        mt: 0.25,
+                                                    }}
+                                                >
+                                                    {`Комментарий отказа: ${item.comment}`}
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    ))}
+                                </Box>
+                            )}
+                        </AccordionDetails>
+                    </Accordion>
                 </Box>
 
                 <Box

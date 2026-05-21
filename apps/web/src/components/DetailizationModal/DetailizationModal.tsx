@@ -49,7 +49,6 @@ import {
     selectSnackbar,
     setRightTab as setRightTabAction,
     setSelectedRowId,
-    toggleSelectedRow,
 } from "src/shared/store/uiSlice";
 
 import AddItemForm, { type NewRowData } from "../AddItemForm/AddItemForm";
@@ -132,14 +131,29 @@ export default function DetailizationModal() {
 
     const handleRowClick = useCallback(
         (id: string) => {
-            dispatch(toggleSelectedRow(id));
+            if (selectedId === id) {
+                dispatch(setSelectedRowId(null));
+                setRightOpen(false);
+                return;
+            }
+
+            dispatch(setSelectedRowId(id));
+            setRightOpen(true);
         },
-        [dispatch],
+        [dispatch, selectedId],
     );
+
+    const handleGridBackgroundClick = useCallback(() => {
+        if (!selectedId) return;
+
+        dispatch(setSelectedRowId(null));
+        setRightOpen(false);
+    }, [dispatch, selectedId]);
 
     const handleNavigate = useCallback(
         (id: string) => {
             dispatch(setSelectedRowId(id));
+            setRightOpen(true);
 
             const el = rowRefs.current.get(id);
             if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -250,7 +264,10 @@ export default function DetailizationModal() {
                     sx={{ p: 0, flex: 1, display: "flex", overflow: "hidden" }}
                 >
                     <Box sx={{ flex: 1, display: "flex", overflow: "hidden" }}>
-                        <Box sx={{ flex: 1, overflow: "auto", minWidth: 0 }}>
+                        <Box
+                            sx={{ flex: 1, overflow: "auto", minWidth: 0 }}
+                            onClick={handleGridBackgroundClick}
+                        >
                             <DetailStepGrid
                                 isLoading={detailQuery.isLoading}
                                 isError={detailQuery.isError && !detailQuery.isLoading}
@@ -361,6 +378,7 @@ export default function DetailizationModal() {
                 >
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <AddIcon sx={{ fontSize: 20, color: c.accentBlue }} />
+
                         <Typography
                             variant="subtitle1"
                             sx={{ color: c.textBright, fontWeight: 600 }}

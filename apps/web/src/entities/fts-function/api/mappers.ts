@@ -140,6 +140,7 @@ export function mapFtsFunctionApiToFunctionRecord(
 type DetailItem = FtsFunctionDetailedResponseDto["ftsFunctionDetails"][number];
 
 type DetailItemExtra = DetailItem & {
+  methodologyPosition?: string | null;
   initiatorAcceptance?: string | null;
 };
 
@@ -173,11 +174,15 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
     responsible: detail.responsible?.name ?? "",
     algorithm: detail.algorithm ?? "",
 
-    feedbackSource: detail.feedbackSource?.code ?? "",
+    feedbackSource:
+        detail.feedbackSource?.code ??
+        detail.feedbackSources?.[0]?.feedbackSource?.code ??
+        "",
     feedbackQualityMetric: detail.ftsFunctionEffectiveness?.code ?? "",
     problemDescription: detail.problemDescription ?? "",
     initiatorRequisites: detail.initiatorRequisites ?? "",
-    methodologyPosition: detail.ftsMethodologyStatus?.code ?? "",
+    methodologyPosition:
+        extra.methodologyPosition ?? detail.ftsMethodologyStatus?.name ?? "",
     deadline: detail.deadline?.slice(0, 10) ?? "",
     initiatorAcceptance: extra.initiatorAcceptance ?? "",
     isAccepted: detail.isAccepted ?? null,

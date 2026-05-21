@@ -28,8 +28,7 @@ export const FEEDBACK_DETAIL_LABELS = {
     problemDescription:
         "Описание проблемы с указанием источника, метрики, способа решения",
     initiatorRequisites: "Реквизиты автора инициативы",
-    methodologyPosition:
-        "Методологическая позиция ЦА ФНС России (поддержано/нет)",
+    methodologyPosition: "Методология позиции ЦА ФНС России",
     deadline: "Срок реализации доработки",
     initiatorAcceptance: "Акцепт автора инициативы",
 } as const;

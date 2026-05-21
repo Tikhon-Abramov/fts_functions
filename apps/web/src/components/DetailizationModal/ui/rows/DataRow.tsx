@@ -14,9 +14,7 @@ import {
     useTheme,
 } from "@mui/material";
 
-import {
-    RowPresentation,
-} from "src/entities/fts-function/hooks/detail-modal/useRowPresentation";
+import { RowPresentation } from "src/entities/fts-function/hooks/detail-modal/useRowPresentation";
 import { ROW_HEIGHT } from "src/shared/config/ui";
 
 import { ActionChip } from "../chips/ActionChip";
@@ -68,9 +66,6 @@ function buildPresentationStyles(
     };
 }
 
-/**
- * Single data row inside a step table.
- */
 export function DataRow({
                             row,
                             indexLabel,
@@ -98,7 +93,10 @@ export function DataRow({
     return (
         <TableRow
             ref={registerRef(row.id)}
-            onClick={() => onClick(row.id)}
+            onClick={(event) => {
+                event.stopPropagation();
+                onClick(row.id);
+            }}
             sx={{
                 height: ROW_HEIGHT,
                 maxHeight: ROW_HEIGHT,
@@ -205,8 +203,8 @@ export function DataRow({
                 <Tooltip title="Удалить строку">
                     <IconButton
                         size="small"
-                        onClick={(e) => {
-                            e.stopPropagation();
+                        onClick={(event) => {
+                            event.stopPropagation();
                             onRemove(row.id);
                         }}
                         sx={{

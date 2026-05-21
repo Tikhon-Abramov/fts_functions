@@ -17,7 +17,6 @@ import {
   areFeedbackRequiredFieldsFilled,
   areTechnologyRequiredFieldsFilled,
   DETAIL_TYPE_CATEGORY,
-  findTypeByCodeOrName,
   hasFeedback,
   isActualActionCategory,
   type TypeCategory,
@@ -81,14 +80,6 @@ function findTypeIdByCategoryAndName(
           (type) => type.category === category && type.name === trimmed,
       )?.id ?? null
   );
-}
-
-function findTypeIdByCategoryAndCodeOrName(
-    types: TypeResponseDto[] | undefined,
-    category: TypeCategory,
-    value: string,
-): number | null {
-  return findTypeByCodeOrName(types, category, value)?.id ?? null;
 }
 
 export function resolveDetailDto(
@@ -183,26 +174,10 @@ export function resolveDetailDto(
           ? findTypeIdByCodeOrNull(types, feedbackQualityMetricCode)
           : null;
 
-  const methodologyPosition = includeFeedbackFields
-      ? trimValue(item.methodologyPosition)
-      : "";
-
-  const ftsMethodologyStatusId: string | number | null = methodologyPosition
-      ? findTypeIdByCategoryAndCodeOrName(
-          types,
-          DETAIL_TYPE_CATEGORY.FTS_METHODOLOGY_STATUS,
-          methodologyPosition,
-      )
-      : null;
-
   if (includeFeedbackFields) {
     if (!areFeedbackRequiredFieldsFilled(item)) return null;
 
-    if (
-        feedbackSourceId === null ||
-        ftsFunctionEffectivenessId === null ||
-        ftsMethodologyStatusId === null
-    ) {
+    if (feedbackSourceId === null || ftsFunctionEffectivenessId === null) {
       return null;
     }
   }
@@ -225,10 +200,6 @@ export function resolveDetailDto(
     number: technologicalSolutionId !== null ? number : null,
     algorithm: technologicalSolutionId !== null ? algorithm : null,
 
-    /**
-     * Backend хранит источник обратной связи через join-связь,
-     * поэтому отправляем именно feedbackSourceIds.
-     */
     feedbackSourceIds:
         includeFeedbackFields && feedbackSourceId !== null
             ? [feedbackSourceId]
@@ -237,10 +208,16 @@ export function resolveDetailDto(
         includeFeedbackFields && ftsFunctionEffectivenessId !== null
             ? ftsFunctionEffectivenessId
             : null,
-    ftsMethodologyStatusId:
-        includeFeedbackFields && ftsMethodologyStatusId !== null
-            ? ftsMethodologyStatusId
-            : null,
+
+    /**
+     * Поле теперь свободного ввода. Если на бэке ещё остался старый справочник
+     * ftsMethodologyStatusId, он больше не используется фронтом.
+     */
+    ftsMethodologyStatusId: null,
+    methodologyPosition: includeFeedbackFields
+        ? item.methodologyPosition?.trim() || null
+        : null,
+
     problemDescription: includeFeedbackFields
         ? item.problemDescription?.trim() || null
         : null,
@@ -248,6 +225,9 @@ export function resolveDetailDto(
         ? item.initiatorRequisites?.trim() || null
         : null,
     deadline: includeFeedbackFields ? item.deadline?.trim() || null : null,
+    initiatorAcceptance: includeFeedbackFields
+        ? item.initiatorAcceptance?.trim() || null
+        : null,
 
     isAccepted: includeFeedbackFields ? (item.isAccepted ?? null) : null,
     rejectComment: includeFeedbackFields
