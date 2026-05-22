@@ -94,7 +94,9 @@ function getStatusLabel(status: FeedbackAgreementStatus | null): string {
 }
 
 function getHistoryText(item: FeedbackAgreementHistoryItem): string {
-    if (!item.fromStatus) return getStatusLabel(item.toStatus);
+    if (!item.fromStatus || item.fromStatus === item.toStatus) {
+        return getStatusLabel(item.toStatus);
+    }
 
     return `${getStatusLabel(item.fromStatus)} → ${getStatusLabel(item.toStatus)}`;
 }

@@ -793,6 +793,8 @@ export type FtsFunctionDetailedResponseDto = {
     algorithm?: string | null;
     problemDescription?: string | null;
     initiatorRequisites?: string | null;
+    methodologyPosition?: string | null;
+    initiatorAcceptance?: string | null;
     deadline?: ((string | null) | (string | null)) | null;
     isAccepted?: boolean | null;
     rejectComment?: string | null;
@@ -1194,6 +1196,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
   algorithm?: string | null;
   problemDescription?: string | null;
   initiatorRequisites?: string | null;
+  methodologyPosition?: string | null;
+  initiatorAcceptance?: string | null;
   deadline?: ((string | null) | (string | null)) | null;
   isAccepted?: boolean | null;
   rejectComment?: string | null;
@@ -1522,6 +1526,8 @@ export type CreateFtsFunctionDetailDto = {
   algorithm?: string | null;
   problemDescription?: string | null;
   initiatorRequisites?: string | null;
+  methodologyPosition?: string | null;
+  initiatorAcceptance?: string | null;
   deadline?: ((string | null) | (string | null)) | null;
   isAccepted?: boolean | null;
   rejectComment?: string | null;
@@ -1548,6 +1554,8 @@ export type UpdateFtsFunctionDetailDto = {
   algorithm?: string | null;
   problemDescription?: string | null;
   initiatorRequisites?: string | null;
+  methodologyPosition?: string | null;
+  initiatorAcceptance?: string | null;
   deadline?: ((string | null) | (string | null)) | null;
   isAccepted?: boolean | null;
   rejectComment?: string | null;

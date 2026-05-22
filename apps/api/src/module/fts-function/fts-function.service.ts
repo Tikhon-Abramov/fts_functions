@@ -390,7 +390,8 @@ export class FtsFunctionService {
       await tx.ftsFunctionDetailAgreementHistory.create({
         data: {
           ftsFunctionDetailId: detailId,
-          fromStatus: getAgreementStatusFromAccepted(before?.isAccepted) ?? 'PENDING',
+          fromStatus:
+              getAgreementStatusFromAccepted(before?.isAccepted) ?? 'PENDING',
           toStatus,
           comment,
         },
@@ -668,6 +669,7 @@ export class FtsFunctionService {
 
     for (const slot of FTS_FUNCTION_USER_SLOTS) {
       const id = dto[`${slot}Id`];
+
       if (id != null) {
         userChecks.push(assertUserRole(this.prisma, id as number, slot));
       }
