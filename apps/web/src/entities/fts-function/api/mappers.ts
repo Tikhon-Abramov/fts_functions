@@ -1,4 +1,5 @@
 import type {
+  FeedbackAgreementStatus,
   FunctionRecord,
   Link,
   Row,
@@ -102,6 +103,16 @@ function asRelation(
       : null;
 }
 
+function asFeedbackAgreementStatus(
+    status: string | undefined | null,
+): FeedbackAgreementStatus | null {
+  if (status === "PENDING") return "PENDING";
+  if (status === "ACCEPTED") return "ACCEPTED";
+  if (status === "REJECTED") return "REJECTED";
+
+  return null;
+}
+
 function typeName(
     lookup: ConstantsLookup,
     id: number | null | undefined,
@@ -116,7 +127,14 @@ function userName(
 ): string {
   if (id == null) return "";
   const u = lookup.usersById.get(id);
+
   return u?.shortName ?? u?.fullName ?? "";
+}
+
+function toIsoString(value: string | Date | undefined | null): string {
+  if (!value) return "";
+
+  return value instanceof Date ? value.toISOString() : value;
 }
 
 export function mapFtsFunctionApiToFunctionRecord(
@@ -142,6 +160,14 @@ type DetailItem = FtsFunctionDetailedResponseDto["ftsFunctionDetails"][number];
 type DetailItemExtra = DetailItem & {
   methodologyPosition?: string | null;
   initiatorAcceptance?: string | null;
+  feedbackAgreementHistory?: Array<{
+    id: number;
+    ftsFunctionDetailId?: number;
+    fromStatus?: string | null;
+    toStatus: string;
+    comment?: string | null;
+    createdAt?: string | Date;
+  }>;
 };
 
 export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
@@ -171,7 +197,7 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
 
     technologicalSolution: detail.technologicalSolution?.code ?? "",
     number: detail.number ?? "",
-    responsible: detail.responsible?.name ?? "",
+    responsible: detail.responsible?.code ?? detail.responsible?.name ?? "",
     algorithm: detail.algorithm ?? "",
 
     feedbackSource:
@@ -187,6 +213,15 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
     initiatorAcceptance: extra.initiatorAcceptance ?? "",
     isAccepted: detail.isAccepted ?? null,
     rejectComment: detail.rejectComment ?? "",
+
+    feedbackAgreementHistory:
+        extra.feedbackAgreementHistory?.map((item) => ({
+          id: String(item.id),
+          fromStatus: asFeedbackAgreementStatus(item.fromStatus),
+          toStatus: asFeedbackAgreementStatus(item.toStatus) ?? "PENDING",
+          comment: item.comment ?? "",
+          createdAt: toIsoString(item.createdAt),
+        })) ?? [],
   };
 }
 

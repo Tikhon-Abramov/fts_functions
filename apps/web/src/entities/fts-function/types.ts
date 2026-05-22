@@ -7,6 +7,16 @@ import type {
   FtsFunctionStep,
 } from "./model";
 
+export type FeedbackAgreementStatus = "PENDING" | "ACCEPTED" | "REJECTED";
+
+export type FeedbackAgreementHistoryItem = {
+  id: string;
+  fromStatus: FeedbackAgreementStatus | null;
+  toStatus: FeedbackAgreementStatus;
+  comment?: string;
+  createdAt?: string;
+};
+
 export type Row = {
   id: string;
   step: FtsFunctionStep;
@@ -35,6 +45,8 @@ export type Row = {
   initiatorAcceptance?: string;
   isAccepted?: boolean | null;
   rejectComment?: string;
+
+  feedbackAgreementHistory?: FeedbackAgreementHistoryItem[];
 };
 
 export type Link = {

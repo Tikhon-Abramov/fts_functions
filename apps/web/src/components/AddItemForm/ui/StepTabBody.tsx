@@ -15,7 +15,6 @@ import {
     Select,
     TextField,
     Tooltip,
-    Typography,
 } from "@mui/material";
 
 import { findTypeNameByCode } from "src/entities/fts-function/api/mappers";
@@ -79,7 +78,7 @@ export function StepTabBody({
 
     const responsibleOptions = useMemo(
         () =>
-            getTypeNameOptionsByCategory(typesAll, DETAIL_TYPE_CATEGORY.RESPONSIBLE),
+            getTypeCodeOptionsByCategory(typesAll, DETAIL_TYPE_CATEGORY.RESPONSIBLE),
         [typesAll],
     );
 
@@ -239,7 +238,7 @@ export function StepTabBody({
                         theme={theme}
                     />
 
-                    <RHFAutocomplete
+                    <RHFTypeCodeSelect
                         control={control}
                         name={`${step}.responsible`}
                         label={`${TECHNOLOGY_DETAIL_LABELS.responsible}${technologySelected ? " *" : ""}`}
@@ -290,6 +289,7 @@ export function RHFCodeSelect<T extends string>({
             render={({ field }) => (
                 <FormControl size="small" fullWidth>
                     <InputLabel sx={formLabelSx(theme)}>{label}</InputLabel>
+
                     <Select
                         value={String(field.value ?? "")}
                         onChange={(e) => field.onChange(e.target.value)}
@@ -298,9 +298,9 @@ export function RHFCodeSelect<T extends string>({
                         MenuProps={formMenuSx(theme)}
                         data-testid={testId}
                     >
-                        {options.map((o) => (
-                            <MenuItem key={o} value={o} sx={{ fontSize: "0.78rem" }}>
-                                {findTypeNameByCode(typesAll, o)}
+                        {options.map((option) => (
+                            <MenuItem key={option} value={option} sx={{ fontSize: "0.78rem" }}>
+                                {findTypeNameByCode(typesAll, option)}
                             </MenuItem>
                         ))}
                     </Select>
@@ -316,6 +316,7 @@ type RHFTypeCodeSelectProps = {
     label: string;
     options: TypeResponseDto[];
     testId: string;
+    disabled?: boolean;
     theme: Theme;
 };
 
@@ -325,6 +326,7 @@ function RHFTypeCodeSelect({
                                label,
                                options,
                                testId,
+                               disabled = false,
                                theme,
                            }: RHFTypeCodeSelectProps) {
     const c = theme.custom;
@@ -334,8 +336,9 @@ function RHFTypeCodeSelect({
             control={control}
             name={name as FieldPath<AddItemFormValues>}
             render={({ field }) => (
-                <FormControl size="small" fullWidth>
+                <FormControl size="small" fullWidth disabled={disabled}>
                     <InputLabel sx={formLabelSx(theme)}>{label}</InputLabel>
+
                     <Select
                         value={String(field.value ?? "")}
                         onChange={(e) => field.onChange(e.target.value)}
@@ -442,8 +445,8 @@ function RHFAutocomplete({
                     disabled={disabled}
                     options={options}
                     value={String(field.value ?? "")}
-                    onChange={(_, v) => field.onChange(v ?? "")}
-                    onInputChange={(_, v) => field.onChange(v)}
+                    onChange={(_, value) => field.onChange(value ?? "")}
+                    onInputChange={(_, value) => field.onChange(value)}
                     size="small"
                     fullWidth
                     slotProps={{

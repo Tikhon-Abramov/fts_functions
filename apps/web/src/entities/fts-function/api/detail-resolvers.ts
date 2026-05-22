@@ -67,36 +67,45 @@ function findTypeIdByCategoryAndCodeOrName(
   return findTypeByCodeOrName(types, category, value)?.id ?? null;
 }
 
+function resolveRequiredTypeId(
+    types: TypeResponseDto[] | undefined,
+    category: TypeCategory,
+    value: string | undefined | null,
+): number | null {
+  const trimmed = trimValue(value ?? undefined);
+  if (!trimmed) return null;
+
+  return findTypeIdByCategoryAndCodeOrName(types, category, trimmed);
+}
+
 export function resolveDetailDto(
     item: DetailInput,
     types: TypeResponseDto[] | undefined,
 ): ResolvedDetailDto | null {
-  const stepId = findTypeIdByCategoryAndCodeOrName(
+  const stepId = resolveRequiredTypeId(
       types,
       DETAIL_TYPE_CATEGORY.FTS_FUNCTION_STEP,
       item.step,
   );
 
-  const categoryId = findTypeIdByCategoryAndCodeOrName(
+  const categoryId = resolveRequiredTypeId(
       types,
       DETAIL_TYPE_CATEGORY.FTS_FUNCTION_CATEGORY,
       item.category,
   );
 
-  const actionId = item.actionLabel
-      ? findTypeIdByCategoryAndCodeOrName(
-          types,
-          DETAIL_TYPE_CATEGORY.FTS_FUNCTION_ACTION_TYPE,
-          item.actionLabel,
-      )
-      : null;
+  const actionId = resolveRequiredTypeId(
+      types,
+      DETAIL_TYPE_CATEGORY.FTS_FUNCTION_ACTION_TYPE,
+      item.actionLabel,
+  );
 
   if (stepId == null || categoryId == null || actionId == null) return null;
 
   let complexityId: number | null = null;
 
   if (item.complexity) {
-    complexityId = findTypeIdByCategoryAndCodeOrName(
+    complexityId = resolveRequiredTypeId(
         types,
         DETAIL_TYPE_CATEGORY.FTS_FUNCTION_COMPLEXITY,
         item.complexity,
@@ -108,7 +117,7 @@ export function resolveDetailDto(
   let frequencyId: number | null = null;
 
   if (item.periodicity) {
-    frequencyId = findTypeIdByCategoryAndCodeOrName(
+    frequencyId = resolveRequiredTypeId(
         types,
         DETAIL_TYPE_CATEGORY.FTS_FUNCTION_EXECUTION_FREQUENCY,
         item.periodicity,
@@ -120,7 +129,7 @@ export function resolveDetailDto(
   let whoPerformsActionId: number | null = null;
 
   if (item.who && item.who.trim().length > 0) {
-    whoPerformsActionId = findTypeIdByCategoryAndCodeOrName(
+    whoPerformsActionId = resolveRequiredTypeId(
         types,
         DETAIL_TYPE_CATEGORY.WHO_PERFORMS_ACTION,
         item.who,
@@ -135,7 +144,7 @@ export function resolveDetailDto(
 
   const technologicalSolutionId =
       technologicalSolutionCode.length > 0
-          ? findTypeIdByCategoryAndCodeOrName(
+          ? resolveRequiredTypeId(
               types,
               DETAIL_TYPE_CATEGORY.TECHNOLOGICAL_SOLUTION,
               technologicalSolutionCode,
@@ -147,19 +156,19 @@ export function resolveDetailDto(
   }
 
   const number = trimValue(item.number);
-  const responsibleValue = trimValue(item.responsible);
+  const responsibleCode = trimValue(item.responsible);
   const algorithm = trimValue(item.algorithm);
 
   let responsibleId: number | null = null;
 
   if (technologicalSolutionId !== null) {
     if (!areTechnologyRequiredFieldsFilled(item)) return null;
-    if (!number || !responsibleValue || !algorithm) return null;
+    if (!number || !responsibleCode || !algorithm) return null;
 
-    responsibleId = findTypeIdByCategoryAndCodeOrName(
+    responsibleId = resolveRequiredTypeId(
         types,
         DETAIL_TYPE_CATEGORY.RESPONSIBLE,
-        responsibleValue,
+        responsibleCode,
     );
 
     if (responsibleId === null) return null;
@@ -173,7 +182,7 @@ export function resolveDetailDto(
 
   const feedbackSourceId =
       feedbackSourceCode.length > 0
-          ? findTypeIdByCategoryAndCodeOrName(
+          ? resolveRequiredTypeId(
               types,
               DETAIL_TYPE_CATEGORY.FEEDBACK_SOURCE,
               feedbackSourceCode,
@@ -186,7 +195,7 @@ export function resolveDetailDto(
 
   const ftsFunctionEffectivenessId =
       feedbackQualityMetricCode.length > 0
-          ? findTypeIdByCategoryAndCodeOrName(
+          ? resolveRequiredTypeId(
               types,
               DETAIL_TYPE_CATEGORY.FTS_FUNCTION_EFFECTIVENESS,
               feedbackQualityMetricCode,

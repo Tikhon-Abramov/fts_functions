@@ -58,14 +58,10 @@ export type FeedbackFieldsShape = Pick<
 
 export type FeedbackStatus = "pending" | "accepted" | "rejected";
 
-function normalize(value: string | undefined | null): string {
+function normalizeDictionaryValue(value: string | undefined | null): string {
     return String(value ?? "").trim().toLocaleLowerCase("ru-RU");
 }
 
-/**
- * Оставлено для обратной совместимости старых мест,
- * но новую логику технологического блока нужно определять по category.
- */
 export function isFactualActionCode(
     actionCode: string | undefined | null,
     typesAll: TypeResponseDto[] | undefined,
@@ -73,7 +69,9 @@ export function isFactualActionCode(
     if (!actionCode || !typesAll?.length) return false;
 
     const dbName = findTypeNameByCode(typesAll, actionCode);
-    return normalize(dbName) === normalize(FACTUAL_ACTION_NAME);
+    return (
+        normalizeDictionaryValue(dbName) === normalizeDictionaryValue(FACTUAL_ACTION_NAME)
+    );
 }
 
 export function isActualActionCategory(
@@ -103,15 +101,18 @@ export function findTypeByCodeOrName(
     category: TypeCategory,
     value: string | undefined | null,
 ): TypeResponseDto | undefined {
-    const normalized = value?.trim();
+    const normalized = normalizeDictionaryValue(value);
 
     if (!normalized) return undefined;
 
-    return (typesAll ?? []).find(
-        (item) =>
-            String(item.category) === category &&
-            (item.code === normalized || item.name === normalized),
-    );
+    return (typesAll ?? []).find((item) => {
+        if (String(item.category) !== category) return false;
+
+        return (
+            normalizeDictionaryValue(item.code) === normalized ||
+            normalizeDictionaryValue(item.name) === normalized
+        );
+    });
 }
 
 export function hasTechnologicalSolution(

@@ -126,6 +126,17 @@ export const ftsFunctionDetailDetailedSelect = {
       },
     },
   },
+  feedbackAgreementHistory: {
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: {
+      id: true,
+      ftsFunctionDetailId: true,
+      fromStatus: true,
+      toStatus: true,
+      comment: true,
+      createdAt: true,
+    },
+  },
 } as const satisfies Prisma.FtsFunctionDetailSelect;
 
 export const ftsFunctionDetailedSelect = {

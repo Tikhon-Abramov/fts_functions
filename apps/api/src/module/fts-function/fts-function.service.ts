@@ -63,10 +63,14 @@ type SortDir = NonNullable<FtsFunctionListQueryDto['sortDir']>;
 
 const ALIVE_SELECT = { id: true, isDeleted: true } as const;
 
+type FeedbackAgreementStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+
 type DetailDtoWithFeedbackSourceId = UpdateFtsFunctionDetailDto &
     CreateFtsFunctionDetailDto & {
   feedbackSourceId?: number | null;
   feedbackSourceIds?: number[];
+  methodologyPosition?: string | null;
+  initiatorAcceptance?: string | null;
 };
 
 @Injectable()
@@ -198,51 +202,74 @@ export class FtsFunctionService {
     await this.ensureFtsFunctionAlive(ftsFunctionId);
     await this.validateFtsFunctionDetailWrite(dto as unknown as Record<string, unknown>);
 
-    const feedbackSourceIds = resolveFeedbackSourceIds(
-        dto as DetailDtoWithFeedbackSourceId,
-    );
+    const detailDto = dto as DetailDtoWithFeedbackSourceId;
+    const feedbackSourceIds = resolveFeedbackSourceIds(detailDto);
+    const shouldWritePendingHistory =
+        shouldCreatePendingFeedbackHistory(detailDto);
 
-    return this.prisma.ftsFunctionDetail.create({
-      data: {
-        ftsFunctionId,
-        ftsFunctionStepId: dto.ftsFunctionStepId,
-        ftsFunctionCategoryId: dto.ftsFunctionCategoryId ?? null,
-        ftsFunctionComplexityId: dto.ftsFunctionComplexityId ?? null,
-        ftsFunctionExecutionFrequencyId:
-            dto.ftsFunctionExecutionFrequencyId ?? null,
-        whoPerformsActionId: dto.whoPerformsActionId ?? null,
-        ftsFunctionActionTypeId: dto.ftsFunctionActionTypeId ?? null,
-        ftsFunctionEffectivenessId: dto.ftsFunctionEffectivenessId ?? null,
-        technologicalSolutionId: dto.technologicalSolutionId ?? null,
-        responsibleId: dto.responsibleId ?? null,
-        ftsMethodologyStatusId: dto.ftsMethodologyStatusId ?? null,
-        ftsFunctionDetails: dto.ftsFunctionDetails ?? null,
-        basis: dto.basis ?? null,
-        artifact: dto.artifact ?? null,
-        artifactUsage: dto.artifactUsage ?? null,
-        purpose: dto.purpose ?? null,
-        number: dto.number ?? null,
-        algorithm: dto.algorithm ?? null,
-        problemDescription: dto.problemDescription ?? null,
-        initiatorRequisites: dto.initiatorRequisites ?? null,
-        methodologyPosition: dto.methodologyPosition ?? null,
-        initiatorAcceptance: dto.initiatorAcceptance ?? null,
-        deadline: dto.deadline ?? null,
-        isAccepted: dto.isAccepted ?? null,
-        rejectComment: dto.rejectComment ?? null,
-        feedbackSources:
-            feedbackSourceIds.length > 0
-                ? {
-                  createMany: {
-                    data: feedbackSourceIds.map((feedbackSourceId) => ({
-                      feedbackSourceId,
-                    })),
-                    skipDuplicates: true,
-                  },
-                }
-                : undefined,
-      },
-      select: ftsFunctionDetailDetailedSelect,
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.ftsFunctionDetail.create({
+        data: {
+          ftsFunctionId,
+          ftsFunctionStepId: dto.ftsFunctionStepId,
+          ftsFunctionCategoryId: dto.ftsFunctionCategoryId ?? null,
+          ftsFunctionComplexityId: dto.ftsFunctionComplexityId ?? null,
+          ftsFunctionExecutionFrequencyId:
+              dto.ftsFunctionExecutionFrequencyId ?? null,
+          whoPerformsActionId: dto.whoPerformsActionId ?? null,
+          ftsFunctionActionTypeId: dto.ftsFunctionActionTypeId ?? null,
+          ftsFunctionEffectivenessId: dto.ftsFunctionEffectivenessId ?? null,
+          technologicalSolutionId: dto.technologicalSolutionId ?? null,
+          responsibleId: dto.responsibleId ?? null,
+          ftsMethodologyStatusId: dto.ftsMethodologyStatusId ?? null,
+          ftsFunctionDetails: dto.ftsFunctionDetails ?? null,
+          basis: dto.basis ?? null,
+          artifact: dto.artifact ?? null,
+          artifactUsage: dto.artifactUsage ?? null,
+          purpose: dto.purpose ?? null,
+          number: dto.number ?? null,
+          algorithm: dto.algorithm ?? null,
+          problemDescription: dto.problemDescription ?? null,
+          initiatorRequisites: dto.initiatorRequisites ?? null,
+          methodologyPosition: detailDto.methodologyPosition ?? null,
+          initiatorAcceptance: detailDto.initiatorAcceptance ?? null,
+          deadline: dto.deadline ?? null,
+          isAccepted: dto.isAccepted ?? null,
+          rejectComment: dto.rejectComment ?? null,
+          feedbackSources:
+              feedbackSourceIds.length > 0
+                  ? {
+                    createMany: {
+                      data: feedbackSourceIds.map((feedbackSourceId) => ({
+                        feedbackSourceId,
+                      })),
+                      skipDuplicates: true,
+                    },
+                  }
+                  : undefined,
+        },
+        select: { id: true },
+      });
+
+      if (shouldWritePendingHistory) {
+        await tx.ftsFunctionDetailAgreementHistory.create({
+          data: {
+            ftsFunctionDetailId: created.id,
+            fromStatus: null,
+            toStatus: 'PENDING',
+            comment: null,
+          },
+        });
+      }
+
+      const entity = await tx.ftsFunctionDetail.findUnique({
+        where: { id: created.id },
+        select: ftsFunctionDetailDetailedSelect,
+      });
+
+      if (!entity) throw new FtsFunctionDetailNotFoundException(created.id);
+
+      return entity;
     });
   }
 
@@ -253,41 +280,70 @@ export class FtsFunctionService {
     await this.ensureDetailAlive(detailId);
     await this.validateFtsFunctionDetailWrite(dto as unknown as Record<string, unknown>);
 
+    const before = await this.prisma.ftsFunctionDetail.findUnique({
+      where: { id: detailId },
+      select: { isAccepted: true },
+    });
+
     const {
       feedbackSourceId: _feedbackSourceId,
       feedbackSourceIds: _feedbackSourceIds,
       ...rawData
     } = dto as DetailDtoWithFeedbackSourceId;
 
-    const feedbackSourceIds = resolveFeedbackSourceIds(
-        dto as DetailDtoWithFeedbackSourceId,
-    );
+    const detailDto = dto as DetailDtoWithFeedbackSourceId;
+    const feedbackSourceIds = resolveFeedbackSourceIds(detailDto);
 
     const shouldReplaceFeedbackSources =
-        (dto as DetailDtoWithFeedbackSourceId).feedbackSourceIds !== undefined ||
-        (dto as DetailDtoWithFeedbackSourceId).feedbackSourceId !== undefined;
+        detailDto.feedbackSourceIds !== undefined ||
+        detailDto.feedbackSourceId !== undefined;
 
-    return this.prisma.ftsFunctionDetail.update({
-      where: { id: detailId },
-      data: {
-        ...stripUndefined(rawData as unknown as Record<string, unknown>),
-        feedbackSources: shouldReplaceFeedbackSources
-            ? {
-              deleteMany: {},
-              ...(feedbackSourceIds.length > 0
-                  ? {
-                    createMany: {
-                      data: feedbackSourceIds.map((feedbackSourceId) => ({
-                        feedbackSourceId,
-                      })),
-                      skipDuplicates: true,
-                    },
-                  }
-                  : {}),
-            }
-            : undefined,
-      },
-      select: ftsFunctionDetailDetailedSelect,
+    const shouldWritePendingHistory =
+        shouldCreatePendingFeedbackHistory(detailDto);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.ftsFunctionDetail.update({
+        where: { id: detailId },
+        data: {
+          ...stripUndefined(rawData as unknown as Record<string, unknown>),
+          feedbackSources: shouldReplaceFeedbackSources
+              ? {
+                deleteMany: {},
+                ...(feedbackSourceIds.length > 0
+                    ? {
+                      createMany: {
+                        data: feedbackSourceIds.map((feedbackSourceId) => ({
+                          feedbackSourceId,
+                        })),
+                        skipDuplicates: true,
+                      },
+                    }
+                    : {}),
+              }
+              : undefined,
+        },
+        select: { id: true },
+      });
+
+      if (shouldWritePendingHistory) {
+        await tx.ftsFunctionDetailAgreementHistory.create({
+          data: {
+            ftsFunctionDetailId: detailId,
+            fromStatus: getAgreementStatusFromAccepted(before?.isAccepted),
+            toStatus: 'PENDING',
+            comment: null,
+          },
+        });
+      }
+
+      const updated = await tx.ftsFunctionDetail.findUnique({
+        where: { id: detailId },
+        select: ftsFunctionDetailDetailedSelect,
+      });
+
+      if (!updated) throw new FtsFunctionDetailNotFoundException(detailId);
+
+      return updated;
     });
   }
 
@@ -310,13 +366,44 @@ export class FtsFunctionService {
   ): Promise<FtsFunctionDetailDetailedEntity> {
     await this.ensureDetailAlive(detailId);
 
-    return this.prisma.ftsFunctionDetail.update({
+    const before = await this.prisma.ftsFunctionDetail.findUnique({
       where: { id: detailId },
-      data: {
-        isAccepted,
-        rejectComment: !isAccepted && rejectComment ? rejectComment : null,
-      },
-      select: ftsFunctionDetailDetailedSelect,
+      select: { isAccepted: true },
+    });
+
+    const toStatus: FeedbackAgreementStatus = isAccepted
+        ? 'ACCEPTED'
+        : 'REJECTED';
+
+    const comment = !isAccepted && rejectComment ? rejectComment : null;
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.ftsFunctionDetail.update({
+        where: { id: detailId },
+        data: {
+          isAccepted,
+          rejectComment: comment,
+        },
+        select: { id: true },
+      });
+
+      await tx.ftsFunctionDetailAgreementHistory.create({
+        data: {
+          ftsFunctionDetailId: detailId,
+          fromStatus: getAgreementStatusFromAccepted(before?.isAccepted) ?? 'PENDING',
+          toStatus,
+          comment,
+        },
+      });
+
+      const updated = await tx.ftsFunctionDetail.findUnique({
+        where: { id: detailId },
+        select: ftsFunctionDetailDetailedSelect,
+      });
+
+      if (!updated) throw new FtsFunctionDetailNotFoundException(detailId);
+
+      return updated;
     });
   }
 
@@ -620,6 +707,7 @@ const FTS_FUNCTION_DETAIL_TYPE_FIELDS = {
   technologicalSolutionId: Category.TECHNOLOGICAL_SOLUTION,
   responsibleId: Category.RESPONSIBLE,
   ftsMethodologyStatusId: Category.FTS_METHODOLOGY_STATUS,
+  feedbackSourceId: Category.FEEDBACK_SOURCE,
   feedbackSourceIds: Category.FEEDBACK_SOURCE,
 } satisfies Record<string, Category>;
 
@@ -661,6 +749,32 @@ function resolveFeedbackSourceIds(dto: DetailDtoWithFeedbackSourceId): number[] 
   }
 
   return [];
+}
+
+function getAgreementStatusFromAccepted(
+    isAccepted: boolean | null | undefined,
+): FeedbackAgreementStatus | null {
+  if (isAccepted === true) return 'ACCEPTED';
+  if (isAccepted === false) return 'REJECTED';
+  if (isAccepted === null) return 'PENDING';
+
+  return null;
+}
+
+function shouldCreatePendingFeedbackHistory(
+    dto: DetailDtoWithFeedbackSourceId,
+): boolean {
+  return (
+      dto.isAccepted === null &&
+      (dto.feedbackSourceIds !== undefined ||
+          dto.feedbackSourceId !== undefined ||
+          dto.ftsFunctionEffectivenessId !== undefined ||
+          dto.problemDescription !== undefined ||
+          dto.initiatorRequisites !== undefined ||
+          dto.methodologyPosition !== undefined ||
+          dto.deadline !== undefined ||
+          dto.initiatorAcceptance !== undefined)
+  );
 }
 
 const DuplicateNameError = FunctionNameDuplicateException;

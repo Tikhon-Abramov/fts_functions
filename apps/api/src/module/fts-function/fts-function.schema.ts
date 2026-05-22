@@ -143,8 +143,6 @@ export const CreateFtsFunctionDetailSchema = z.object({
     algorithm: z.string().nullable().optional(),
     problemDescription: z.string().nullable().optional(),
     initiatorRequisites: z.string().nullable().optional(),
-    methodologyPosition: z.string().nullable().optional(),
-    initiatorAcceptance: z.string().nullable().optional(),
     deadline: dateFromJson.nullable().optional(),
     isAccepted: z.boolean().nullable().optional(),
     rejectComment: z.string().nullable().optional(),
@@ -261,11 +259,22 @@ const FtsFunctionDetailBaseResponseSchema = z.object({
     algorithm: z.string().nullable().optional(),
     problemDescription: z.string().nullable().optional(),
     initiatorRequisites: z.string().nullable().optional(),
-    methodologyPosition: z.string().nullable().optional(),
-    initiatorAcceptance: z.string().nullable().optional(),
     deadline: dateFromJson.nullable().optional(),
     isAccepted: z.boolean().nullable().optional(),
     rejectComment: z.string().nullable().optional(),
+    feedbackAgreementHistory: z
+        .array(
+            z.object({
+                id: z.number(),
+                ftsFunctionDetailId: z.number(),
+                fromStatus: z.string().nullable(),
+                toStatus: z.string(),
+                comment: z.string().nullable(),
+                createdAt: z.date(),
+            }),
+        )
+        .optional()
+        .default([]),
     createdAt: z.date(),
     updatedAt: z.date(),
     isDeleted: z.boolean(),

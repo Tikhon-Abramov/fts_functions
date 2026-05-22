@@ -130,8 +130,8 @@ export default function AddItemForm({
         if (lastSavedId && onQuickLink) onQuickLink(lastSavedId);
     }, [lastSavedId, onQuickLink]);
 
-    const onSubmit = (e: FormEvent) => {
-        e.preventDefault();
+    const onSubmit = (event: FormEvent) => {
+        event.preventDefault();
 
         const { s1: v1, s2: v2 } = getValues();
 
@@ -153,11 +153,13 @@ export default function AddItemForm({
                 fieldsToData(v1, includeS1Technology),
                 fieldsToData(v2, includeS2Technology),
             );
+
             setLastSavedId(null);
         } else {
             const step = canS1
                 ? FtsFunctionStep.OBJECT_SELECTION
                 : FtsFunctionStep.CLUSTERING_IMPACT;
+
             const fields = canS1 ? v1 : v2;
             const includeTechnology = canS1
                 ? includeS1Technology

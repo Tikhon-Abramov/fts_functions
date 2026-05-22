@@ -1,4 +1,8 @@
-import type { Row } from "src/entities/fts-function/types";
+import type {
+    FeedbackAgreementHistoryItem,
+    FeedbackAgreementStatus,
+    Row,
+} from "src/entities/fts-function/types";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 
 import { useEffect, useMemo, useState } from "react";
@@ -30,7 +34,6 @@ import {
     getFeedbackStatus,
     getTypeCodeOptionsByCategory,
     hasFeedback,
-    type FeedbackStatus,
 } from "src/entities/fts-function/lib/detail-technology";
 import {
     formInputSx,
@@ -47,13 +50,6 @@ type FeedbackDraft = {
     methodologyPosition: string;
     deadline: string;
     initiatorAcceptance: string;
-};
-
-type FeedbackHistoryItem = {
-    id: string;
-    status: FeedbackStatus;
-    text: string;
-    comment?: string;
 };
 
 export type FeedbackPanelProps = {
@@ -91,8 +87,24 @@ function buildDraft(row: Row | null): FeedbackDraft {
     };
 }
 
-function buildInitialHistory(row: Row | null): FeedbackHistoryItem[] {
+function getStatusLabel(status: FeedbackAgreementStatus | null): string {
+    if (status === "ACCEPTED") return "Согласовано";
+    if (status === "REJECTED") return "Не согласовано";
+    return "На согласовании";
+}
+
+function getHistoryText(item: FeedbackAgreementHistoryItem): string {
+    if (!item.fromStatus) return getStatusLabel(item.toStatus);
+
+    return `${getStatusLabel(item.fromStatus)} → ${getStatusLabel(item.toStatus)}`;
+}
+
+function buildInitialHistory(row: Row | null): FeedbackAgreementHistoryItem[] {
     if (!row || !hasFeedback(row)) return [];
+
+    if (row.feedbackAgreementHistory?.length) {
+        return row.feedbackAgreementHistory;
+    }
 
     const status = getFeedbackStatus(row);
 
@@ -100,13 +112,13 @@ function buildInitialHistory(row: Row | null): FeedbackHistoryItem[] {
         return [
             {
                 id: `${row.id}-accepted`,
-                status: "accepted",
-                text: "На согласовании → Согласовано",
+                fromStatus: "PENDING",
+                toStatus: "ACCEPTED",
             },
             {
                 id: `${row.id}-pending`,
-                status: "pending",
-                text: "На согласовании",
+                fromStatus: null,
+                toStatus: "PENDING",
             },
         ];
     }
@@ -115,14 +127,14 @@ function buildInitialHistory(row: Row | null): FeedbackHistoryItem[] {
         return [
             {
                 id: `${row.id}-rejected`,
-                status: "rejected",
-                text: "На согласовании → Не согласовано",
+                fromStatus: "PENDING",
+                toStatus: "REJECTED",
                 comment: row.rejectComment || undefined,
             },
             {
                 id: `${row.id}-pending`,
-                status: "pending",
-                text: "На согласовании",
+                fromStatus: null,
+                toStatus: "PENDING",
             },
         ];
     }
@@ -130,8 +142,8 @@ function buildInitialHistory(row: Row | null): FeedbackHistoryItem[] {
     return [
         {
             id: `${row.id}-pending`,
-            status: "pending",
-            text: "На согласовании",
+            fromStatus: null,
+            toStatus: "PENDING",
         },
     ];
 }
@@ -155,9 +167,9 @@ export default function FeedbackPanel({
     const [editMode, setEditMode] = useState(!hasFeedback(row));
     const [saving, setSaving] = useState(false);
     const [accepting, setAccepting] = useState(false);
-    const [localHistory, setLocalHistory] = useState<FeedbackHistoryItem[]>(() =>
-        buildInitialHistory(row),
-    );
+    const [localHistory, setLocalHistory] = useState<
+        FeedbackAgreementHistoryItem[]
+    >(() => buildInitialHistory(row));
 
     useEffect(() => {
         setDraft(buildDraft(row));
@@ -169,7 +181,7 @@ export default function FeedbackPanel({
         setSaving(false);
         setAccepting(false);
         setLocalHistory(buildInitialHistory(row));
-    }, [row?.id]);
+    }, [row?.id, row?.feedbackAgreementHistory?.length]);
 
     const feedbackSourceOptions = useMemo(
         () =>
@@ -242,11 +254,14 @@ export default function FeedbackPanel({
         setDraft((prev) => ({ ...prev, [key]: value }));
     };
 
-    const prependHistory = (item: Omit<FeedbackHistoryItem, "id">) => {
+    const prependHistory = (
+        item: Omit<FeedbackAgreementHistoryItem, "id" | "createdAt">,
+    ) => {
         setLocalHistory((prev) => [
             {
                 ...item,
                 id: `${row.id}-${Date.now()}-${prev.length}`,
+                createdAt: new Date().toISOString(),
             },
             ...prev,
         ]);
@@ -255,7 +270,12 @@ export default function FeedbackPanel({
     const handleSave = async () => {
         if (!canSave || saving) return;
 
-        const wasRejected = row.isAccepted === false || localAccepted === false;
+        const fromStatus: FeedbackAgreementStatus | null =
+            row.isAccepted === false || localAccepted === false
+                ? "REJECTED"
+                : row.isAccepted === true || localAccepted === true
+                    ? "ACCEPTED"
+                    : null;
 
         setSaving(true);
 
@@ -275,10 +295,8 @@ export default function FeedbackPanel({
         setEditMode(false);
 
         prependHistory({
-            status: "pending",
-            text: wasRejected
-                ? "Не согласовано → На согласовании"
-                : "На согласовании",
+            fromStatus,
+            toStatus: "PENDING",
         });
     };
 
@@ -297,8 +315,8 @@ export default function FeedbackPanel({
         setLocalAccepted(true);
 
         prependHistory({
-            status: "accepted",
-            text: "На согласовании → Согласовано",
+            fromStatus: "PENDING",
+            toStatus: "ACCEPTED",
         });
     };
 
@@ -320,8 +338,8 @@ export default function FeedbackPanel({
         setRejectOpen(false);
 
         prependHistory({
-            status: "rejected",
-            text: "На согласовании → Не согласовано",
+            fromStatus: "PENDING",
+            toStatus: "REJECTED",
             comment,
         });
     };
@@ -333,14 +351,14 @@ export default function FeedbackPanel({
         setRejectComment("");
     };
 
-    const renderHistoryDot = (itemStatus: FeedbackStatus) => {
+    const renderHistoryDot = (itemStatus: FeedbackAgreementStatus) => {
         const dot =
-            itemStatus === "accepted"
+            itemStatus === "ACCEPTED"
                 ? {
                     bgcolor: theme.palette.success.main,
                     borderColor: theme.palette.success.main,
                 }
-                : itemStatus === "rejected"
+                : itemStatus === "REJECTED"
                     ? {
                         bgcolor: theme.palette.error.main,
                         borderColor: theme.palette.error.main,
@@ -563,13 +581,13 @@ export default function FeedbackPanel({
                                             key={item.id}
                                             sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}
                                         >
-                                            {renderHistoryDot(item.status)}
+                                            {renderHistoryDot(item.toStatus)}
 
                                             <Box sx={{ minWidth: 0 }}>
                                                 <Typography
                                                     sx={{ color: c.textBody, fontSize: "0.75rem" }}
                                                 >
-                                                    {item.text}
+                                                    {getHistoryText(item)}
                                                 </Typography>
 
                                                 {item.comment && (

@@ -504,7 +504,8 @@ model FtsFunctionDetail {
   responsible                   Type? @relation("responsible__fts_function_action_type", fields: [responsibleId], references: [id])
   ftsMethodologyStatus          Type? @relation("fts_methodology_status__fts_function_action_type", fields: [ftsMethodologyStatusId], references: [id])
 
-  feedbackSources FtsFunctionDetailToFeedbackSource[]
+  feedbackSources          FtsFunctionDetailToFeedbackSource[]
+  feedbackAgreementHistory FtsFunctionDetailAgreementHistory[]
 
   parents  FtsFunctionTree[] @relation("data_parents")
   children FtsFunctionTree[] @relation("data_children")
@@ -525,6 +526,33 @@ model FtsFunctionDetail {
   @@index([isDeleted])
   @@fulltext([ftsFunctionDetails, basis, artifact, artifactUsage, purpose, number])
   @@map("fts_function_details")
+}
+
+/// История согласования обратной связи по строке детализации
+model FtsFunctionDetailAgreementHistory {
+  /// Уникальный идентификатор записи истории
+  id Int @id @default(autoincrement())
+
+  /// Уникальный идентификатор строки детализации
+  ftsFunctionDetailId Int @map("fts_function_detail_id")
+
+  /// Статус, из которого выполнен переход: PENDING / ACCEPTED / REJECTED
+  fromStatus String? @map("from_status") @db.VarChar(32)
+
+  /// Статус, в который выполнен переход: PENDING / ACCEPTED / REJECTED
+  toStatus String @map("to_status") @db.VarChar(32)
+
+  /// Комментарий, например причина отказа
+  comment String? @map("comment") @db.Text
+
+  /// Дата создания записи истории
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// Связь со строкой детализации
+  ftsFunctionDetail FtsFunctionDetail @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
+
+  @@index([ftsFunctionDetailId, createdAt], map: "fts_function_detail_agreement_history_detail_created_idx")
+  @@map("fts_function_detail_agreement_history")
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
