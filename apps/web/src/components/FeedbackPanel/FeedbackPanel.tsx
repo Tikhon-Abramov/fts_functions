@@ -2,6 +2,7 @@ import type { Row } from "src/entities/fts-function/types";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 
 import { useEffect, useMemo, useState } from "react";
+import { ExpandMore } from "@mui/icons-material";
 import {
     Accordion,
     AccordionDetails,
@@ -21,7 +22,6 @@ import {
     Typography,
     useTheme,
 } from "@mui/material";
-import { ExpandMore } from "@mui/icons-material";
 
 import {
     areFeedbackRequiredFieldsFilled,
@@ -30,6 +30,7 @@ import {
     getFeedbackStatus,
     getTypeCodeOptionsByCategory,
     hasFeedback,
+    type FeedbackStatus,
 } from "src/entities/fts-function/lib/detail-technology";
 import {
     formInputSx,
@@ -50,8 +51,8 @@ type FeedbackDraft = {
 
 type FeedbackHistoryItem = {
     id: string;
-    from: string;
-    to: string;
+    status: FeedbackStatus;
+    text: string;
     comment?: string;
 };
 
@@ -94,32 +95,45 @@ function buildInitialHistory(row: Row | null): FeedbackHistoryItem[] {
     if (!row || !hasFeedback(row)) return [];
 
     const status = getFeedbackStatus(row);
-    const history: FeedbackHistoryItem[] = [
-        {
-            id: `${row.id}-initial-pending`,
-            from: "Не заполнено",
-            to: "На согласовании",
-        },
-    ];
 
     if (status === "accepted") {
-        history.push({
-            id: `${row.id}-accepted`,
-            from: "На согласовании",
-            to: "Согласовано",
-        });
+        return [
+            {
+                id: `${row.id}-accepted`,
+                status: "accepted",
+                text: "На согласовании → Согласовано",
+            },
+            {
+                id: `${row.id}-pending`,
+                status: "pending",
+                text: "На согласовании",
+            },
+        ];
     }
 
     if (status === "rejected") {
-        history.push({
-            id: `${row.id}-rejected`,
-            from: "На согласовании",
-            to: "Не согласовано",
-            comment: row.rejectComment || undefined,
-        });
+        return [
+            {
+                id: `${row.id}-rejected`,
+                status: "rejected",
+                text: "На согласовании → Не согласовано",
+                comment: row.rejectComment || undefined,
+            },
+            {
+                id: `${row.id}-pending`,
+                status: "pending",
+                text: "На согласовании",
+            },
+        ];
     }
 
-    return history;
+    return [
+        {
+            id: `${row.id}-pending`,
+            status: "pending",
+            text: "На согласовании",
+        },
+    ];
 }
 
 export default function FeedbackPanel({
@@ -228,13 +242,13 @@ export default function FeedbackPanel({
         setDraft((prev) => ({ ...prev, [key]: value }));
     };
 
-    const appendHistory = (item: Omit<FeedbackHistoryItem, "id">) => {
+    const prependHistory = (item: Omit<FeedbackHistoryItem, "id">) => {
         setLocalHistory((prev) => [
-            ...prev,
             {
                 ...item,
                 id: `${row.id}-${Date.now()}-${prev.length}`,
             },
+            ...prev,
         ]);
     };
 
@@ -260,9 +274,11 @@ export default function FeedbackPanel({
         setRejectComment("");
         setEditMode(false);
 
-        appendHistory({
-            from: wasRejected ? "Не согласовано" : "Не заполнено",
-            to: "На согласовании",
+        prependHistory({
+            status: "pending",
+            text: wasRejected
+                ? "Не согласовано → На согласовании"
+                : "На согласовании",
         });
     };
 
@@ -280,9 +296,9 @@ export default function FeedbackPanel({
         setSavedLocally(true);
         setLocalAccepted(true);
 
-        appendHistory({
-            from: "На согласовании",
-            to: "Согласовано",
+        prependHistory({
+            status: "accepted",
+            text: "На согласовании → Согласовано",
         });
     };
 
@@ -303,9 +319,9 @@ export default function FeedbackPanel({
         setLocalAccepted(false);
         setRejectOpen(false);
 
-        appendHistory({
-            from: "На согласовании",
-            to: "Не согласовано",
+        prependHistory({
+            status: "rejected",
+            text: "На согласовании → Не согласовано",
             comment,
         });
     };
@@ -315,6 +331,38 @@ export default function FeedbackPanel({
         setLocalAccepted(null);
         setSavedLocally(true);
         setRejectComment("");
+    };
+
+    const renderHistoryDot = (itemStatus: FeedbackStatus) => {
+        const dot =
+            itemStatus === "accepted"
+                ? {
+                    bgcolor: theme.palette.success.main,
+                    borderColor: theme.palette.success.main,
+                }
+                : itemStatus === "rejected"
+                    ? {
+                        bgcolor: theme.palette.error.main,
+                        borderColor: theme.palette.error.main,
+                    }
+                    : {
+                        bgcolor: "transparent",
+                        borderColor: c.textMuted,
+                    };
+
+        return (
+            <Box
+                sx={{
+                    width: 9,
+                    height: 9,
+                    mt: "5px",
+                    borderRadius: "50%",
+                    bgcolor: dot.bgcolor,
+                    border: `1.5px solid ${dot.borderColor}`,
+                    flexShrink: 0,
+                }}
+            />
+        );
     };
 
     return (
@@ -511,23 +559,32 @@ export default function FeedbackPanel({
                             ) : (
                                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                                     {localHistory.map((item) => (
-                                        <Box key={item.id}>
-                                            <Typography sx={{ color: c.textBody, fontSize: "0.75rem" }}>
-                                                {`${item.from} → ${item.to}`}
-                                            </Typography>
+                                        <Box
+                                            key={item.id}
+                                            sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}
+                                        >
+                                            {renderHistoryDot(item.status)}
 
-                                            {item.comment && (
+                                            <Box sx={{ minWidth: 0 }}>
                                                 <Typography
-                                                    sx={{
-                                                        color: c.textMuted,
-                                                        fontSize: "0.7rem",
-                                                        whiteSpace: "pre-wrap",
-                                                        mt: 0.25,
-                                                    }}
+                                                    sx={{ color: c.textBody, fontSize: "0.75rem" }}
                                                 >
-                                                    {`Комментарий отказа: ${item.comment}`}
+                                                    {item.text}
                                                 </Typography>
-                                            )}
+
+                                                {item.comment && (
+                                                    <Typography
+                                                        sx={{
+                                                            color: c.textMuted,
+                                                            fontSize: "0.7rem",
+                                                            whiteSpace: "pre-wrap",
+                                                            mt: 0.25,
+                                                        }}
+                                                    >
+                                                        {`Комментарий отказа: ${item.comment}`}
+                                                    </Typography>
+                                                )}
+                                            </Box>
                                         </Box>
                                     ))}
                                 </Box>

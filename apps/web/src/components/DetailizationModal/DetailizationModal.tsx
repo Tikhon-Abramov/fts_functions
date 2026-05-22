@@ -37,7 +37,6 @@ import {
     DICTIONARY_QUERY_OPTIONS,
 } from "src/shared/api/query-options";
 import { SNACKBAR } from "src/shared/config/snackbar";
-import { DETAIL_RIGHT_PANEL_DEFAULT_PX } from "src/shared/config/ui";
 import { useTranslation } from "src/shared/i18n";
 import { useAppDispatch, useAppSelector } from "src/shared/store";
 import {
@@ -59,6 +58,11 @@ import RowDetailsPanel from "../RowDetailsPanel/RowDetailsPanel";
 import { DetailStepGrid } from "./ui/grid/DetailStepGrid";
 import { DetailHeader } from "./ui/header/DetailHeader";
 import { DetailRightPanel } from "./ui/header/DetailRightPanel";
+
+const DETAIL_RIGHT_PANEL_WIDTH = "30vw";
+const DETAIL_RIGHT_PANEL_MIN_WIDTH = 420;
+const DETAIL_RIGHT_PANEL_MAX_WIDTH = 620;
+const DETAIL_RIGHT_PANEL_COLLAPSED_WIDTH = 48;
 
 export default function DetailizationModal() {
     const { t } = useTranslation();
@@ -286,7 +290,15 @@ export default function DetailizationModal() {
 
                         <Box
                             sx={{
-                                width: rightOpen ? DETAIL_RIGHT_PANEL_DEFAULT_PX : 48,
+                                width: rightOpen
+                                    ? DETAIL_RIGHT_PANEL_WIDTH
+                                    : DETAIL_RIGHT_PANEL_COLLAPSED_WIDTH,
+                                minWidth: rightOpen
+                                    ? DETAIL_RIGHT_PANEL_MIN_WIDTH
+                                    : DETAIL_RIGHT_PANEL_COLLAPSED_WIDTH,
+                                maxWidth: rightOpen
+                                    ? DETAIL_RIGHT_PANEL_MAX_WIDTH
+                                    : DETAIL_RIGHT_PANEL_COLLAPSED_WIDTH,
                                 flexShrink: 0,
                                 transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                                 borderLeft: `1px solid ${c.borderMain}`,

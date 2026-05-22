@@ -29,128 +29,20 @@ export const ftsFunctionBaseSelect = {
   deletedAt: true,
 } as const satisfies Prisma.FtsFunctionSelect;
 
-// List variant: base shape + minimal DTI projection so the registry table can
-// render the "Стратегия Д" column without an extra round-trip per row. Kept
-// separate from `ftsFunctionBaseSelect` because most write paths return the
-// base shape and pulling the join would be wasted bytes there.
 export const ftsFunctionListSelect = {
   ...ftsFunctionBaseSelect,
   dtis: {
     select: {
-      dti: { select: typeMinimalSelect },
-    },
-  },
-} as const satisfies Prisma.FtsFunctionSelect;
-
-export const ftsFunctionDetailBaseSelect = {
-  id: true,
-  ftsFunctionId: true,
-  ftsFunctionStepId: true,
-  ftsFunctionCategoryId: true,
-  ftsFunctionComplexityId: true,
-  ftsFunctionExecutionFrequencyId: true,
-  whoPerformsActionId: true,
-  ftsFunctionActionTypeId: true,
-  ftsFunctionEffectivenessId: true,
-  ftsFunctionDetails: true,
-  technologicalSolutionId: true,
-  responsibleId: true,
-  ftsMethodologyStatusId: true,
-  basis: true,
-  artifact: true,
-  artifactUsage: true,
-  purpose: true,
-  number: true,
-  algorithm: true,
-  problemDescription: true,
-  initiatorRequisites: true,
-  deadline: true,
-  isAccepted: true,
-  rejectComment: true,
-  createdAt: true,
-  updatedAt: true,
-  isDeleted: true,
-  deletedAt: true,
-} as const satisfies Prisma.FtsFunctionDetailSelect;
-
-export const ftsFunctionDetailedSelect = {
-  ...ftsFunctionBaseSelect,
-  ftsCentralization: { select: typeMinimalSelect },
-  ftsFunctionName: { select: typeMinimalSelect },
-  competencyCenter: { select: typeMinimalSelect },
-  ftsFunctionMarker: { select: typeMinimalSelect },
-  curatorCentralOffice: { select: userMinimalSelect },
-  managerInterregionalInspection: { select: userMinimalSelect },
-  departmentHeadCentralOffice: { select: userMinimalSelect },
-  departmentHeadInterregionalInspection: { select: userMinimalSelect },
-  dtis: {
-    select: {
-      dtiId: true,
-      createdAt: true,
-      dti: { select: typeMinimalSelect },
-    },
-  },
-  ftsFunctionDetails: {
-    where: { isDeleted: false },
-    orderBy: { createdAt: 'asc' },
-    select: {
-      ...ftsFunctionDetailBaseSelect,
-      ftsFunctionStep: { select: typeMinimalSelect },
-      ftsFunctionCategory: { select: typeMinimalSelect },
-      ftsFunctionComplexity: { select: typeMinimalSelect },
-      ftsFunctionExecutionFrequency: { select: typeMinimalSelect },
-      whoPerformsAction: { select: typeMinimalSelect },
-      ftsFunctionActionType: { select: typeMinimalSelect },
-      ftsFunctionEffectiveness: { select: typeMinimalSelect },
-      technologicalSolution: { select: typeMinimalSelect },
-      feedbackSources: { 
-        select: { 
-          feedbackSource: { select: typeMinimalSelect },
-         },
-      },
-      responsible: { select: typeMinimalSelect },
-      ftsMethodologyStatus: { select: typeMinimalSelect },
-
-      parents: {
+      dti: {
         select: {
-          parentFtsFunctionId: true,
-          childFtsFunctionId: true,
-          relationTypeId: true,
-          createdAt: true,
-          relationType: { select: typeMinimalSelect },
-        },
-      },
-      children: {
-        select: {
-          parentFtsFunctionId: true,
-          childFtsFunctionId: true,
-          relationTypeId: true,
-          createdAt: true,
-          relationType: { select: typeMinimalSelect },
+          id: true,
+          name: true,
+          code: true,
         },
       },
     },
   },
 } as const satisfies Prisma.FtsFunctionSelect;
-
-export const ftsFunctionDetailDetailedSelect = {
-  ...ftsFunctionDetailBaseSelect,
-  ftsFunctionStep: { select: typeMinimalSelect },
-  ftsFunctionCategory: { select: typeMinimalSelect },
-  ftsFunctionComplexity: { select: typeMinimalSelect },
-  ftsFunctionExecutionFrequency: { select: typeMinimalSelect },
-  whoPerformsAction: { select: typeMinimalSelect },
-  ftsFunctionActionType: { select: typeMinimalSelect },
-  ftsFunctionEffectiveness: { select: typeMinimalSelect },
-  technologicalSolution: { select: typeMinimalSelect },
-  feedbackSources: { 
-    select: { 
-      feedbackSource: { select: typeMinimalSelect },
-      },
-  },
-  responsible: { select: typeMinimalSelect },
-  ftsMethodologyStatus: { select: typeMinimalSelect },
-} as const satisfies Prisma.FtsFunctionDetailSelect;
 
 export const ftsFunctionTreeSelect = {
   parentFtsFunctionId: true,
@@ -164,3 +56,141 @@ export const ftsFunctionToDtiSelect = {
   dtiId: true,
   createdAt: true,
 } as const satisfies Prisma.FtsFunctionToDtiSelect;
+
+export const ftsFunctionDetailDetailedSelect = {
+  id: true,
+  ftsFunctionId: true,
+  ftsFunctionStepId: true,
+  ftsFunctionCategoryId: true,
+  ftsFunctionComplexityId: true,
+  ftsFunctionExecutionFrequencyId: true,
+  whoPerformsActionId: true,
+  ftsFunctionActionTypeId: true,
+  ftsFunctionEffectivenessId: true,
+  technologicalSolutionId: true,
+  responsibleId: true,
+  ftsMethodologyStatusId: true,
+  ftsFunctionDetails: true,
+  basis: true,
+  artifact: true,
+  artifactUsage: true,
+  purpose: true,
+  number: true,
+  algorithm: true,
+  problemDescription: true,
+  initiatorRequisites: true,
+  methodologyPosition: true,
+  initiatorAcceptance: true,
+  deadline: true,
+  isAccepted: true,
+  rejectComment: true,
+  createdAt: true,
+  updatedAt: true,
+  isDeleted: true,
+  deletedAt: true,
+
+  ftsFunctionStep: {
+    select: typeMinimalSelect,
+  },
+  ftsFunctionCategory: {
+    select: typeMinimalSelect,
+  },
+  ftsFunctionComplexity: {
+    select: typeMinimalSelect,
+  },
+  ftsFunctionExecutionFrequency: {
+    select: typeMinimalSelect,
+  },
+  whoPerformsAction: {
+    select: typeMinimalSelect,
+  },
+  ftsFunctionActionType: {
+    select: typeMinimalSelect,
+  },
+  ftsFunctionEffectiveness: {
+    select: typeMinimalSelect,
+  },
+  technologicalSolution: {
+    select: typeMinimalSelect,
+  },
+  responsible: {
+    select: typeMinimalSelect,
+  },
+  ftsMethodologyStatus: {
+    select: typeMinimalSelect,
+  },
+  feedbackSources: {
+    select: {
+      feedbackSource: {
+        select: typeMinimalSelect,
+      },
+    },
+  },
+} as const satisfies Prisma.FtsFunctionDetailSelect;
+
+export const ftsFunctionDetailedSelect = {
+  ...ftsFunctionBaseSelect,
+  ftsCentralization: {
+    select: typeMinimalSelect,
+  },
+  ftsFunctionName: {
+    select: typeMinimalSelect,
+  },
+  competencyCenter: {
+    select: typeMinimalSelect,
+  },
+  ftsFunctionMarker: {
+    select: typeMinimalSelect,
+  },
+  curatorCentralOffice: {
+    select: userMinimalSelect,
+  },
+  managerInterregionalInspection: {
+    select: userMinimalSelect,
+  },
+  departmentHeadCentralOffice: {
+    select: userMinimalSelect,
+  },
+  departmentHeadInterregionalInspection: {
+    select: userMinimalSelect,
+  },
+  dtis: {
+    select: {
+      dtiId: true,
+      createdAt: true,
+      dti: {
+        select: typeMinimalSelect,
+      },
+    },
+  },
+  ftsFunctionDetails: {
+    where: {
+      isDeleted: false,
+    },
+    select: {
+      ...ftsFunctionDetailDetailedSelect,
+      parents: {
+        select: {
+          parentFtsFunctionId: true,
+          childFtsFunctionId: true,
+          relationTypeId: true,
+          createdAt: true,
+          relationType: {
+            select: typeMinimalSelect,
+          },
+        },
+      },
+      children: {
+        select: {
+          parentFtsFunctionId: true,
+          childFtsFunctionId: true,
+          relationTypeId: true,
+          createdAt: true,
+          relationType: {
+            select: typeMinimalSelect,
+          },
+        },
+      },
+    },
+  },
+} as const satisfies Prisma.FtsFunctionSelect;

@@ -347,9 +347,9 @@ model FtsFunctionDetailToFeedbackSource {
   /// Уникальный идентификатор функции ФНС
   ftsFunctionDetailId Int      @map("fts_function_detail_id")
   /// Уникальный идентификатор DTI
-  feedbackSourceId         Int      @map("feedback_source_id")
+  feedbackSourceId    Int      @map("feedback_source_id")
   /// Дата создания связи
-  createdAt     DateTime @default(now()) @map("created_at")
+  createdAt           DateTime @default(now()) @map("created_at")
 
   /// Связь с таблицей функций ФНС
   ftsFunctionDetail FtsFunctionDetail @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
@@ -468,11 +468,15 @@ model FtsFunctionDetail {
   problemDescription              String?   @map("problem_description") @db.Text
   /// Реквизиты автора инициативы
   initiatorRequisites             String?   @map("initiator_requisites") @db.Text
-  /// Методологическая позиция ЦА ФНС России (поддержано/нет)
+  /// Методология позиции ЦА ФНС России
+  methodologyPosition             String?   @map("methodology_position") @db.Text
+  /// Акцепт автора инициативы
+  initiatorAcceptance             String?   @map("initiator_acceptance") @db.Text
+  /// Методологическая позиция ЦА ФНС России из справочника
   ftsMethodologyStatusId          Int?      @map("fts_methodology_status_id")
   /// Срок реализации доработки
   deadline                        DateTime? @map("deadline")
-  /// Акцепт автора инициативы
+  /// Статус согласования обратной связи
   isAccepted                      Boolean?  @map("is_accepted")
   /// Комментарий при отрицательном акцепте
   rejectComment                   String?   @map("reject_comment") @db.Text
