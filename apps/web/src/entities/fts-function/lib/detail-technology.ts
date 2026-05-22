@@ -1,11 +1,18 @@
 import type { Row } from "src/entities/fts-function/types";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 
+import { findTypeNameByCode } from "src/entities/fts-function/api/mappers";
 import { FtsFunctionCategory } from "src/entities/fts-function/model";
 
-export type TypeCategory = TypeResponseDto["category"];
+export type TypeCategory = string;
+
+export const FACTUAL_ACTION_NAME = "Фактическое действие";
 
 export const DETAIL_TYPE_CATEGORY = {
+    FTS_FUNCTION_STEP: "FTS_FUNCTION_STEP",
+    FTS_FUNCTION_CATEGORY: "FTS_FUNCTION_CATEGORY",
+    FTS_FUNCTION_COMPLEXITY: "FTS_FUNCTION_COMPLEXITY",
+    FTS_FUNCTION_EXECUTION_FREQUENCY: "FTS_FUNCTION_EXECUTION_FREQUENCY",
     WHO_PERFORMS_ACTION: "WHO_PERFORMS_ACTION",
     FTS_FUNCTION_ACTION_TYPE: "FTS_FUNCTION_ACTION_TYPE",
     FTS_FUNCTION_EFFECTIVENESS: "FTS_FUNCTION_EFFECTIVENESS",
@@ -13,7 +20,7 @@ export const DETAIL_TYPE_CATEGORY = {
     FEEDBACK_SOURCE: "FEEDBACK_SOURCE",
     RESPONSIBLE: "RESPONSIBLE",
     FTS_METHODOLOGY_STATUS: "FTS_METHODOLOGY_STATUS",
-} as const satisfies Record<string, TypeCategory>;
+} as const;
 
 export const TECHNOLOGY_DETAIL_LABELS = {
     technologicalSolution: "Технологическое решение",
@@ -51,6 +58,24 @@ export type FeedbackFieldsShape = Pick<
 
 export type FeedbackStatus = "pending" | "accepted" | "rejected";
 
+function normalize(value: string | undefined | null): string {
+    return String(value ?? "").trim().toLocaleLowerCase("ru-RU");
+}
+
+/**
+ * Оставлено для обратной совместимости старых мест,
+ * но новую логику технологического блока нужно определять по category.
+ */
+export function isFactualActionCode(
+    actionCode: string | undefined | null,
+    typesAll: TypeResponseDto[] | undefined,
+): boolean {
+    if (!actionCode || !typesAll?.length) return false;
+
+    const dbName = findTypeNameByCode(typesAll, actionCode);
+    return normalize(dbName) === normalize(FACTUAL_ACTION_NAME);
+}
+
 export function isActualActionCategory(
     category: string | undefined | null,
 ): boolean {
@@ -61,7 +86,7 @@ export function getTypeCodeOptionsByCategory(
     typesAll: TypeResponseDto[] | undefined,
     category: TypeCategory,
 ): TypeResponseDto[] {
-    return (typesAll ?? []).filter((item) => item.category === category);
+    return (typesAll ?? []).filter((item) => String(item.category) === category);
 }
 
 export function getTypeNameOptionsByCategory(
@@ -84,7 +109,7 @@ export function findTypeByCodeOrName(
 
     return (typesAll ?? []).find(
         (item) =>
-            item.category === category &&
+            String(item.category) === category &&
             (item.code === normalized || item.name === normalized),
     );
 }
@@ -105,6 +130,21 @@ export function areTechnologyRequiredFieldsFilled(
         fields.responsible?.trim() &&
         fields.algorithm?.trim(),
     );
+}
+
+export function cleanupTechnologyFields<T extends Partial<TechnologyFieldsShape>>(
+    fields: T,
+    enabled: boolean,
+): T {
+    if (enabled && fields.technologicalSolution?.trim()) return fields;
+
+    return {
+        ...fields,
+        technologicalSolution: "",
+        number: "",
+        responsible: "",
+        algorithm: "",
+    };
 }
 
 export function hasFeedback(row: Partial<Row> | null | undefined): boolean {

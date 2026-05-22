@@ -12,16 +12,11 @@ import { useForm, useWatch } from "react-hook-form";
 import { Link as LinkIcon, Save } from "@mui/icons-material";
 import { Box, Button, Typography, useTheme } from "@mui/material";
 
-import {
-    FTS_FUNCTION_STEP_NUMBER,
-    FtsFunctionStep,
-} from "src/entities/fts-function/model";
+import { FtsFunctionStep } from "src/entities/fts-function/model";
 import {
     areTechnologyRequiredFieldsFilled,
     isActualActionCategory,
 } from "src/entities/fts-function/lib/detail-technology";
-import { MAX_PER_CATEGORY } from "src/shared/config/ui";
-import { I18N, useTranslation } from "src/shared/i18n";
 
 import {
     type AddItemFormValues,
@@ -70,21 +65,13 @@ type AddItemFormProps = {
     dualSaveHint?: string;
 };
 
-function countByStepCategory(
-    rows: Row[],
-    step: FtsFunctionStep,
-    cat: FtsFunctionCategory,
-): number {
-    return rows.filter((r) => r.step === step && r.category === cat).length;
-}
-
 function isStepTechnologyValid(fields: StepFields): boolean {
     if (!isActualActionCategory(fields.category)) return true;
     return areTechnologyRequiredFieldsFilled(fields);
 }
 
 export default function AddItemForm({
-                                        allRows,
+                                        allRows: _allRows,
                                         typesAll,
                                         onSaveSingle,
                                         onSaveDual,
@@ -92,7 +79,6 @@ export default function AddItemForm({
                                         showQuickLink = true,
                                         dualSaveHint = "Оба шага заполнены — будут сохранены вместе со связью",
                                     }: AddItemFormProps) {
-    const { t } = useTranslation();
     const theme = useTheme();
     const c = theme.custom;
 
@@ -116,47 +102,21 @@ export default function AddItemForm({
     const s1TechnologyValid = isStepTechnologyValid(s1);
     const s2TechnologyValid = isStepTechnologyValid(s2);
 
-    const s1Count = countByStepCategory(
-        allRows,
-        FtsFunctionStep.OBJECT_SELECTION,
-        s1.category,
-    );
-
-    const s2Count = countByStepCategory(
-        allRows,
-        FtsFunctionStep.CLUSTERING_IMPACT,
-        s2.category,
-    );
-
-    const s1LimitReached = s1Count >= MAX_PER_CATEGORY;
-    const s2LimitReached = s2Count >= MAX_PER_CATEGORY;
-
     const canSave = useMemo(() => {
-        if (bothFilled) {
-            return (
-                !s1LimitReached &&
-                !s2LimitReached &&
-                s1TechnologyValid &&
-                s2TechnologyValid
-            );
-        }
-
-        if (s1Filled) return !s1LimitReached && s1TechnologyValid;
-        if (s2Filled) return !s2LimitReached && s2TechnologyValid;
+        if (bothFilled) return s1TechnologyValid && s2TechnologyValid;
+        if (s1Filled) return s1TechnologyValid;
+        if (s2Filled) return s2TechnologyValid;
 
         return false;
     }, [
         bothFilled,
         s1Filled,
         s2Filled,
-        s1LimitReached,
-        s2LimitReached,
         s1TechnologyValid,
         s2TechnologyValid,
     ]);
 
     const isStep1 = activeStep === FtsFunctionStep.OBJECT_SELECTION;
-    const currentCount = isStep1 ? s1Count : s2Count;
 
     const handleSelectS1 = useCallback(() => {
         setActiveStep(FtsFunctionStep.OBJECT_SELECTION);
@@ -180,12 +140,10 @@ export default function AddItemForm({
 
         const canS1 =
             isStepFilled(v1) &&
-            !s1LimitReached &&
             (!includeS1Technology || areTechnologyRequiredFieldsFilled(v1));
 
         const canS2 =
             isStepFilled(v2) &&
-            !s2LimitReached &&
             (!includeS2Technology || areTechnologyRequiredFieldsFilled(v2));
 
         if (!canS1 && !canS2) return;
@@ -273,8 +231,6 @@ export default function AddItemForm({
                     control={control}
                     step={StepKey.S1}
                     fields={s1}
-                    currentCount={s1Count}
-                    limitReached={s1LimitReached}
                     filled={s1Filled}
                     typesAll={typesAll}
                     theme={theme}
@@ -286,8 +242,6 @@ export default function AddItemForm({
                     control={control}
                     step={StepKey.S2}
                     fields={s2}
-                    currentCount={s2Count}
-                    limitReached={s2LimitReached}
                     filled={s2Filled}
                     typesAll={typesAll}
                     theme={theme}
@@ -332,17 +286,6 @@ export default function AddItemForm({
                         }
                     </Typography>
                 )}
-
-                <Typography
-                    variant="caption"
-                    sx={{ color: c.textDim, fontSize: "0.62rem" }}
-                >
-                    {t(I18N.addItem.inCategoryCount, {
-                        step: FTS_FUNCTION_STEP_NUMBER[activeStep],
-                        count: currentCount,
-                        limit: MAX_PER_CATEGORY,
-                    })}
-                </Typography>
 
                 <Button
                     type="submit"

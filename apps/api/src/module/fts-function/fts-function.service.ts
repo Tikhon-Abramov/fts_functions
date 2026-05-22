@@ -225,6 +225,8 @@ export class FtsFunctionService {
         algorithm: dto.algorithm ?? null,
         problemDescription: dto.problemDescription ?? null,
         initiatorRequisites: dto.initiatorRequisites ?? null,
+        methodologyPosition: dto.methodologyPosition ?? null,
+        initiatorAcceptance: dto.initiatorAcceptance ?? null,
         deadline: dto.deadline ?? null,
         isAccepted: dto.isAccepted ?? null,
         rejectComment: dto.rejectComment ?? null,

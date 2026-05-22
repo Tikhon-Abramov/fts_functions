@@ -33,8 +33,6 @@ import {
     isActualActionCategory,
     TECHNOLOGY_DETAIL_LABELS,
 } from "src/entities/fts-function/lib/detail-technology";
-import { MAX_PER_CATEGORY } from "src/shared/config/ui";
-import { I18N, useTranslation } from "src/shared/i18n";
 import { FieldLabel } from "src/shared/ui/form/FieldLabel";
 import {
     formInputSx,
@@ -56,8 +54,6 @@ export type StepTabBodyProps = {
     control: Control<AddItemFormValues>;
     step: StepKey;
     fields: StepFields;
-    currentCount: number;
-    limitReached: boolean;
     filled: boolean;
     typesAll: TypeResponseDto[];
     theme: Theme;
@@ -67,12 +63,9 @@ export function StepTabBody({
                                 control,
                                 step,
                                 fields,
-                                limitReached,
-                                filled,
                                 typesAll,
                                 theme,
                             }: StepTabBodyProps) {
-    const { t } = useTranslation();
     const c = theme.custom;
 
     const whoOptions = useMemo(
@@ -114,18 +107,6 @@ export function StepTabBody({
                 pb: 1,
             }}
         >
-            {limitReached && filled && (
-                <Typography
-                    variant="caption"
-                    sx={{ color: theme.palette.warning.main, fontSize: "0.68rem" }}
-                >
-                    {t(I18N.addItem.limitReached, {
-                        limit: MAX_PER_CATEGORY,
-                        category: findTypeNameByCode(typesAll, fields.category),
-                    })}
-                </Typography>
-            )}
-
             <FieldLabel fontSize="0.58rem" bold>
                 {"Основные поля"}
             </FieldLabel>
