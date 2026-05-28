@@ -11,10 +11,39 @@ export type FeedbackAgreementStatus = "PENDING" | "ACCEPTED" | "REJECTED";
 
 export type FeedbackAgreementHistoryItem = {
   id: string;
+  feedbackId: string;
   fromStatus: FeedbackAgreementStatus | null;
   toStatus: FeedbackAgreementStatus;
   comment?: string;
   createdAt?: string;
+};
+
+/**
+ * Отдельная обратная связь по строке детализации (FtsFunctionDetail).
+ * Соответствует модели Feedback в Prisma-схеме.
+ */
+export type Feedback = {
+  /** id записи Feedback (нужен для update / delete / accept) */
+  id: string;
+  /** id строки детализации, к которой привязана обратная связь */
+  ftsFunctionDetailId: string;
+
+  /** Набор источников обратной связи (FeedbackToFeedbackSource) */
+  feedbackSourceIds: string[];
+  /** Метрика качества обратной связи */
+  feedbackQualityMetricId?: string | null;
+  /** Методологическая позиция ЦА ФНС России из справочника */
+  ftsMethodologyStatusId?: string | null;
+
+  problemDescription?: string;
+  initiatorRequisites?: string;
+  initiatorAcceptance?: string;
+  deadline?: string;
+
+  /** Статус согласования: null = на согласовании */
+  isAccepted?: boolean | null;
+
+  history: FeedbackAgreementHistoryItem[];
 };
 
 export type Row = {
@@ -36,17 +65,8 @@ export type Row = {
   responsible?: string;
   algorithm?: string;
 
-  feedbackSource?: string;
-  feedbackQualityMetric?: string;
-  problemDescription?: string;
-  initiatorRequisites?: string;
-  methodologyPosition?: string;
-  deadline?: string;
-  initiatorAcceptance?: string;
-  isAccepted?: boolean | null;
-  rejectComment?: string;
-
-  feedbackAgreementHistory?: FeedbackAgreementHistoryItem[];
+  /** Обратные связи по строке (у одной детализации их может быть несколько) */
+  feedbacks: Feedback[];
 };
 
 export type Link = {
