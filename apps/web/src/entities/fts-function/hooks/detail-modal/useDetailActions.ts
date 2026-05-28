@@ -3,9 +3,17 @@ import type {
     FtsFunctionActionType,
     FtsFunctionCategory,
 } from "src/entities/fts-function/model";
-import type { Link, Row } from "src/entities/fts-function/types";
 import type {
+    Feedback,
+    FeedbackFormInput,
+    Link,
+    Row,
+} from "src/entities/fts-function/types";
+import type {
+    AcceptFeedbackDto,
+    CreateFeedbackDto,
     TypeResponseDto,
+    UpdateFeedbackDto,
 } from "src/shared/api/ftsFunctionsApi";
 
 import { useCallback } from "react";
@@ -14,25 +22,25 @@ import {
     buildDetailInputFromRow,
     resolveDetailDto,
 } from "src/entities/fts-function/api/detail-resolvers";
-import { findTypeIdByCode } from "src/entities/fts-function/api/mappers";
+import {
+    findTypeIdByCode,
+    mapFeedbackApiToFeedback,
+} from "src/entities/fts-function/api/mappers";
 import {
     FtsFunctionRelationType,
     FtsFunctionStep,
     RightTab,
 } from "src/entities/fts-function/model";
 import {
+    useFtsFunctionControllerAcceptFeedbackV1Mutation,
     useFtsFunctionControllerCreateDetailV1Mutation,
+    useFtsFunctionControllerCreateFeedbackV1Mutation,
     useFtsFunctionControllerCreateTreeEdgeV1Mutation,
+    useFtsFunctionControllerDeleteFeedbackV1Mutation,
     useFtsFunctionControllerDeleteTreeEdgeV1Mutation,
     useFtsFunctionControllerSoftDeleteDetailV1Mutation,
     useFtsFunctionControllerUpdateDetailV1Mutation,
-    useFtsFunctionControllerCreateFeedbackV1Mutation,
     useFtsFunctionControllerUpdateFeedbackV1Mutation,
-    useFtsFunctionControllerDeleteFeedbackV1Mutation,
-    useFtsFunctionControllerAcceptFeedbackV1Mutation,
-    AcceptFeedbackDto,
-    CreateFeedbackDto,
-    UpdateFeedbackDto,
 } from "src/shared/api/ftsFunctionsApi";
 import { I18N } from "src/shared/i18n";
 import { useAppDispatch } from "src/shared/store";
@@ -59,36 +67,87 @@ export type UseDetailActionsContext = {
 };
 
 export type DetailActions = {
-    addRow: (
-        item: RowFormInput & {
-            step: FtsFunctionStep;
-        },
-    ) => string;
+    addRow: (item: RowFormInput & { step: FtsFunctionStep }) => string;
     updateRow: (id: string, updates: Partial<Row>) => void;
     removeRow: (rowId: string) => void;
     removeLink: (linkId: string) => void;
     createLinks: (targets: string[], kind: FtsFunctionRelationType) => void;
     quickLink: (id: string) => void;
     saveDual: (
-        s1Data: Omit<RowFormInput, "id" | "step">,
-        s2Data: Omit<RowFormInput, "id" | "step">,
+        s1Data: Omit<RowFormInput, "step">,
+        s2Data: Omit<RowFormInput, "step">,
     ) => void;
-    saveFeedback: (id: string, updates: Partial<Row>) => Promise<boolean>;
-    addFeedback: (
+
+    createFeedback: (
         detailId: string,
-        dto: CreateFeedbackDto,
-    ) => Promise<number | null>;
-    editFeedback: (
+        input: FeedbackFormInput,
+    ) => Promise<Feedback | null>;
+    updateFeedback: (
         feedbackId: string,
-        dto: UpdateFeedbackDto,
-    ) => Promise<boolean>;
-    removeFeedback: (feedbackId: string) => Promise<boolean>;
+        input: FeedbackFormInput,
+    ) => Promise<Feedback | null>;
     setFeedbackAcceptance: (
-        id: string,
+        feedbackId: string,
         isAccepted: boolean,
         rejectComment?: string,
-    ) => Promise<boolean>;
+    ) => Promise<Feedback | null>;
+    deleteFeedback: (feedbackId: string) => Promise<boolean>;
+
+    /**
+     * Compatibility aliases for components that still use old names.
+     */
+    addFeedback: (
+        detailId: string,
+        input: FeedbackFormInput,
+    ) => Promise<Feedback | null>;
+    editFeedback: (
+        feedbackId: string,
+        input: FeedbackFormInput,
+    ) => Promise<Feedback | null>;
+    removeFeedback: (feedbackId: string) => Promise<boolean>;
 };
+
+function toNullableText(value: string): string | null {
+    const trimmed = value.trim();
+
+    return trimmed ? trimmed : null;
+}
+
+function toPositiveNumber(value: string): number | null {
+    const parsed = Number(value);
+
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function toIsoDeadline(value: string): string | null {
+    const trimmed = value.trim();
+
+    if (!trimmed) return null;
+
+    return /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
+        ? `${trimmed}T00:00:00.000Z`
+        : trimmed;
+}
+
+function buildFeedbackDto(
+    input: FeedbackFormInput,
+): CreateFeedbackDto & UpdateFeedbackDto {
+    return {
+        feedbackSourceIds: input.feedbackSourceIds
+            .map(toPositiveNumber)
+            .filter((id): id is number => id !== null),
+        feedbackQualityMetricsId: toPositiveNumber(
+            input.feedbackQualityMetricId,
+        ),
+        ftsMethodologyStatusId: toPositiveNumber(
+            input.ftsMethodologyStatusId,
+        ),
+        problemDescription: toNullableText(input.problemDescription),
+        initiatorRequisites: toNullableText(input.initiatorRequisites),
+        initiatorAcceptance: toNullableText(input.initiatorAcceptance),
+        deadline: toIsoDeadline(input.deadline),
+    };
+}
 
 export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
     const { modalFunctionId, selectedId, rowMap, links, typesAll, t } = ctx;
@@ -96,13 +155,22 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
 
     const [createDetail] = useFtsFunctionControllerCreateDetailV1Mutation();
     const [updateDetail] = useFtsFunctionControllerUpdateDetailV1Mutation();
-    const [createFeedback] = useFtsFunctionControllerCreateFeedbackV1Mutation();
-    const [updateFeedback] = useFtsFunctionControllerUpdateFeedbackV1Mutation();
-    const [deleteFeedback] = useFtsFunctionControllerDeleteFeedbackV1Mutation();
-    const [acceptFeedback] = useFtsFunctionControllerAcceptFeedbackV1Mutation();
-    const [deleteDetail] = useFtsFunctionControllerSoftDeleteDetailV1Mutation();
-    const [createTreeEdge] = useFtsFunctionControllerCreateTreeEdgeV1Mutation();
-    const [deleteTreeEdge] = useFtsFunctionControllerDeleteTreeEdgeV1Mutation();
+    const [deleteDetail] =
+        useFtsFunctionControllerSoftDeleteDetailV1Mutation();
+
+    const [createTreeEdge] =
+        useFtsFunctionControllerCreateTreeEdgeV1Mutation();
+    const [deleteTreeEdge] =
+        useFtsFunctionControllerDeleteTreeEdgeV1Mutation();
+
+    const [createFeedbackMutation] =
+        useFtsFunctionControllerCreateFeedbackV1Mutation();
+    const [updateFeedbackMutation] =
+        useFtsFunctionControllerUpdateFeedbackV1Mutation();
+    const [deleteFeedbackMutation] =
+        useFtsFunctionControllerDeleteFeedbackV1Mutation();
+    const [acceptFeedbackMutation] =
+        useFtsFunctionControllerAcceptFeedbackV1Mutation();
 
     const runMutation = useCallback((work: () => Promise<void>): void => {
         void (async () => {
@@ -115,11 +183,7 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
     }, []);
 
     const addRow = useCallback(
-        (
-            item: RowFormInput & {
-                step: FtsFunctionStep;
-            },
-        ): string => {
+        (item: RowFormInput & { step: FtsFunctionStep }): string => {
             if (!modalFunctionId) return "";
 
             const dto = resolveDetailDto(item, typesAll);
@@ -130,6 +194,7 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
                         message: "Справочники ещё загружаются, повторите позже",
                     }),
                 );
+
                 return "";
             }
 
@@ -168,6 +233,7 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
                         message: "Справочники ещё загружаются, повторите позже",
                     }),
                 );
+
                 return;
             }
 
@@ -198,7 +264,7 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
 
     const removeLink = useCallback(
         (linkId: string) => {
-            const target = links.find((l) => l.id === linkId);
+            const target = links.find((link) => link.id === linkId);
 
             if (!target) return;
 
@@ -222,6 +288,7 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
 
             if (relationTypeId == null) {
                 dispatch(showSnackbar({ message: "Тип связи ещё не загружен" }));
+
                 return;
             }
 
@@ -243,10 +310,18 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
                         }),
                     }),
                 );
+
                 dispatch(setRightTabAction(RightTab.LINKS));
             });
         },
-        [selectedId, typesAll, createTreeEdge, dispatch, t, runMutation],
+        [
+            selectedId,
+            typesAll,
+            createTreeEdge,
+            dispatch,
+            t,
+            runMutation,
+        ],
     );
 
     const quickLink = useCallback(
@@ -258,8 +333,8 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
 
     const saveDual = useCallback(
         (
-            s1Data: Omit<RowFormInput, "id" | "step">,
-            s2Data: Omit<RowFormInput, "id" | "step">,
+            s1Data: Omit<RowFormInput, "step">,
+            s2Data: Omit<RowFormInput, "step">,
         ) => {
             if (!modalFunctionId) return;
 
@@ -284,6 +359,7 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
                         message: "Справочники ещё загружаются, повторите позже",
                     }),
                 );
+
                 return;
             }
 
@@ -309,7 +385,9 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
                 dispatch(setSelectedRowId(String(s1.id)));
                 dispatch(setRightTabAction(RightTab.LINKS));
                 dispatch(
-                    showSnackbar({ message: "Добавлены Шаг 1 + Шаг 2 со связью" }),
+                    showSnackbar({
+                        message: "Добавлены Шаг 1 + Шаг 2 со связью",
+                    }),
                 );
             });
         },
@@ -323,52 +401,89 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
         ],
     );
 
-    const saveFeedback = useCallback(
-        async (id: string, updates: Partial<Row>): Promise<boolean> => {
-            const existing = rowMap.get(id);
-
-            if (!existing) return false;
-
-            const dto = resolveDetailDto(
-                buildDetailInputFromRow(existing, {
-                    ...updates,
-                    isAccepted: null,
-                    rejectComment: "",
-                }),
-                typesAll,
-            );
-
-            if (!dto) {
-                dispatch(
-                    showSnackbar({
-                        message:
-                            "Проверьте поля обратной связи: источник, метрика и методологическая позиция должны быть выбраны из справочника",
-                    }),
-                );
-                return false;
-            }
-
+    const createFeedback = useCallback(
+        async (
+            detailId: string,
+            input: FeedbackFormInput,
+        ): Promise<Feedback | null> => {
             try {
-                await updateDetail({
-                    detailId: Number(id),
-                    updateFtsFunctionDetailDto: dto,
+                const created = await createFeedbackMutation({
+                    detailId: Number(detailId),
+                    createFeedbackDto: buildFeedbackDto(input),
                 }).unwrap();
 
-                dispatch(showSnackbar({ message: "Обратная связь сохранена" }));
+                dispatch(showSnackbar({ message: "Обратная связь добавлена" }));
+
+                return mapFeedbackApiToFeedback(created);
+            } catch {
+                dispatch(
+                    showSnackbar({
+                        message: "Не удалось добавить обратную связь",
+                    }),
+                );
+
+                return null;
+            }
+        },
+        [createFeedbackMutation, dispatch],
+    );
+
+    const updateFeedback = useCallback(
+        async (
+            feedbackId: string,
+            input: FeedbackFormInput,
+        ): Promise<Feedback | null> => {
+            try {
+                const updated = await updateFeedbackMutation({
+                    feedbackId: Number(feedbackId),
+                    updateFeedbackDto: buildFeedbackDto(input),
+                }).unwrap();
+
+                dispatch(showSnackbar({ message: "Обратная связь обновлена" }));
+
+                return mapFeedbackApiToFeedback(updated);
+            } catch {
+                dispatch(
+                    showSnackbar({
+                        message: "Не удалось обновить обратную связь",
+                    }),
+                );
+
+                return null;
+            }
+        },
+        [updateFeedbackMutation, dispatch],
+    );
+
+    const deleteFeedback = useCallback(
+        async (feedbackId: string): Promise<boolean> => {
+            try {
+                await deleteFeedbackMutation({
+                    feedbackId: Number(feedbackId),
+                }).unwrap();
+
+                dispatch(showSnackbar({ message: "Обратная связь удалена" }));
+
                 return true;
             } catch {
+                dispatch(
+                    showSnackbar({
+                        message: "Не удалось удалить обратную связь",
+                    }),
+                );
+
                 return false;
             }
         },
-        [rowMap, typesAll, updateDetail, dispatch],
+        [deleteFeedbackMutation, dispatch],
     );
 
     const setFeedbackAcceptance = useCallback(
         async (
-            id: string,
+            feedbackId: string,
             isAccepted: boolean,
             rejectComment?: string,
-        ): Promise<boolean> => {
+        ): Promise<Feedback | null> => {
             const trimmedRejectComment = rejectComment?.trim() ?? "";
 
             if (!isAccepted && !trimmedRejectComment) {
@@ -377,7 +492,8 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
                         message: "Укажите причину отказа в согласовании",
                     }),
                 );
-                return false;
+
+                return null;
             }
 
             const acceptFeedbackDto: AcceptFeedbackDto = {
@@ -386,9 +502,9 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
             };
 
             try {
-                await acceptFeedback({
-                    feedbackId: Number(id),
-                    acceptFeedbackDto
+                const updated = await acceptFeedbackMutation({
+                    feedbackId: Number(feedbackId),
+                    acceptFeedbackDto,
                 }).unwrap();
 
                 dispatch(
@@ -398,68 +514,21 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
                             : "Обратная связь не согласована",
                     }),
                 );
-                return true;
-            } catch {
-                return false;
-            }
-        },
-        [acceptFeedback, dispatch],
-    );
 
-    const addFeedback = useCallback(
-        async (
-            detailId: string,
-            dto: CreateFeedbackDto,
-        ): Promise<number | null> => {
-            try {
-                const created = await createFeedback({
-                    detailId: Number(detailId),
-                    createFeedbackDto: dto,
-                }).unwrap();
-
-                dispatch(showSnackbar({ message: "Обратная связь добавлена" }));
-                return created.id;
+                return mapFeedbackApiToFeedback(updated);
             } catch {
+                dispatch(
+                    showSnackbar({
+                        message: isAccepted
+                            ? "Не удалось согласовать обратную связь"
+                            : "Не удалось отказать в согласовании",
+                    }),
+                );
+
                 return null;
             }
         },
-        [createFeedback, dispatch],
-    );
-
-    const editFeedback = useCallback(
-        async (
-            feedbackId: string,
-            dto: UpdateFeedbackDto,
-        ): Promise<boolean> => {
-            try {
-                await updateFeedback({
-                    feedbackId: Number(feedbackId),
-                    updateFeedbackDto: dto,
-                }).unwrap();
-
-                dispatch(showSnackbar({ message: "Обратная связь обновлена" }));
-                return true;
-            } catch {
-                return false;
-            }
-        },
-        [updateFeedback, dispatch],
-    );
-
-    const removeFeedback = useCallback(
-        async (feedbackId: string): Promise<boolean> => {
-            try {
-                await deleteFeedback({
-                    feedbackId: Number(feedbackId),
-                }).unwrap();
-
-                dispatch(showSnackbar({ message: "Обратная связь удалена" }));
-                return true;
-            } catch {
-                return false;
-            }
-        },
-        [deleteFeedback, dispatch],
+        [acceptFeedbackMutation, dispatch],
     );
 
     return {
@@ -470,10 +539,14 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
         createLinks,
         quickLink,
         saveDual,
-        saveFeedback,
-        addFeedback,
-        editFeedback,
-        removeFeedback,
+
+        createFeedback,
+        updateFeedback,
         setFeedbackAcceptance,
+        deleteFeedback,
+
+        addFeedback: createFeedback,
+        editFeedback: updateFeedback,
+        removeFeedback: deleteFeedback,
     };
 }

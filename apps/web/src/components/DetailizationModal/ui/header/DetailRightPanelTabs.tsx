@@ -13,7 +13,7 @@ export type DetailRightPanelTabsProps = {
 
 /**
  * Tab strip header for the right-side panel.
- * Each `<Tab>` is rendered from a config entry, so adding a tab requires
+ * Each <Tab /> is rendered from a config entry, so adding a tab requires
  * only an extra entry.
  */
 export function DetailRightPanelTabs({
@@ -80,8 +80,8 @@ export function DetailRightPanelTabs({
                             : "Раздел временно недоступен.";
 
                 return (
-                    <Tooltip key={tab.id} title={reason} placement="bottom">
-                        <Box component="span" sx={{ flex: 1, minWidth: 0 }}>
+                    <Tooltip key={tab.id} title={reason}>
+                        <Box component="span" sx={{ flex: 1 }}>
                             {tabNode}
                         </Box>
                     </Tooltip>

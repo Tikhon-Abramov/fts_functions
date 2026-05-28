@@ -332,12 +332,28 @@ export class FtsFunctionService {
       feedbackId: number,
       dto: UpdateFeedbackDto,
   ): Promise<FeedbackDetailedEntity> {
-    const {
-      feedbackSourceIds,
-      ...scalar
-    } = dto as UpdateFeedbackDto & { feedbackSourceIds?: number[] };
+    const { feedbackSourceIds, ...scalar } = dto as UpdateFeedbackDto & {
+      feedbackSourceIds?: number[];
+    };
 
     return this.prisma.$transaction(async (tx) => {
+      const before = await tx.feedback.findUnique({
+        where: { id: feedbackId },
+        select: {
+          id: true,
+          isAccepted: true,
+        },
+      });
+
+      if (!before) {
+        throw new Error(`Feedback ${feedbackId} was not found`);
+      }
+
+      const fromStatus =
+          getAgreementStatusFromAccepted(before.isAccepted) ?? 'PENDING';
+
+      const shouldMoveBackToPending = before.isAccepted !== null;
+
       // Полная пересборка набора источников только если массив передан явно
       if (feedbackSourceIds !== undefined) {
         const sourceIds = resolveFeedbackSourceIds({
@@ -359,11 +375,36 @@ export class FtsFunctionService {
         }
       }
 
-      return tx.feedback.update({
+      await tx.feedback.update({
         where: { id: feedbackId },
-        data: stripUndefined(scalar as unknown as Record<string, unknown>),
+        data: {
+          ...stripUndefined(scalar as unknown as Record<string, unknown>),
+          ...(shouldMoveBackToPending ? { isAccepted: null } : {}),
+        },
+        select: { id: true },
+      });
+
+      if (shouldMoveBackToPending) {
+        await tx.ftsFunctionDetailAgreementHistory.create({
+          data: {
+            feedbackId,
+            fromStatus,
+            toStatus: 'PENDING',
+            comment: null,
+          },
+        });
+      }
+
+      const updated = await tx.feedback.findUnique({
+        where: { id: feedbackId },
         select: feedbackDetailedSelect,
       });
+
+      if (!updated) {
+        throw new Error(`Feedback ${feedbackId} was not found after update`);
+      }
+
+      return updated;
     });
   }
 

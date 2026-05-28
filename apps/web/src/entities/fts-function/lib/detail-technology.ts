@@ -1,4 +1,8 @@
-import type { Row } from "src/entities/fts-function/types";
+import type {
+    Feedback,
+    FeedbackFormInput,
+    Row,
+} from "src/entities/fts-function/types";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 
 import { FtsFunctionCategory } from "src/entities/fts-function/model";
@@ -30,10 +34,11 @@ export const TECHNOLOGY_DETAIL_LABELS = {
 export const FEEDBACK_DETAIL_LABELS = {
     feedbackSource: "Источник обратной связи",
     feedbackQualityMetric: "Метрики качества процесса в рамках обратной связи",
+    methodologyPosition: "Методология позиции ЦА ФНС России",
+    methodologyStatus: "Методология позиции ЦА ФНС России",
     problemDescription:
         "Описание проблемы с указанием источника, метрики, способа решения",
     initiatorRequisites: "Реквизиты автора инициативы",
-    methodologyPosition: "Методология позиции ЦА ФНС России",
     deadline: "Срок реализации доработки",
     initiatorAcceptance: "Акцепт автора инициативы",
 } as const;
@@ -41,17 +46,6 @@ export const FEEDBACK_DETAIL_LABELS = {
 export type TechnologyFieldsShape = Pick<
     Row,
     "technologicalSolution" | "number" | "responsible" | "algorithm"
->;
-
-export type FeedbackFieldsShape = Pick<
-    Row,
-    | "feedbackSource"
-    | "feedbackQualityMetric"
-    | "problemDescription"
-    | "initiatorRequisites"
-    | "methodologyPosition"
-    | "deadline"
-    | "initiatorAcceptance"
 >;
 
 export type FeedbackStatus = "pending" | "accepted" | "rejected";
@@ -134,39 +128,42 @@ export function cleanupTechnologyFields<T extends Partial<TechnologyFieldsShape>
     };
 }
 
-export function hasFeedback(row: Partial<Row> | null | undefined): boolean {
-    if (!row) return false;
+export function hasFeedback(
+    feedback: Partial<Feedback> | null | undefined,
+): boolean {
+    if (!feedback) return false;
 
     return Boolean(
-        row.feedbackSource?.trim() ||
-        row.feedbackQualityMetric?.trim() ||
-        row.problemDescription?.trim() ||
-        row.initiatorRequisites?.trim() ||
-        row.methodologyPosition?.trim() ||
-        row.deadline?.trim() ||
-        row.initiatorAcceptance?.trim(),
+        feedback.feedbackSourceIds?.length ||
+        feedback.feedbackQualityMetricId ||
+        feedback.ftsMethodologyStatusId ||
+        feedback.problemDescription?.trim() ||
+        feedback.initiatorRequisites?.trim() ||
+        feedback.deadline?.trim() ||
+        feedback.initiatorAcceptance?.trim(),
     );
 }
 
 export function areFeedbackRequiredFieldsFilled(
-    fields: Partial<FeedbackFieldsShape>,
+    fields: Partial<FeedbackFormInput>,
 ): boolean {
     return Boolean(
-        fields.feedbackSource?.trim() &&
-        fields.feedbackQualityMetric?.trim() &&
+        fields.feedbackSourceIds?.length &&
+        fields.feedbackQualityMetricId?.trim() &&
+        fields.ftsMethodologyStatusId?.trim() &&
         fields.problemDescription?.trim() &&
         fields.initiatorRequisites?.trim() &&
-        fields.methodologyPosition?.trim() &&
         fields.deadline?.trim() &&
         fields.initiatorAcceptance?.trim(),
     );
 }
 
 export function getFeedbackStatus(
-    row: Partial<Row> | null | undefined,
+    feedback: Partial<Feedback> | null | undefined,
 ): FeedbackStatus | null {
-    if (!hasFeedback(row)) return null;
-    if (row?.isAccepted === true) return "accepted";
-    if (row?.isAccepted === false) return "rejected";
+    if (!hasFeedback(feedback)) return null;
+    if (feedback?.isAccepted === true) return "accepted";
+    if (feedback?.isAccepted === false) return "rejected";
+
     return "pending";
 }

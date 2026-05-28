@@ -1,8 +1,5 @@
-import {
-    FtsFunctionStep,
-    RightTab,
-    type RightTab as RightTabValue,
-} from "src/entities/fts-function/model";
+import type { Row } from "src/entities/fts-function/types";
+
 import { useCallback, useRef, useState } from "react";
 import {
     Add as AddIcon,
@@ -15,7 +12,6 @@ import {
     Button,
     Dialog,
     DialogContent,
-    DialogTitle,
     IconButton,
     Snackbar,
     Typography,
@@ -28,6 +24,11 @@ import { useRowPresentation } from "src/entities/fts-function/hooks/detail-modal
 import { useSelectionLinks } from "src/entities/fts-function/hooks/detail-modal/useSelectionLinks";
 import { useStepRowsModel } from "src/entities/fts-function/hooks/detail-modal/useStepRowsModel";
 import { isActualActionCategory } from "src/entities/fts-function/lib/detail-technology";
+import {
+    FtsFunctionStep,
+    RightTab,
+    type RightTab as RightTabValue,
+} from "src/entities/fts-function/model";
 import {
     useConstantControllerGetTypesV1Query,
     useFtsFunctionControllerGetByIdV1Query,
@@ -58,12 +59,45 @@ import RowDetailsPanel from "../RowDetailsPanel/RowDetailsPanel";
 import { DetailStepGrid } from "./ui/grid/DetailStepGrid";
 import { DetailHeader } from "./ui/header/DetailHeader";
 import { DetailRightPanel } from "./ui/header/DetailRightPanel";
-import type { Row } from "src/entities/fts-function/types";
 
 const DETAIL_RIGHT_PANEL_WIDTH = "30vw";
 const DETAIL_RIGHT_PANEL_MIN_WIDTH = 420;
 const DETAIL_RIGHT_PANEL_MAX_WIDTH = 620;
 const DETAIL_RIGHT_PANEL_COLLAPSED_WIDTH = 48;
+
+type AddRowPayload = Partial<Row> &
+    Pick<Row, "step" | "category" | "detailText" | "actionLabel">;
+
+function toAddRowPayload(data: NewRowData): AddRowPayload {
+    const payload: AddRowPayload = {
+        step: data.step,
+        category: data.category,
+        detailText: data.detailText,
+        actionLabel: data.actionLabel,
+    };
+
+    if (data.who !== undefined) payload.who = data.who;
+    if (data.periodicity !== undefined) payload.periodicity = data.periodicity;
+    if (data.complexity !== undefined) payload.complexity = data.complexity;
+    if (data.artifact !== undefined) payload.artifact = data.artifact;
+    if (data.basis !== undefined) payload.basis = data.basis;
+
+    if (data.artifactUsage !== undefined) {
+        payload.artifactUsage = data.artifactUsage;
+    }
+
+    if (data.purpose !== undefined) payload.purpose = data.purpose;
+
+    if (data.technologicalSolution !== undefined) {
+        payload.technologicalSolution = data.technologicalSolution;
+    }
+
+    if (data.number !== undefined) payload.number = data.number;
+    if (data.responsible !== undefined) payload.responsible = data.responsible;
+    if (data.algorithm !== undefined) payload.algorithm = data.algorithm;
+
+    return payload;
+}
 
 export default function DetailizationModal() {
     const { t } = useTranslation();
@@ -86,12 +120,9 @@ export default function DetailizationModal() {
         DICTIONARY_QUERY_OPTIONS,
     );
 
+
     const [rightOpen, setRightOpen] = useState(false);
     const [addOpen, setAddOpen] = useState(false);
-
-    const handleToggleRight = useCallback(() => setRightOpen((v) => !v), []);
-    const handleOpenAdd = useCallback(() => setAddOpen(true), []);
-    const handleCloseAdd = useCallback(() => setAddOpen(false), []);
 
     const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
 
@@ -118,39 +149,28 @@ export default function DetailizationModal() {
         typesAll,
         t,
     });
-    type AddRowPayload = Partial<Row> &
-        Pick<Row, "step" | "category" | "detailText" | "actionLabel">;
 
-    function toAddRowPayload(data: NewRowData): AddRowPayload {
-        const payload: AddRowPayload = {
-            step: data.step,
-            category: data.category,
-            detailText: data.detailText,
-            actionLabel: data.actionLabel,
-        };
+    const handleToggleRight = useCallback(() => {
+        setRightOpen((value) => !value);
+    }, []);
 
-        if (data.who !== undefined) payload.who = data.who;
-        if (data.periodicity !== undefined) payload.periodicity = data.periodicity;
-        if (data.complexity !== undefined) payload.complexity = data.complexity;
-        if (data.artifact !== undefined) payload.artifact = data.artifact;
-        if (data.basis !== undefined) payload.basis = data.basis;
-        if (data.artifactUsage !== undefined) {
-            payload.artifactUsage = data.artifactUsage;
-        }
-        if (data.purpose !== undefined) payload.purpose = data.purpose;
-        if (data.technologicalSolution !== undefined) {
-            payload.technologicalSolution = data.technologicalSolution;
-        }
-        if (data.number !== undefined) payload.number = data.number;
-        if (data.responsible !== undefined) payload.responsible = data.responsible;
-        if (data.algorithm !== undefined) payload.algorithm = data.algorithm;
+    const handleOpenAdd = useCallback(() => {
+        setAddOpen(true);
+    }, []);
 
-        return payload;
-    }
+    const handleCloseAdd = useCallback(() => {
+        setAddOpen(false);
+    }, []);
 
     const handleSaveSingle = useCallback(
-        (data: NewRowData): string => actions.addRow(toAddRowPayload(data)),
-        [actions.addRow],
+        (data: NewRowData): string => {
+            const createdId = actions.addRow(toAddRowPayload(data));
+
+            setAddOpen(false);
+
+            return createdId;
+        },
+        [actions],
     );
 
     const handleSaveDetachedDual = useCallback(
@@ -168,8 +188,10 @@ export default function DetailizationModal() {
                     ...s2,
                 }),
             );
+
+            setAddOpen(false);
         },
-        [actions.addRow],
+        [actions],
     );
 
     const handleRowClick = useCallback(
@@ -177,6 +199,7 @@ export default function DetailizationModal() {
             if (selectedId === id) {
                 dispatch(setSelectedRowId(null));
                 setRightOpen(false);
+
                 return;
             }
 
@@ -198,8 +221,14 @@ export default function DetailizationModal() {
             dispatch(setSelectedRowId(id));
             setRightOpen(true);
 
-            const el = rowRefs.current.get(id);
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+            const element = rowRefs.current.get(id);
+
+            if (element) {
+                element.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                });
+            }
         },
         [dispatch],
     );
@@ -220,9 +249,12 @@ export default function DetailizationModal() {
     }, [dispatch]);
 
     const registerRowRef = useCallback(
-        (id: string) => (el: HTMLTableRowElement | null) => {
-            if (el) rowRefs.current.set(id, el);
-            else rowRefs.current.delete(id);
+        (id: string) => (element: HTMLTableRowElement | null) => {
+            if (element) {
+                rowRefs.current.set(id, element);
+            } else {
+                rowRefs.current.delete(id);
+            }
         },
         [],
     );
@@ -242,7 +274,7 @@ export default function DetailizationModal() {
         renderDetails: () => (
             <RowDetailsPanel
                 row={selectedRow}
-                typesAll={typesAll}
+                typesAll={typesAll ?? []}
                 onUpdateRow={actions.updateRow}
             />
         ),
@@ -251,8 +283,10 @@ export default function DetailizationModal() {
                 <FeedbackPanel
                     row={selectedRow}
                     typesAll={typesAll ?? []}
-                    onSaveFeedback={actions.saveFeedback}
+                    onCreateFeedback={actions.createFeedback}
+                    onUpdateFeedback={actions.updateFeedback}
                     onSetFeedbackAcceptance={actions.setFeedbackAcceptance}
+                    onDeleteFeedback={actions.deleteFeedback}
                 />
             ) : null,
         renderLinker: () =>
@@ -281,18 +315,23 @@ export default function DetailizationModal() {
     return (
         <>
             <Dialog
-                open
+                open={Boolean(modalFunctionId)}
                 onClose={handleClose}
                 fullScreen
-                PaperProps={{
-                    sx: {
-                        bgcolor: c.bgPaper,
-                        display: "flex",
-                        flexDirection: "column",
-                        overflow: "hidden",
+                slotProps={{
+                    backdrop: {
+                        sx: {
+                            bgcolor: backdropBg,
+                        },
+                    },
+                    paper: {
+                        sx: {
+                            bgcolor: c.bgPaper,
+                            color: c.textBody,
+                            overflow: "hidden",
+                        },
                     },
                 }}
-                slotProps={{ backdrop: { sx: { bgcolor: backdropBg } } }}
             >
                 <DetailHeader
                     title={modalTitle}
@@ -304,100 +343,114 @@ export default function DetailizationModal() {
                 />
 
                 <DialogContent
-                    sx={{ p: 0, flex: 1, display: "flex", overflow: "hidden" }}
+                    sx={{
+                        p: 0,
+                        minHeight: 0,
+                        display: "flex",
+                        overflow: "hidden",
+                        bgcolor: c.bgDeep,
+                    }}
                 >
-                    <Box sx={{ flex: 1, display: "flex", overflow: "hidden" }}>
-                        <Box
-                            sx={{ flex: 1, overflow: "auto", minWidth: 0 }}
-                            onClick={handleGridBackgroundClick}
-                        >
-                            <DetailStepGrid
-                                isLoading={detailQuery.isLoading}
-                                isError={detailQuery.isError && !detailQuery.isLoading}
-                                step1ByCategory={model.step1ByCategory}
-                                step2ByCategory={model.step2ByCategory}
-                                step1IndexMap={model.step1IndexMap}
-                                step2IndexMap={model.step2IndexMap}
-                                linkCountsPerCategory={model.linkCountsPerCategory}
-                                presentation={presentation}
-                                colorByCode={model.colorByCode}
-                                onRowClick={handleRowClick}
-                                onRemoveRow={actions.removeRow}
-                                registerRowRef={registerRowRef}
-                            />
-                        </Box>
+                    <Box
+                        onClick={handleGridBackgroundClick}
+                        sx={{
+                            flex: 1,
+                            minWidth: 0,
+                            height: "100%",
+                            overflow: "auto",
+                            p: 2,
+                        }}
+                    >
+                        <DetailStepGrid
+                            isLoading={detailQuery.isFetching}
+                            isError={detailQuery.isError}
+                            step1ByCategory={model.step1ByCategory}
+                            step2ByCategory={model.step2ByCategory}
+                            step1IndexMap={model.step1IndexMap}
+                            step2IndexMap={model.step2IndexMap}
+                            linkCountsPerCategory={model.linkCountsPerCategory}
+                            presentation={presentation}
+                            colorByCode={model.colorByCode}
+                            onRowClick={handleRowClick}
+                            onRemoveRow={actions.removeRow}
+                            registerRowRef={registerRowRef}
+                        />
+                    </Box>
 
-                        <Box
+                    <Box
+                        sx={{
+                            width: rightOpen
+                                ? `clamp(${DETAIL_RIGHT_PANEL_MIN_WIDTH}px, ${DETAIL_RIGHT_PANEL_WIDTH}, ${DETAIL_RIGHT_PANEL_MAX_WIDTH}px)`
+                                : DETAIL_RIGHT_PANEL_COLLAPSED_WIDTH,
+                            flexShrink: 0,
+                            height: "100%",
+                            borderLeft: `1px solid ${c.borderMain}`,
+                            bgcolor: c.bgSurface,
+                            transition: "width 180ms ease",
+                            display: "flex",
+                            flexDirection: "column",
+                            overflow: "hidden",
+                        }}
+                    >
+                        <Button
+                            onClick={handleToggleRight}
+                            startIcon={
+                                rightOpen ? (
+                                    <ChevronRight sx={{ fontSize: 17 }} />
+                                ) : (
+                                    <ChevronLeft sx={{ fontSize: 17 }} />
+                                )
+                            }
                             sx={{
-                                width: rightOpen
-                                    ? DETAIL_RIGHT_PANEL_WIDTH
-                                    : DETAIL_RIGHT_PANEL_COLLAPSED_WIDTH,
-                                minWidth: rightOpen
-                                    ? DETAIL_RIGHT_PANEL_MIN_WIDTH
-                                    : DETAIL_RIGHT_PANEL_COLLAPSED_WIDTH,
-                                maxWidth: rightOpen
-                                    ? DETAIL_RIGHT_PANEL_MAX_WIDTH
-                                    : DETAIL_RIGHT_PANEL_COLLAPSED_WIDTH,
-                                flexShrink: 0,
-                                transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                                borderLeft: `1px solid ${c.borderMain}`,
-                                bgcolor: c.bgPaper,
-                                display: "flex",
-                                flexDirection: "column",
-                                overflow: "hidden",
+                                borderBottom: `1px solid ${c.borderMain}`,
+                                borderRadius: 0,
+                                py: 1,
+                                textTransform: "none",
+                                fontSize: "0.75rem",
+                                color: c.textSecondary,
+                                justifyContent: rightOpen ? "flex-start" : "center",
+                                px: 1.5,
+                                minWidth: 0,
+                                "& .MuiButton-startIcon": {
+                                    mr: rightOpen ? 1 : 0,
+                                    ml: 0,
+                                },
+                                "&:hover": {
+                                    bgcolor: c.hoverOverlayStrong,
+                                    color: c.textPrimary,
+                                },
                             }}
-                            data-testid="right-rail"
+                            data-testid="button-toggle-right-panel"
                         >
+                            {rightOpen ? "Скрыть панель" : ""}
+                        </Button>
+
+                        {rightOpen ? (
+                            <DetailRightPanel
+                                rightTab={visibleRightTab}
+                                tabs={tabs}
+                                onTabChange={handleTabChange}
+                            />
+                        ) : (
                             <Box
                                 sx={{
                                     flex: 1,
-                                    minHeight: 0,
-                                    overflow: "hidden",
-                                    visibility: rightOpen ? "visible" : "hidden",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    writingMode: "vertical-rl",
+                                    transform: "rotate(180deg)",
+                                    color: c.textMuted,
+                                    fontSize: "0.72rem",
+                                    letterSpacing: "0.08em",
+                                    textTransform: "uppercase",
+                                    userSelect: "none",
                                 }}
                             >
-                                <DetailRightPanel
-                                    rightTab={visibleRightTab}
-                                    tabs={tabs}
-                                    onTabChange={handleTabChange}
-                                />
+                                {"Панель"}
                             </Box>
+                        )}
 
-                            <Button
-                                onClick={handleToggleRight}
-                                fullWidth
-                                size="small"
-                                startIcon={
-                                    rightOpen ? (
-                                        <ChevronRight sx={{ fontSize: 18 }} />
-                                    ) : (
-                                        <ChevronLeft sx={{ fontSize: 18 }} />
-                                    )
-                                }
-                                sx={{
-                                    borderTop: `1px solid ${c.borderMain}`,
-                                    borderRadius: 0,
-                                    py: 1,
-                                    textTransform: "none",
-                                    fontSize: "0.75rem",
-                                    color: c.textSecondary,
-                                    justifyContent: rightOpen ? "flex-start" : "center",
-                                    px: 1.5,
-                                    minWidth: 0,
-                                    "& .MuiButton-startIcon": {
-                                        mr: rightOpen ? 1 : 0,
-                                        ml: 0,
-                                    },
-                                    "&:hover": {
-                                        bgcolor: c.hoverOverlayStrong,
-                                        color: c.textPrimary,
-                                    },
-                                }}
-                                data-testid="button-toggle-right-panel"
-                            >
-                                {rightOpen ? "Скрыть панель" : ""}
-                            </Button>
-                        </Box>
                     </Box>
                 </DialogContent>
             </Dialog>
@@ -406,48 +459,48 @@ export default function DetailizationModal() {
                 open={addOpen}
                 onClose={handleCloseAdd}
                 fullWidth
-                maxWidth="sm"
-                PaperProps={{
-                    sx: {
-                        bgcolor: c.bgSurface,
-                        border: `1px solid ${c.borderMain}`,
-                        height: "min(720px, calc(100vh - 96px))",
-                        overflow: "hidden",
+                maxWidth="md"
+                slotProps={{
+                    paper: {
+                        sx: {
+                            bgcolor: c.bgPaper,
+                            color: c.textBody,
+                            border: `1px solid ${c.borderMain}`,
+                        },
                     },
                 }}
             >
-                <DialogTitle
+                <Box
                     sx={{
                         px: 2,
                         py: 1.5,
-                        borderBottom: `1px solid ${c.borderMain}`,
+                        borderBottom: `1px solid ${c.borderLight}`,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        gap: 2,
+                        gap: 1,
                     }}
                 >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <AddIcon sx={{ fontSize: 20, color: c.accentBlue }} />
-
-                        <Typography
-                            variant="subtitle1"
-                            sx={{ color: c.textBright, fontWeight: 600 }}
-                        >
-                            {"Добавить строку детализации"}
-                        </Typography>
-                    </Box>
+                    <Typography
+                        sx={{
+                            color: c.textPrimary,
+                            fontWeight: 700,
+                            fontSize: "0.92rem",
+                        }}
+                    >
+                        {"Добавить строку детализации"}
+                    </Typography>
 
                     <IconButton
+                        size="small"
                         onClick={handleCloseAdd}
-                        sx={{ color: c.textSecondary, "&:hover": { color: c.textBright } }}
-                        aria-label="Закрыть форму добавления"
+                        sx={{ color: c.textMuted }}
                     >
-                        <Close />
+                        <Close sx={{ fontSize: 18 }} />
                     </IconButton>
-                </DialogTitle>
+                </Box>
 
-                <DialogContent sx={{ p: 0, overflow: "hidden" }}>
+                <DialogContent sx={{ p: 0 }}>
                     <AddItemForm
                         allRows={model.rows}
                         typesAll={typesAll ?? []}
@@ -463,16 +516,12 @@ export default function DetailizationModal() {
 
             <Snackbar
                 open={snackbar.open}
-                autoHideDuration={SNACKBAR.AUTO_HIDE_MS_SHORT}
+                autoHideDuration={SNACKBAR.AUTO_HIDE_MS}
                 onClose={handleSnackbarClose}
                 message={snackbar.message}
-                sx={{
-                    "& .MuiSnackbarContent-root": {
-                        bgcolor: c.bgSnack,
-                        color: c.textPrimary,
-                        border: `1px solid ${c.borderMedium}`,
-                        fontSize: "0.8rem",
-                    },
+                anchorOrigin={{
+                    vertical: "bottom",
+                    horizontal: "left",
                 }}
             />
         </>

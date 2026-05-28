@@ -1,10 +1,12 @@
 import type {
+  Feedback,
   FeedbackAgreementStatus,
   FunctionRecord,
   Link,
   Row,
 } from "src/entities/fts-function/types";
 import type {
+  FeedbackResponseDto,
   FtsFunctionControllerListV1ApiResponse,
   FtsFunctionDetailedResponseDto,
   TypeResponseDto,
@@ -33,14 +35,17 @@ export function buildConstantsLookup(
   const typesByCode = new Map<string, TypeResponseDto>();
   const colorByCode = new Map<string, string | null | undefined>();
 
-  types?.forEach((t) => {
-    typesById.set(t.id, t);
-    typesByCode.set(t.code, t);
-    colorByCode.set(t.code, t.color);
+  types?.forEach((type) => {
+    typesById.set(type.id, type);
+    typesByCode.set(type.code, type);
+    colorByCode.set(type.code, type.color);
   });
 
   const usersById = new Map<number, UserResponseDto>();
-  users?.forEach((u) => usersById.set(u.id, u));
+
+  users?.forEach((user) => {
+    usersById.set(user.id, user);
+  });
 
   return { typesById, typesByCode, colorByCode, usersById };
 }
@@ -49,14 +54,14 @@ export function findTypeIdByCode(
     types: TypeResponseDto[] | undefined,
     code: string,
 ): number | undefined {
-  return types?.find((t) => t.code === code)?.id;
+  return types?.find((type) => type.code === code)?.id;
 }
 
 export function findTypeNameByCode(
     types: TypeResponseDto[] | undefined,
     code: string,
 ): string {
-  return types?.find((t) => t.code === code)?.name ?? code;
+  return types?.find((type) => type.code === code)?.name ?? code;
 }
 
 function asStep(code: string | undefined | null): FtsFunctionStep | null {
@@ -118,6 +123,7 @@ function typeName(
     id: number | null | undefined,
 ): string {
   if (id == null) return "";
+
   return lookup.typesById.get(id)?.name ?? "";
 }
 
@@ -126,9 +132,10 @@ function userName(
     id: number | null | undefined,
 ): string {
   if (id == null) return "";
-  const u = lookup.usersById.get(id);
 
-  return u?.shortName ?? u?.fullName ?? "";
+  const user = lookup.usersById.get(id);
+
+  return user?.shortName ?? user?.fullName ?? "";
 }
 
 function toIsoString(value: string | Date | undefined | null): string {
@@ -137,38 +144,93 @@ function toIsoString(value: string | Date | undefined | null): string {
   return value instanceof Date ? value.toISOString() : value;
 }
 
+function stringId(value: number | string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+
+  return String(value);
+}
+
+type DetailApi = FtsFunctionDetailedResponseDto["ftsFunctionDetails"][number];
+
+type DetailFeedbackApi = NonNullable<DetailApi["feedbacks"]>[number];
+
+type FeedbackApi = FeedbackResponseDto | DetailFeedbackApi;
+
+type ApiFeedbackSource = {
+  feedbackSource: {
+    id: number | string;
+  };
+};
+
+type ApiFeedbackHistoryItem = {
+  id: number | string;
+  feedbackId?: number | string | null;
+  fromStatus?: string | null;
+  toStatus?: string | null;
+  comment?: string | null;
+  createdAt?: string | Date | null;
+};
+
+export function mapFeedbackApiToFeedback(apiFeedback: FeedbackApi): Feedback {
+  const feedbackSources = Array.isArray(apiFeedback.feedbackSources)
+      ? (apiFeedback.feedbackSources as ApiFeedbackSource[])
+      : [];
+
+  const historyItems = Array.isArray(apiFeedback.feedbackAgreementHistory)
+      ? (apiFeedback.feedbackAgreementHistory as ApiFeedbackHistoryItem[])
+      : [];
+
+  return {
+    id: String(apiFeedback.id),
+    ftsFunctionDetailId: String(apiFeedback.ftsFunctionDetailId),
+    feedbackSourceIds: feedbackSources.map((item) =>
+        String(item.feedbackSource.id),
+    ),
+    feedbackQualityMetricId: stringId(apiFeedback.feedbackQualityMetricsId),
+    ftsMethodologyStatusId: stringId(apiFeedback.ftsMethodologyStatusId),
+    problemDescription: apiFeedback.problemDescription ?? "",
+    initiatorRequisites: apiFeedback.initiatorRequisites ?? "",
+    initiatorAcceptance: apiFeedback.initiatorAcceptance ?? "",
+    deadline: toIsoString(apiFeedback.deadline).slice(0, 10),
+    isAccepted: apiFeedback.isAccepted ?? null,
+    history: historyItems.map((item) => {
+      const fromStatus = asFeedbackAgreementStatus(item.fromStatus);
+      const toStatus = asFeedbackAgreementStatus(item.toStatus) ?? "PENDING";
+
+      return {
+        id: String(item.id),
+        feedbackId: String(item.feedbackId ?? apiFeedback.id),
+        fromStatus,
+        toStatus,
+        ...(item.comment ? { comment: item.comment } : {}),
+        createdAt: toIsoString(item.createdAt),
+      };
+    }),
+  };
+}
+
 export function mapFtsFunctionApiToFunctionRecord(
-    apiFn: FtsFunctionControllerListV1ApiResponse["items"][number],
+    apiFunction: FtsFunctionControllerListV1ApiResponse["items"][number],
     lookup: ConstantsLookup,
 ): FunctionRecord {
   return {
-    id: apiFn.id,
-    name: typeName(lookup, apiFn.ftsFunctionNameId),
-    marker: typeName(lookup, apiFn.ftsFunctionMarkerId),
-    centralization: typeName(lookup, apiFn.ftsCentralizationId),
-    competenceCenter: typeName(lookup, apiFn.competencyCenterId),
-    strategyProjects: apiFn.dtis?.map((d) => d.dti.name) ?? [],
-    curatorCA: userName(lookup, apiFn.curatorCentralOfficeId),
-    nuZnu: userName(lookup, apiFn.departmentHeadCentralOfficeId),
-    managerMiudol: userName(lookup, apiFn.managerInterregionalInspectionId),
-    niZni: userName(lookup, apiFn.departmentHeadInterregionalInspectionId),
+    id: apiFunction.id,
+    name: typeName(lookup, apiFunction.ftsFunctionNameId),
+    marker: typeName(lookup, apiFunction.ftsFunctionMarkerId),
+    centralization: typeName(lookup, apiFunction.ftsCentralizationId),
+    competenceCenter: typeName(lookup, apiFunction.competencyCenterId),
+    strategyProjects: apiFunction.dtis?.map((dti) => dti.dti.name) ?? [],
+    curatorCA: userName(lookup, apiFunction.curatorCentralOfficeId),
+    nuZnu: userName(lookup, apiFunction.departmentHeadCentralOfficeId),
+    managerMiudol: userName(lookup, apiFunction.managerInterregionalInspectionId),
+    niZni: userName(
+        lookup,
+        apiFunction.departmentHeadInterregionalInspectionId,
+    ),
   };
 }
 
 type DetailItem = FtsFunctionDetailedResponseDto["ftsFunctionDetails"][number];
-
-type DetailItemExtra = DetailItem & {
-  methodologyPosition?: string | null;
-  initiatorAcceptance?: string | null;
-  feedbackAgreementHistory?: Array<{
-    id: number;
-    ftsFunctionDetailId?: number;
-    fromStatus?: string | null;
-    toStatus: string;
-    comment?: string | null;
-    createdAt?: string | Date;
-  }>;
-};
 
 export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
   const step = asStep(detail.ftsFunctionStep?.code);
@@ -179,7 +241,6 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
 
   const frequency = asFrequency(detail.ftsFunctionExecutionFrequency?.code);
   const complexity = asComplexity(detail.ftsFunctionComplexity?.code);
-  const extra = detail as DetailItemExtra;
 
   return {
     id: String(detail.id),
@@ -194,34 +255,11 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
     basis: detail.basis ?? "",
     artifactUsage: detail.artifactUsage ?? "",
     purpose: detail.purpose ?? "",
-
     technologicalSolution: detail.technologicalSolution?.code ?? "",
     number: detail.number ?? "",
     responsible: detail.responsible?.code ?? detail.responsible?.name ?? "",
     algorithm: detail.algorithm ?? "",
-
-    feedbackSource:
-        detail.feedbackSource?.code ??
-        detail.feedbackSources?.[0]?.feedbackSource?.code ??
-        "",
-    feedbackQualityMetric: detail.feedbackQualityMetrics?.code ?? "",
-    problemDescription: detail.problemDescription ?? "",
-    initiatorRequisites: detail.initiatorRequisites ?? "",
-    methodologyPosition:
-        extra.methodologyPosition ?? detail.ftsMethodologyStatus?.name ?? "",
-    deadline: detail.deadline?.slice(0, 10) ?? "",
-    initiatorAcceptance: extra.initiatorAcceptance ?? "",
-    isAccepted: detail.isAccepted ?? null,
-    rejectComment: detail.rejectComment ?? "",
-
-    feedbackAgreementHistory:
-        extra.feedbackAgreementHistory?.map((item) => ({
-          id: String(item.id),
-          fromStatus: asFeedbackAgreementStatus(item.fromStatus),
-          toStatus: asFeedbackAgreementStatus(item.toStatus) ?? "PENDING",
-          comment: item.comment ?? "",
-          createdAt: toIsoString(item.createdAt),
-        })) ?? [],
+    feedbacks: detail.feedbacks?.map(mapFeedbackApiToFeedback) ?? [],
   };
 }
 
@@ -236,9 +274,11 @@ export function mapFtsFunctionDetailsToLinks(
       const key = `${edge.parentFtsFunctionId}-${edge.childFtsFunctionId}-${edge.relationTypeId}`;
 
       if (seen.has(key)) continue;
+
       seen.add(key);
 
       const kind = asRelation(edge.relationType?.code);
+
       if (kind === null) continue;
 
       links.push({
