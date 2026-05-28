@@ -1,58 +1,103 @@
-import type { Row } from "src/entities/fts-function/types";
-
-import { Box, Tooltip, useTheme } from "@mui/material";
+import type { Feedback, Row } from "src/entities/fts-function/types";
 
 import {
-    getFeedbackStatus,
-    isActualActionCategory,
-} from "src/entities/fts-function/lib/detail-technology";
+    CancelRounded,
+    CheckCircleRounded,
+    RadioButtonUncheckedRounded,
+} from "@mui/icons-material";
+import { Box, Tooltip, useTheme } from "@mui/material";
+
+import { isActualActionCategory } from "src/entities/fts-function/lib/detail-technology";
+
+export type RowFeedbackAggregateStatus = "pending" | "rejected" | "accepted";
 
 export type FeedbackStatusDotProps = {
     row: Row;
 };
 
+function getFeedbackItemStatus(
+    feedback: Feedback,
+): RowFeedbackAggregateStatus {
+    if (feedback.isAccepted === true) return "accepted";
+    if (feedback.isAccepted === false) return "rejected";
+
+    return "pending";
+}
+
+export function getRowFeedbackAggregateStatus(
+    row: Row,
+): RowFeedbackAggregateStatus | null {
+    if (!isActualActionCategory(row.category)) return null;
+
+    const feedbacks = row.feedbacks ?? [];
+
+    if (feedbacks.length === 0) return null;
+
+    const statuses = feedbacks.map(getFeedbackItemStatus);
+
+    if (statuses.includes("pending")) return "pending";
+    if (statuses.includes("rejected")) return "rejected";
+
+    return "accepted";
+}
+
 export function FeedbackStatusDot({ row }: FeedbackStatusDotProps) {
     const theme = useTheme();
     const c = theme.custom;
 
-    if (!isActualActionCategory(row.category)) return null;
+    const status = getRowFeedbackAggregateStatus(row);
 
-    const status = getFeedbackStatus(row);
     if (!status) return null;
 
-    const config =
-        status === "accepted"
-            ? {
-                title: "Обратная связь согласована",
-                bgcolor: theme.palette.success.main,
-                borderColor: theme.palette.success.main,
-            }
+    const title =
+        status === "pending"
+            ? "Есть обратная связь на согласовании"
             : status === "rejected"
-                ? {
-                    title: "Обратная связь не согласована",
-                    bgcolor: theme.palette.error.main,
-                    borderColor: theme.palette.error.main,
-                }
-                : {
-                    title: "Обратная связь на согласовании",
-                    bgcolor: "transparent",
-                    borderColor: c.textMuted,
-                };
+                ? "Есть не согласованная обратная связь"
+                : "Все обратные связи согласованы";
+
+    const iconSx = {
+        width: 15,
+        height: 15,
+        display: "block",
+    };
 
     return (
-        <Tooltip title={config.title}>
+        <Tooltip title={title}>
             <Box
                 component="span"
                 sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 18,
+                    height: 18,
                     flexShrink: 0,
-                    bgcolor: config.bgcolor,
-                    border: `1.5px solid ${config.borderColor}`,
-                    display: "inline-block",
                 }}
-            />
+            >
+                {status === "pending" ? (
+                    <RadioButtonUncheckedRounded
+                        sx={{
+                            ...iconSx,
+                            color: c.textMuted,
+                        }}
+                    />
+                ) : status === "rejected" ? (
+                    <CancelRounded
+                        sx={{
+                            ...iconSx,
+                            color: theme.palette.error.main,
+                        }}
+                    />
+                ) : (
+                    <CheckCircleRounded
+                        sx={{
+                            ...iconSx,
+                            color: theme.palette.success.main,
+                        }}
+                    />
+                )}
+            </Box>
         </Tooltip>
     );
 }

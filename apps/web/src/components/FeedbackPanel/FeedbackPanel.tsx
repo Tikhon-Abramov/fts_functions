@@ -8,10 +8,13 @@ import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 import { useEffect, useMemo, useState } from "react";
 import {
     Add,
+    CancelRounded,
     Check,
+    CheckCircleRounded,
     Close,
     DeleteOutline,
     ExpandMore,
+    RadioButtonUncheckedRounded,
     Replay,
 } from "@mui/icons-material";
 import {
@@ -779,7 +782,7 @@ function FeedbackCard({
             </IconButton>
 
             <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-                <StatusDot feedback={feedback} />
+                <FeedbackStatusIcon feedback={feedback} />
 
                 <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Box
@@ -1188,8 +1191,8 @@ function StatusChip({ feedback }: { feedback: Feedback }) {
     );
 }
 
-function StatusDot({ feedback }: { feedback: Feedback }) {
-    return <Dot status={getFeedbackStatus(feedback)} />;
+function FeedbackStatusIcon({ feedback }: { feedback: Feedback }) {
+    return <StatusIcon status={getFeedbackStatus(feedback)} />;
 }
 
 function HistoryStatusDot({ toStatus }: { toStatus: string }) {
@@ -1200,7 +1203,60 @@ function HistoryStatusDot({ toStatus }: { toStatus: string }) {
                 ? "rejected"
                 : "pending";
 
-    return <Dot status={status} />;
+    return <StatusIcon status={status} />;
+}
+
+function StatusIcon({
+                        status,
+                    }: {
+    status: "pending" | "accepted" | "rejected" | null;
+}) {
+    const theme = useTheme();
+    const c = theme.custom;
+
+    const iconSx = {
+        width: 16,
+        height: 16,
+        display: "block",
+    };
+
+    return (
+        <Box
+            component="span"
+            sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 18,
+                height: 18,
+                mt: 0.2,
+                flexShrink: 0,
+            }}
+        >
+            {status === "accepted" ? (
+                <CheckCircleRounded
+                    sx={{
+                        ...iconSx,
+                        color: theme.palette.success.main,
+                    }}
+                />
+            ) : status === "rejected" ? (
+                <CancelRounded
+                    sx={{
+                        ...iconSx,
+                        color: theme.palette.error.main,
+                    }}
+                />
+            ) : (
+                <RadioButtonUncheckedRounded
+                    sx={{
+                        ...iconSx,
+                        color: c.textMuted,
+                    }}
+                />
+            )}
+        </Box>
+    );
 }
 
 function Dot({
