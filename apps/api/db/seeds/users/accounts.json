@@ -1,0 +1,339 @@
+[
+  {
+    "role": "ADMIN",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "lastName": "Андреев",
+    "firstName": "Дмитрий",
+    "patronymic": "Максимович",
+    "description": "Администратор сервиса"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsFunctionRole": "CURATOR",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Мещеряков",
+    "firstName": "Сергей",
+    "patronymic": "Владимирович",
+    "description": "УРЗ - ЗНУ"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Исмагилова",
+    "firstName": "Эльвира",
+    "patronymic": "Азатовна",
+    "description": "УРЗ - ЗНУ"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsFunctionRole": "CURATOR",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Васильев",
+    "firstName": "Анатолий",
+    "patronymic": "Николаевич",
+    "description": "УОПБ - ЗНУ"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Елисеева",
+    "firstName": "Ирина",
+    "patronymic": "Николаевна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Шляпин",
+    "firstName": "Игорь",
+    "patronymic": "Геннадиевич",
+    "description": "УОПБ - ЗНУ"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsPositionRole": "CHIEF",
+    "lastName": "Солдатенков",
+    "firstName": "Вадим",
+    "patronymic": "Юрьевич",
+    "description": "УОПБ - НУ"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsFunctionRole": "CURATOR",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Мякишев",
+    "firstName": "Семен",
+    "patronymic": "Владимирович",
+    "description": "УОПБ - ЗНУ"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Андрусенко",
+    "firstName": "Дмитрий",
+    "patronymic": "Леонидович"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Бабинов",
+    "firstName": "Семен",
+    "patronymic": "Сергеевич"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Боим",
+    "firstName": "Александр",
+    "patronymic": "Юрьевич"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Вехова",
+    "firstName": "Анна",
+    "patronymic": "Михайловна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Жемчугова",
+    "firstName": "Любовь",
+    "patronymic": "Александровна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Жигунова",
+    "firstName": "Екатерина",
+    "patronymic": "Николаевна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsPositionRole": "CHIEF",
+    "lastName": "Плаксин",
+    "firstName": "Дмитрий",
+    "patronymic": "Алексеевич",
+    "description": "Руководство МИУДОЛ"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Тычинская",
+    "firstName": "Екатерина",
+    "patronymic": "Алексеевна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "lastName": "Авдеева",
+    "firstName": "И",
+    "patronymic": "В"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsFunctionRole": "CURATOR",
+    "lastName": "Баркарь",
+    "firstName": "Александр",
+    "patronymic": "Владимирович",
+    "description": "УРЗ - Отдел проектной работы с проблемными должниками"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsFunctionRole": "CURATOR",
+    "lastName": "Иванов",
+    "firstName": "Денис",
+    "patronymic": "Михайлович",
+    "description": "УРЗ - Отдел заявительного исполнения обязательств"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsFunctionRole": "CURATOR",
+    "lastName": "Сапронова",
+    "firstName": "Екатерина",
+    "patronymic": "Николаевна",
+    "description": "УРЗ - Отдел развития сервисов и внешнего взаимодействия"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsFunctionRole": "CURATOR",
+    "lastName": "Шубина",
+    "firstName": "Наталья",
+    "patronymic": "Александровна",
+    "description": "УРЗ - Отдел учета обязательств налогоплательщика"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsFunctionRole": "CURATOR",
+    "lastName": "Шулепов",
+    "firstName": "Александр",
+    "patronymic": "Михайлович",
+    "description": "УРЗ - Отдел методологии взыскания задолженности с юридических лиц и индивидуальных предпринимателей"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsPositionRole": "DEPUTY_CHIEF",
+    "lastName": "Урусова",
+    "firstName": "Аделина",
+    "patronymic": "Владимировна",
+    "description": "УОПБ - Отдел содействия реструктуризации долга"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsFunctionRole": "CURATOR",
+    "lastName": "Чистякова",
+    "firstName": "Юлия",
+    "patronymic": "Анатольевна",
+    "description": "УОПБ - Отдел банкротства юридических лиц"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsFunctionRole": "MANAGER",
+    "lastName": "Акулова",
+    "firstName": "Анна",
+    "patronymic": "Александровна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsFunctionRole": "MANAGER",
+    "lastName": "Гаврилина",
+    "firstName": "Виктория",
+    "patronymic": "Владимировна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsFunctionRole": "MANAGER",
+    "lastName": "Гадеев",
+    "firstName": "Искандер",
+    "patronymic": "Талгатович"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsFunctionRole": "MANAGER",
+    "lastName": "Задкова",
+    "firstName": "Марина",
+    "patronymic": "Вячеславовна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsFunctionRole": "MANAGER",
+    "lastName": "Калинин",
+    "firstName": "Михаил",
+    "patronymic": "Алексеевич"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsFunctionRole": "MANAGER",
+    "lastName": "Клачкова",
+    "firstName": "Елена",
+    "patronymic": "Афиногеновна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsFunctionRole": "MANAGER",
+    "lastName": "Коршунова",
+    "firstName": "Ангелина",
+    "patronymic": "Викторовна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsFunctionRole": "MANAGER",
+    "lastName": "Суша",
+    "firstName": "Иван",
+    "patronymic": "Сергеевич"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsFunctionRole": "MANAGER",
+    "lastName": "Усубян",
+    "firstName": "Усо",
+    "patronymic": "Самандович"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsPositionRole": "CHIEF",
+    "lastName": "Шалыгина",
+    "firstName": "Наталья",
+    "patronymic": "Викторовна",
+    "description": "УРЗ - НУ"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsFunctionRole": "MANAGER",
+    "lastName": "Шулаков",
+    "firstName": "Никита",
+    "patronymic": "Александрович"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsFunctionRole": "CURATOR",
+    "lastName": "Люшнина",
+    "firstName": "Анна",
+    "patronymic": "Александровна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsFunctionRole": "CURATOR",
+    "lastName": "Юсупова",
+    "firstName": "Жанара",
+    "patronymic": "Кайртановна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "CENTRAL_OFFICE",
+    "ftsFunctionRole": "CURATOR",
+    "lastName": "Стефаненко",
+    "firstName": "Ксения",
+    "patronymic": "Анатольевна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsFunctionRole": "MANAGER",
+    "lastName": "Капитанова",
+    "firstName": "Ирина",
+    "patronymic": "Михайловна"
+  },
+  {
+    "role": "USER",
+    "ftsBranchType": "INTERREGIONAL_INSPECTION",
+    "ftsFunctionRole": "MANAGER",
+    "lastName": "Боровская",
+    "firstName": "Ирина",
+    "patronymic": "Леонидовна"
+  }
+]

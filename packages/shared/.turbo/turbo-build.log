@@ -1,0 +1,39 @@
+
+> @registry/shared@0.0.0 build /home/Kristy/Desktop/FUD-extract/FUD/packages/shared
+> tsup index.ts errors/index.ts enums/index.ts validation/index.ts colors/index.ts --format esm,cjs --dts --clean --out-dir dist
+
+[34mCLI[39m Building entry: index.ts, errors/index.ts, enums/index.ts, colors/index.ts, validation/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2023
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[34mCJS[39m Build start
+[32mESM[39m [1mdist/chunk-CE2XAGYF.mjs   [22m[32m2.22 KB[39m
+[32mESM[39m [1mdist/index.mjs            [22m[32m1.04 KB[39m
+[32mESM[39m [1mdist/validation/index.mjs [22m[32m383.00 B[39m
+[32mESM[39m [1mdist/errors/index.mjs     [22m[32m77.00 B[39m
+[32mESM[39m [1mdist/chunk-CHH7Y4SH.mjs   [22m[32m217.00 B[39m
+[32mESM[39m [1mdist/chunk-6HD6YTYT.mjs   [22m[32m1.28 KB[39m
+[32mESM[39m [1mdist/colors/index.mjs     [22m[32m85.00 B[39m
+[32mESM[39m [1mdist/chunk-NL27NMO7.mjs   [22m[32m721.00 B[39m
+[32mESM[39m [1mdist/enums/index.mjs      [22m[32m555.00 B[39m
+[32mESM[39m ⚡️ Build success in 20ms
+[32mCJS[39m [1mdist/index.js            [22m[32m6.32 KB[39m
+[32mCJS[39m [1mdist/errors/index.js     [22m[32m2.28 KB[39m
+[32mCJS[39m [1mdist/enums/index.js      [22m[32m3.74 KB[39m
+[32mCJS[39m [1mdist/colors/index.js     [22m[32m1.23 KB[39m
+[32mCJS[39m [1mdist/validation/index.js [22m[32m2.06 KB[39m
+[32mCJS[39m ⚡️ Build success in 20ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 708ms
+[32mDTS[39m [1mdist/index.d.mts            [22m[32m596.00 B[39m
+[32mDTS[39m [1mdist/enums/index.d.mts      [22m[32m6.02 KB[39m
+[32mDTS[39m [1mdist/errors/index.d.mts     [22m[32m3.72 KB[39m
+[32mDTS[39m [1mdist/colors/index.d.mts     [22m[32m189.00 B[39m
+[32mDTS[39m [1mdist/validation/index.d.mts [22m[32m734.00 B[39m
+[32mDTS[39m [1mdist/index.d.ts             [22m[32m592.00 B[39m
+[32mDTS[39m [1mdist/enums/index.d.ts       [22m[32m6.02 KB[39m
+[32mDTS[39m [1mdist/errors/index.d.ts      [22m[32m3.72 KB[39m
+[32mDTS[39m [1mdist/colors/index.d.ts      [22m[32m189.00 B[39m
+[32mDTS[39m [1mdist/validation/index.d.ts  [22m[32m734.00 B[39m
