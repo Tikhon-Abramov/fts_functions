@@ -109,9 +109,15 @@ const injectedRtkApi = api
             competencyCenterIds: queryArg.competencyCenterIds,
             ftsFunctionNameIds: queryArg.ftsFunctionNameIds,
             ftsFunctionMarkerIds: queryArg.ftsFunctionMarkerIds,
+            ftsCentralizationIds: queryArg.ftsCentralizationIds,
+            dtiIds: queryArg.dtiIds,
             curatorCentralOfficeIds: queryArg.curatorCentralOfficeIds,
             managerInterregionalInspectionIds:
               queryArg.managerInterregionalInspectionIds,
+            departmentHeadCentralOfficeIds:
+              queryArg.departmentHeadCentralOfficeIds,
+            departmentHeadInterregionalInspectionIds:
+              queryArg.departmentHeadInterregionalInspectionIds,
             ids: queryArg.ids,
             idNot: queryArg.idNot,
             idGt: queryArg.idGt,
@@ -197,14 +203,46 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["FtsFunction"],
       }),
-      ftsFunctionControllerAcceptDetailV1: build.mutation<
-        FtsFunctionControllerAcceptDetailV1ApiResponse,
-        FtsFunctionControllerAcceptDetailV1ApiArg
+      ftsFunctionControllerCreateFeedbackV1: build.mutation<
+        FtsFunctionControllerCreateFeedbackV1ApiResponse,
+        FtsFunctionControllerCreateFeedbackV1ApiArg
       >({
         query: (queryArg) => ({
-          url: `/v1/fts-functions/details/accept/${queryArg.detailId}`,
+          url: `/v1/fts-functions/details/${queryArg.detailId}/feedbacks`,
+          method: "POST",
+          body: queryArg.createFeedbackDto,
+        }),
+        invalidatesTags: ["FtsFunction"],
+      }),
+      ftsFunctionControllerUpdateFeedbackV1: build.mutation<
+        FtsFunctionControllerUpdateFeedbackV1ApiResponse,
+        FtsFunctionControllerUpdateFeedbackV1ApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/v1/fts-functions/feedbacks/${queryArg.feedbackId}`,
           method: "PATCH",
-          body: queryArg.acceptFtsFunctionDetailDto,
+          body: queryArg.updateFeedbackDto,
+        }),
+        invalidatesTags: ["FtsFunction"],
+      }),
+      ftsFunctionControllerDeleteFeedbackV1: build.mutation<
+        FtsFunctionControllerDeleteFeedbackV1ApiResponse,
+        FtsFunctionControllerDeleteFeedbackV1ApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/v1/fts-functions/feedbacks/${queryArg.feedbackId}`,
+          method: "DELETE",
+        }),
+        invalidatesTags: ["FtsFunction"],
+      }),
+      ftsFunctionControllerAcceptFeedbackV1: build.mutation<
+        FtsFunctionControllerAcceptFeedbackV1ApiResponse,
+        FtsFunctionControllerAcceptFeedbackV1ApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/v1/fts-functions/feedbacks/accept/${queryArg.feedbackId}`,
+          method: "PATCH",
+          body: queryArg.acceptFeedbackDto,
         }),
         invalidatesTags: ["FtsFunction"],
       }),
@@ -259,6 +297,13 @@ const injectedRtkApi = api
           method: "DELETE",
         }),
         invalidatesTags: ["FtsFunction"],
+      }),
+      ftsFunctionControllerGetDownloadV1: build.query<
+        FtsFunctionControllerGetDownloadV1ApiResponse,
+        FtsFunctionControllerGetDownloadV1ApiArg
+      >({
+        query: () => ({ url: `/v1/fts-functions/download` }),
+        providesTags: ["FtsFunction"],
       }),
       healthControllerCheckV1: build.query<
         HealthControllerCheckV1ApiResponse,
@@ -341,8 +386,15 @@ export type FtsFunctionControllerListV1ApiArg = {
   competencyCenterIds?: string | number | (string | number)[];
   ftsFunctionNameIds?: string | number | (string | number)[];
   ftsFunctionMarkerIds?: string | number | (string | number)[];
+  ftsCentralizationIds?: string | number | (string | number)[];
+  dtiIds?: string | number | (string | number)[];
   curatorCentralOfficeIds?: string | number | (string | number)[];
   managerInterregionalInspectionIds?: string | number | (string | number)[];
+  departmentHeadCentralOfficeIds?: string | number | (string | number)[];
+  departmentHeadInterregionalInspectionIds?:
+    | string
+    | number
+    | (string | number)[];
   ids?: string | number | (string | number)[];
   idNot?: string | number;
   idGt?: string | number;
@@ -392,11 +444,28 @@ export type FtsFunctionControllerSoftDeleteDetailV1ApiResponse =
 export type FtsFunctionControllerSoftDeleteDetailV1ApiArg = {
   detailId: string | number;
 };
-export type FtsFunctionControllerAcceptDetailV1ApiResponse =
-  /** status 200 Ресурс успешно обновлен */ FtsFunctionDetailDetailedResponseDto;
-export type FtsFunctionControllerAcceptDetailV1ApiArg = {
+export type FtsFunctionControllerCreateFeedbackV1ApiResponse =
+  /** status 200 Ресурс успешно создан */ FeedbackResponseDto;
+export type FtsFunctionControllerCreateFeedbackV1ApiArg = {
   detailId: string | number;
-  acceptFtsFunctionDetailDto: AcceptFtsFunctionDetailDto;
+  createFeedbackDto: CreateFeedbackDto;
+};
+export type FtsFunctionControllerUpdateFeedbackV1ApiResponse =
+  /** status 200 Ресурс успешно обновлен */ FeedbackResponseDto;
+export type FtsFunctionControllerUpdateFeedbackV1ApiArg = {
+  feedbackId: string | number;
+  updateFeedbackDto: UpdateFeedbackDto;
+};
+export type FtsFunctionControllerDeleteFeedbackV1ApiResponse =
+  /** status 200 Ресурс успешно удален */ FeedbackResponseDto;
+export type FtsFunctionControllerDeleteFeedbackV1ApiArg = {
+  feedbackId: string | number;
+};
+export type FtsFunctionControllerAcceptFeedbackV1ApiResponse =
+  /** status 200 Ресурс успешно обновлен */ FeedbackResponseDto;
+export type FtsFunctionControllerAcceptFeedbackV1ApiArg = {
+  feedbackId: string | number;
+  acceptFeedbackDto: AcceptFeedbackDto;
 };
 export type FtsFunctionControllerCreateTreeEdgeV1ApiResponse =
   /** status 200 Ресурс успешно создан */ FtsFunctionTreeResponseDto;
@@ -427,6 +496,9 @@ export type FtsFunctionControllerDetachDtiV1ApiArg = {
   id: string | number;
   dtiId: string | number;
 };
+export type FtsFunctionControllerGetDownloadV1ApiResponse =
+  /** status 200 Файл успешно выгружен */ Blob;
+export type FtsFunctionControllerGetDownloadV1ApiArg = void;
 export type HealthControllerCheckV1ApiResponse = unknown;
 export type HealthControllerCheckV1ApiArg = void;
 export type TypeResponseDto = {
@@ -780,10 +852,7 @@ export type FtsFunctionDetailedResponseDto = {
     ftsFunctionActionTypeId: number | null;
     ftsFunctionEffectivenessId: number | null;
     technologicalSolutionId?: ((string | null) | (number | null)) | null;
-    feedbackSourceId?: ((string | null) | (number | null)) | null;
-    feedbackSourceIds?: string | number | (string | number)[];
     responsibleId?: ((string | null) | (number | null)) | null;
-    ftsMethodologyStatusId?: ((string | null) | (number | null)) | null;
     ftsFunctionDetails: string | null;
     basis: string | null;
     artifact: string | null;
@@ -791,25 +860,103 @@ export type FtsFunctionDetailedResponseDto = {
     purpose: string | null;
     number?: string | null;
     algorithm?: string | null;
-    problemDescription?: string | null;
-    initiatorRequisites?: string | null;
-    methodologyPosition?: string | null;
-    initiatorAcceptance?: string | null;
-    deadline?: ((string | null) | (string | null)) | null;
-    isAccepted?: boolean | null;
-    rejectComment?: string | null;
-    feedbackAgreementHistory?: {
-      id: number;
-      ftsFunctionDetailId: number;
-      fromStatus: string | null;
-      toStatus: string;
-      comment: string | null;
-      createdAt: string;
-    }[];
     createdAt: string;
     updatedAt: string;
     isDeleted: boolean;
     deletedAt: string | null;
+    feedbacks?: {
+      id: number;
+      ftsFunctionDetailId: number;
+      feedbackQualityMetricsId: number | null;
+      ftsMethodologyStatusId: number | null;
+      problemDescription: string | null;
+      initiatorRequisites: string | null;
+      initiatorAcceptance: string | null;
+      deadline: string | null;
+      isAccepted: boolean | null;
+      ftsMethodologyStatus: {
+        id: number;
+        code: string;
+        name: string;
+        category:
+          | "FTS_CENTRALIZATION"
+          | "FTS_FUNCTION_NAME"
+          | "FTS_FUNCTION_STEP"
+          | "FTS_FUNCTION_CATEGORY"
+          | "FTS_FUNCTION_MARKER"
+          | "FTS_FUNCTION_COMPLEXITY"
+          | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+          | "WHO_PERFORMS_ACTION"
+          | "FTS_FUNCTION_ACTION_TYPE"
+          | "FTS_FUNCTION_EFFECTIVENESS"
+          | "FTS_COMPETENCY_CENTER"
+          | "FTS_DTI"
+          | "FTS_FUNCTION_RELATION_TYPE"
+          | "TECHNOLOGICAL_SOLUTION"
+          | "FEEDBACK_SOURCE"
+          | "FEEDBACK_QUALITY_METRICS"
+          | "RESPONSIBLE"
+          | "FTS_METHODOLOGY_STATUS";
+      } | null;
+      feedbackQualityMetrics: {
+        id: number;
+        code: string;
+        name: string;
+        category:
+          | "FTS_CENTRALIZATION"
+          | "FTS_FUNCTION_NAME"
+          | "FTS_FUNCTION_STEP"
+          | "FTS_FUNCTION_CATEGORY"
+          | "FTS_FUNCTION_MARKER"
+          | "FTS_FUNCTION_COMPLEXITY"
+          | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+          | "WHO_PERFORMS_ACTION"
+          | "FTS_FUNCTION_ACTION_TYPE"
+          | "FTS_FUNCTION_EFFECTIVENESS"
+          | "FTS_COMPETENCY_CENTER"
+          | "FTS_DTI"
+          | "FTS_FUNCTION_RELATION_TYPE"
+          | "TECHNOLOGICAL_SOLUTION"
+          | "FEEDBACK_SOURCE"
+          | "FEEDBACK_QUALITY_METRICS"
+          | "RESPONSIBLE"
+          | "FTS_METHODOLOGY_STATUS";
+      } | null;
+      feedbackSources: {
+        feedbackSource: {
+          id: number;
+          code: string;
+          name: string;
+          category:
+            | "FTS_CENTRALIZATION"
+            | "FTS_FUNCTION_NAME"
+            | "FTS_FUNCTION_STEP"
+            | "FTS_FUNCTION_CATEGORY"
+            | "FTS_FUNCTION_MARKER"
+            | "FTS_FUNCTION_COMPLEXITY"
+            | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+            | "WHO_PERFORMS_ACTION"
+            | "FTS_FUNCTION_ACTION_TYPE"
+            | "FTS_FUNCTION_EFFECTIVENESS"
+            | "FTS_COMPETENCY_CENTER"
+            | "FTS_DTI"
+            | "FTS_FUNCTION_RELATION_TYPE"
+            | "TECHNOLOGICAL_SOLUTION"
+            | "FEEDBACK_SOURCE"
+            | "FEEDBACK_QUALITY_METRICS"
+            | "RESPONSIBLE"
+            | "FTS_METHODOLOGY_STATUS";
+        };
+      }[];
+      feedbackAgreementHistory: {
+        id: number;
+        feedbackId: number;
+        fromStatus: string | null;
+        toStatus: string;
+        comment: string | null;
+        createdAt: string;
+      }[];
+    }[];
     ftsFunctionStep: {
       id: number;
       code: string;
@@ -1002,81 +1149,7 @@ export type FtsFunctionDetailedResponseDto = {
         | "RESPONSIBLE"
         | "FTS_METHODOLOGY_STATUS";
     } | null;
-    feedbackSource?: {
-      id: number;
-      code: string;
-      name: string;
-      category:
-        | "FTS_CENTRALIZATION"
-        | "FTS_FUNCTION_NAME"
-        | "FTS_FUNCTION_STEP"
-        | "FTS_FUNCTION_CATEGORY"
-        | "FTS_FUNCTION_MARKER"
-        | "FTS_FUNCTION_COMPLEXITY"
-        | "FTS_FUNCTION_EXECUTION_FREQUENCY"
-        | "WHO_PERFORMS_ACTION"
-        | "FTS_FUNCTION_ACTION_TYPE"
-        | "FTS_FUNCTION_EFFECTIVENESS"
-        | "FTS_COMPETENCY_CENTER"
-        | "FTS_DTI"
-        | "FTS_FUNCTION_RELATION_TYPE"
-        | "TECHNOLOGICAL_SOLUTION"
-        | "FEEDBACK_SOURCE"
-        | "FEEDBACK_QUALITY_METRICS"
-        | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
-    } | null;
-    feedbackSources?: {
-      feedbackSource: {
-        id: number;
-        code: string;
-        name: string;
-        category:
-          | "FTS_CENTRALIZATION"
-          | "FTS_FUNCTION_NAME"
-          | "FTS_FUNCTION_STEP"
-          | "FTS_FUNCTION_CATEGORY"
-          | "FTS_FUNCTION_MARKER"
-          | "FTS_FUNCTION_COMPLEXITY"
-          | "FTS_FUNCTION_EXECUTION_FREQUENCY"
-          | "WHO_PERFORMS_ACTION"
-          | "FTS_FUNCTION_ACTION_TYPE"
-          | "FTS_FUNCTION_EFFECTIVENESS"
-          | "FTS_COMPETENCY_CENTER"
-          | "FTS_DTI"
-          | "FTS_FUNCTION_RELATION_TYPE"
-          | "TECHNOLOGICAL_SOLUTION"
-          | "FEEDBACK_SOURCE"
-          | "FEEDBACK_QUALITY_METRICS"
-          | "RESPONSIBLE"
-          | "FTS_METHODOLOGY_STATUS";
-      };
-    }[];
     responsible: {
-      id: number;
-      code: string;
-      name: string;
-      category:
-        | "FTS_CENTRALIZATION"
-        | "FTS_FUNCTION_NAME"
-        | "FTS_FUNCTION_STEP"
-        | "FTS_FUNCTION_CATEGORY"
-        | "FTS_FUNCTION_MARKER"
-        | "FTS_FUNCTION_COMPLEXITY"
-        | "FTS_FUNCTION_EXECUTION_FREQUENCY"
-        | "WHO_PERFORMS_ACTION"
-        | "FTS_FUNCTION_ACTION_TYPE"
-        | "FTS_FUNCTION_EFFECTIVENESS"
-        | "FTS_COMPETENCY_CENTER"
-        | "FTS_DTI"
-        | "FTS_FUNCTION_RELATION_TYPE"
-        | "TECHNOLOGICAL_SOLUTION"
-        | "FEEDBACK_SOURCE"
-        | "FEEDBACK_QUALITY_METRICS"
-        | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
-    } | null;
-    ftsMethodologyStatus: {
       id: number;
       code: string;
       name: string;
@@ -1183,10 +1256,7 @@ export type FtsFunctionDetailDetailedResponseDto = {
   ftsFunctionActionTypeId: number | null;
   ftsFunctionEffectivenessId: number | null;
   technologicalSolutionId?: ((string | null) | (number | null)) | null;
-  feedbackSourceId?: ((string | null) | (number | null)) | null;
-  feedbackSourceIds?: string | number | (string | number)[];
   responsibleId?: ((string | null) | (number | null)) | null;
-  ftsMethodologyStatusId?: ((string | null) | (number | null)) | null;
   ftsFunctionDetails: string | null;
   basis: string | null;
   artifact: string | null;
@@ -1194,25 +1264,103 @@ export type FtsFunctionDetailDetailedResponseDto = {
   purpose: string | null;
   number?: string | null;
   algorithm?: string | null;
-  problemDescription?: string | null;
-  initiatorRequisites?: string | null;
-  methodologyPosition?: string | null;
-  initiatorAcceptance?: string | null;
-  deadline?: ((string | null) | (string | null)) | null;
-  isAccepted?: boolean | null;
-  rejectComment?: string | null;
-  feedbackAgreementHistory?: {
-    id: number;
-    ftsFunctionDetailId: number;
-    fromStatus: string | null;
-    toStatus: string;
-    comment: string | null;
-    createdAt: string;
-  }[];
   createdAt: string;
   updatedAt: string;
   isDeleted: boolean;
   deletedAt: string | null;
+  feedbacks?: {
+    id: number;
+    ftsFunctionDetailId: number;
+    feedbackQualityMetricsId: number | null;
+    ftsMethodologyStatusId: number | null;
+    problemDescription: string | null;
+    initiatorRequisites: string | null;
+    initiatorAcceptance: string | null;
+    deadline: string | null;
+    isAccepted: boolean | null;
+    ftsMethodologyStatus: {
+      id: number;
+      code: string;
+      name: string;
+      category:
+        | "FTS_CENTRALIZATION"
+        | "FTS_FUNCTION_NAME"
+        | "FTS_FUNCTION_STEP"
+        | "FTS_FUNCTION_CATEGORY"
+        | "FTS_FUNCTION_MARKER"
+        | "FTS_FUNCTION_COMPLEXITY"
+        | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+        | "WHO_PERFORMS_ACTION"
+        | "FTS_FUNCTION_ACTION_TYPE"
+        | "FTS_FUNCTION_EFFECTIVENESS"
+        | "FTS_COMPETENCY_CENTER"
+        | "FTS_DTI"
+        | "FTS_FUNCTION_RELATION_TYPE"
+        | "TECHNOLOGICAL_SOLUTION"
+        | "FEEDBACK_SOURCE"
+        | "FEEDBACK_QUALITY_METRICS"
+        | "RESPONSIBLE"
+        | "FTS_METHODOLOGY_STATUS";
+    } | null;
+    feedbackQualityMetrics: {
+      id: number;
+      code: string;
+      name: string;
+      category:
+        | "FTS_CENTRALIZATION"
+        | "FTS_FUNCTION_NAME"
+        | "FTS_FUNCTION_STEP"
+        | "FTS_FUNCTION_CATEGORY"
+        | "FTS_FUNCTION_MARKER"
+        | "FTS_FUNCTION_COMPLEXITY"
+        | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+        | "WHO_PERFORMS_ACTION"
+        | "FTS_FUNCTION_ACTION_TYPE"
+        | "FTS_FUNCTION_EFFECTIVENESS"
+        | "FTS_COMPETENCY_CENTER"
+        | "FTS_DTI"
+        | "FTS_FUNCTION_RELATION_TYPE"
+        | "TECHNOLOGICAL_SOLUTION"
+        | "FEEDBACK_SOURCE"
+        | "FEEDBACK_QUALITY_METRICS"
+        | "RESPONSIBLE"
+        | "FTS_METHODOLOGY_STATUS";
+    } | null;
+    feedbackSources: {
+      feedbackSource: {
+        id: number;
+        code: string;
+        name: string;
+        category:
+          | "FTS_CENTRALIZATION"
+          | "FTS_FUNCTION_NAME"
+          | "FTS_FUNCTION_STEP"
+          | "FTS_FUNCTION_CATEGORY"
+          | "FTS_FUNCTION_MARKER"
+          | "FTS_FUNCTION_COMPLEXITY"
+          | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+          | "WHO_PERFORMS_ACTION"
+          | "FTS_FUNCTION_ACTION_TYPE"
+          | "FTS_FUNCTION_EFFECTIVENESS"
+          | "FTS_COMPETENCY_CENTER"
+          | "FTS_DTI"
+          | "FTS_FUNCTION_RELATION_TYPE"
+          | "TECHNOLOGICAL_SOLUTION"
+          | "FEEDBACK_SOURCE"
+          | "FEEDBACK_QUALITY_METRICS"
+          | "RESPONSIBLE"
+          | "FTS_METHODOLOGY_STATUS";
+      };
+    }[];
+    feedbackAgreementHistory: {
+      id: number;
+      feedbackId: number;
+      fromStatus: string | null;
+      toStatus: string;
+      comment: string | null;
+      createdAt: string;
+    }[];
+  }[];
   ftsFunctionStep: {
     id: number;
     code: string;
@@ -1405,81 +1553,7 @@ export type FtsFunctionDetailDetailedResponseDto = {
       | "RESPONSIBLE"
       | "FTS_METHODOLOGY_STATUS";
   } | null;
-  feedbackSource?: {
-    id: number;
-    code: string;
-    name: string;
-    category:
-      | "FTS_CENTRALIZATION"
-      | "FTS_FUNCTION_NAME"
-      | "FTS_FUNCTION_STEP"
-      | "FTS_FUNCTION_CATEGORY"
-      | "FTS_FUNCTION_MARKER"
-      | "FTS_FUNCTION_COMPLEXITY"
-      | "FTS_FUNCTION_EXECUTION_FREQUENCY"
-      | "WHO_PERFORMS_ACTION"
-      | "FTS_FUNCTION_ACTION_TYPE"
-      | "FTS_FUNCTION_EFFECTIVENESS"
-      | "FTS_COMPETENCY_CENTER"
-      | "FTS_DTI"
-      | "FTS_FUNCTION_RELATION_TYPE"
-      | "TECHNOLOGICAL_SOLUTION"
-      | "FEEDBACK_SOURCE"
-      | "FEEDBACK_QUALITY_METRICS"
-      | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
-  } | null;
-  feedbackSources?: {
-    feedbackSource: {
-      id: number;
-      code: string;
-      name: string;
-      category:
-        | "FTS_CENTRALIZATION"
-        | "FTS_FUNCTION_NAME"
-        | "FTS_FUNCTION_STEP"
-        | "FTS_FUNCTION_CATEGORY"
-        | "FTS_FUNCTION_MARKER"
-        | "FTS_FUNCTION_COMPLEXITY"
-        | "FTS_FUNCTION_EXECUTION_FREQUENCY"
-        | "WHO_PERFORMS_ACTION"
-        | "FTS_FUNCTION_ACTION_TYPE"
-        | "FTS_FUNCTION_EFFECTIVENESS"
-        | "FTS_COMPETENCY_CENTER"
-        | "FTS_DTI"
-        | "FTS_FUNCTION_RELATION_TYPE"
-        | "TECHNOLOGICAL_SOLUTION"
-        | "FEEDBACK_SOURCE"
-        | "FEEDBACK_QUALITY_METRICS"
-        | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
-    };
-  }[];
   responsible: {
-    id: number;
-    code: string;
-    name: string;
-    category:
-      | "FTS_CENTRALIZATION"
-      | "FTS_FUNCTION_NAME"
-      | "FTS_FUNCTION_STEP"
-      | "FTS_FUNCTION_CATEGORY"
-      | "FTS_FUNCTION_MARKER"
-      | "FTS_FUNCTION_COMPLEXITY"
-      | "FTS_FUNCTION_EXECUTION_FREQUENCY"
-      | "WHO_PERFORMS_ACTION"
-      | "FTS_FUNCTION_ACTION_TYPE"
-      | "FTS_FUNCTION_EFFECTIVENESS"
-      | "FTS_COMPETENCY_CENTER"
-      | "FTS_DTI"
-      | "FTS_FUNCTION_RELATION_TYPE"
-      | "TECHNOLOGICAL_SOLUTION"
-      | "FEEDBACK_SOURCE"
-      | "FEEDBACK_QUALITY_METRICS"
-      | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
-  } | null;
-  ftsMethodologyStatus: {
     id: number;
     code: string;
     name: string;
@@ -1513,10 +1587,7 @@ export type CreateFtsFunctionDetailDto = {
   ftsFunctionActionTypeId?: ((string | null) | (number | null)) | null;
   ftsFunctionEffectivenessId?: ((string | null) | (number | null)) | null;
   technologicalSolutionId?: ((string | null) | (number | null)) | null;
-  feedbackSourceId?: ((string | null) | (number | null)) | null;
-  feedbackSourceIds?: string | number | (string | number)[];
   responsibleId?: ((string | null) | (number | null)) | null;
-  ftsMethodologyStatusId?: ((string | null) | (number | null)) | null;
   ftsFunctionDetails?: string | null;
   basis?: string | null;
   artifact?: string | null;
@@ -1524,13 +1595,6 @@ export type CreateFtsFunctionDetailDto = {
   purpose?: string | null;
   number?: string | null;
   algorithm?: string | null;
-  problemDescription?: string | null;
-  initiatorRequisites?: string | null;
-  methodologyPosition?: string | null;
-  initiatorAcceptance?: string | null;
-  deadline?: ((string | null) | (string | null)) | null;
-  isAccepted?: boolean | null;
-  rejectComment?: string | null;
 };
 export type UpdateFtsFunctionDetailDto = {
   ftsFunctionStepId?: string | number;
@@ -1541,10 +1605,7 @@ export type UpdateFtsFunctionDetailDto = {
   ftsFunctionActionTypeId?: ((string | null) | (number | null)) | null;
   ftsFunctionEffectivenessId?: ((string | null) | (number | null)) | null;
   technologicalSolutionId?: ((string | null) | (number | null)) | null;
-  feedbackSourceId?: ((string | null) | (number | null)) | null;
-  feedbackSourceIds?: string | number | (string | number)[];
   responsibleId?: ((string | null) | (number | null)) | null;
-  ftsMethodologyStatusId?: ((string | null) | (number | null)) | null;
   ftsFunctionDetails?: string | null;
   basis?: string | null;
   artifact?: string | null;
@@ -1552,15 +1613,119 @@ export type UpdateFtsFunctionDetailDto = {
   purpose?: string | null;
   number?: string | null;
   algorithm?: string | null;
+};
+export type FeedbackResponseDto = {
+  id: number;
+  ftsFunctionDetailId: number;
+  feedbackQualityMetricsId: number | null;
+  ftsMethodologyStatusId: number | null;
+  problemDescription: string | null;
+  initiatorRequisites: string | null;
+  initiatorAcceptance: string | null;
+  deadline: string | null;
+  isAccepted: boolean | null;
+  ftsMethodologyStatus: {
+    id: number;
+    code: string;
+    name: string;
+    category:
+      | "FTS_CENTRALIZATION"
+      | "FTS_FUNCTION_NAME"
+      | "FTS_FUNCTION_STEP"
+      | "FTS_FUNCTION_CATEGORY"
+      | "FTS_FUNCTION_MARKER"
+      | "FTS_FUNCTION_COMPLEXITY"
+      | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+      | "WHO_PERFORMS_ACTION"
+      | "FTS_FUNCTION_ACTION_TYPE"
+      | "FTS_FUNCTION_EFFECTIVENESS"
+      | "FTS_COMPETENCY_CENTER"
+      | "FTS_DTI"
+      | "FTS_FUNCTION_RELATION_TYPE"
+      | "TECHNOLOGICAL_SOLUTION"
+      | "FEEDBACK_SOURCE"
+      | "FEEDBACK_QUALITY_METRICS"
+      | "RESPONSIBLE"
+      | "FTS_METHODOLOGY_STATUS";
+  } | null;
+  feedbackQualityMetrics: {
+    id: number;
+    code: string;
+    name: string;
+    category:
+      | "FTS_CENTRALIZATION"
+      | "FTS_FUNCTION_NAME"
+      | "FTS_FUNCTION_STEP"
+      | "FTS_FUNCTION_CATEGORY"
+      | "FTS_FUNCTION_MARKER"
+      | "FTS_FUNCTION_COMPLEXITY"
+      | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+      | "WHO_PERFORMS_ACTION"
+      | "FTS_FUNCTION_ACTION_TYPE"
+      | "FTS_FUNCTION_EFFECTIVENESS"
+      | "FTS_COMPETENCY_CENTER"
+      | "FTS_DTI"
+      | "FTS_FUNCTION_RELATION_TYPE"
+      | "TECHNOLOGICAL_SOLUTION"
+      | "FEEDBACK_SOURCE"
+      | "FEEDBACK_QUALITY_METRICS"
+      | "RESPONSIBLE"
+      | "FTS_METHODOLOGY_STATUS";
+  } | null;
+  feedbackSources: {
+    feedbackSource: {
+      id: number;
+      code: string;
+      name: string;
+      category:
+        | "FTS_CENTRALIZATION"
+        | "FTS_FUNCTION_NAME"
+        | "FTS_FUNCTION_STEP"
+        | "FTS_FUNCTION_CATEGORY"
+        | "FTS_FUNCTION_MARKER"
+        | "FTS_FUNCTION_COMPLEXITY"
+        | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+        | "WHO_PERFORMS_ACTION"
+        | "FTS_FUNCTION_ACTION_TYPE"
+        | "FTS_FUNCTION_EFFECTIVENESS"
+        | "FTS_COMPETENCY_CENTER"
+        | "FTS_DTI"
+        | "FTS_FUNCTION_RELATION_TYPE"
+        | "TECHNOLOGICAL_SOLUTION"
+        | "FEEDBACK_SOURCE"
+        | "FEEDBACK_QUALITY_METRICS"
+        | "RESPONSIBLE"
+        | "FTS_METHODOLOGY_STATUS";
+    };
+  }[];
+  feedbackAgreementHistory: {
+    id: number;
+    feedbackId: number;
+    fromStatus: string | null;
+    toStatus: string;
+    comment: string | null;
+    createdAt: string;
+  }[];
+};
+export type CreateFeedbackDto = {
+  feedbackQualityMetricsId?: ((string | null) | (number | null)) | null;
+  ftsMethodologyStatusId?: ((string | null) | (number | null)) | null;
+  feedbackSourceIds?: (string | number)[];
   problemDescription?: string | null;
   initiatorRequisites?: string | null;
-  methodologyPosition?: string | null;
   initiatorAcceptance?: string | null;
   deadline?: ((string | null) | (string | null)) | null;
-  isAccepted?: boolean | null;
-  rejectComment?: string | null;
 };
-export type AcceptFtsFunctionDetailDto = {
+export type UpdateFeedbackDto = {
+  feedbackQualityMetricsId?: ((string | null) | (number | null)) | null;
+  ftsMethodologyStatusId?: ((string | null) | (number | null)) | null;
+  feedbackSourceIds?: (string | number)[];
+  problemDescription?: string | null;
+  initiatorRequisites?: string | null;
+  initiatorAcceptance?: string | null;
+  deadline?: ((string | null) | (string | null)) | null;
+};
+export type AcceptFeedbackDto = {
   isAccepted: boolean;
   rejectComment?: string;
 };
@@ -1600,11 +1765,15 @@ export const {
   useFtsFunctionControllerCreateDetailV1Mutation,
   useFtsFunctionControllerUpdateDetailV1Mutation,
   useFtsFunctionControllerSoftDeleteDetailV1Mutation,
-  useFtsFunctionControllerAcceptDetailV1Mutation,
+  useFtsFunctionControllerCreateFeedbackV1Mutation,
+  useFtsFunctionControllerUpdateFeedbackV1Mutation,
+  useFtsFunctionControllerDeleteFeedbackV1Mutation,
+  useFtsFunctionControllerAcceptFeedbackV1Mutation,
   useFtsFunctionControllerCreateTreeEdgeV1Mutation,
   useFtsFunctionControllerDeleteTreeEdgeV1Mutation,
   useFtsFunctionControllerBatchAttachDtisV1V1Mutation,
   useFtsFunctionControllerAttachDtiV1Mutation,
   useFtsFunctionControllerDetachDtiV1Mutation,
+  useFtsFunctionControllerGetDownloadV1Query,
   useHealthControllerCheckV1Query,
 } = injectedRtkApi;

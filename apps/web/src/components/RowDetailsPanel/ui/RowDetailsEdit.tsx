@@ -131,11 +131,10 @@ export function RowDetailsEdit({
                     flex: 1,
                     overflow: "auto",
                     px: 2,
-                    pt: 2,
+                    pb: 1.5,
                     display: "flex",
                     flexDirection: "column",
-                    gap: 1.5,
-                    pb: 1,
+                    gap: 1.25,
                 }}
             >
                 {editFields.map((field) => {
@@ -146,13 +145,14 @@ export function RowDetailsEdit({
 
                     const disabled = isTechnologyDependent && !technologySelected;
                     const required = isTechnologyDependent && technologySelected;
+                    const value = String(draft[field.key] ?? "");
 
                     return (
                         <DraftField
                             key={field.key}
                             field={field}
-                            value={(draft[field.key] as string | undefined) ?? ""}
-                            onChange={(value) => onChangeField(field.key, value)}
+                            value={value}
+                            onChange={(nextValue) => onChangeField(field.key, nextValue)}
                             typesAll={typesAll}
                             t={t}
                             theme={theme}
@@ -161,26 +161,14 @@ export function RowDetailsEdit({
                         />
                     );
                 })}
-            </Box>
 
-            <Box
-                sx={{
-                    px: 2,
-                    py: 1.5,
-                    flexShrink: 0,
-                    borderTop: `1px solid ${c.borderLight}`,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 1,
-                }}
-            >
                 {!technologyValid && (
                     <Typography
                         variant="caption"
                         sx={{
                             color: theme.palette.warning.main,
                             fontSize: "0.68rem",
-                            textAlign: "center",
+                            lineHeight: 1.35,
                         }}
                     >
                         {
@@ -188,13 +176,21 @@ export function RowDetailsEdit({
                         }
                     </Typography>
                 )}
+            </Box>
 
+            <Box
+                sx={{
+                    p: 2,
+                    flexShrink: 0,
+                    borderTop: `1px solid ${c.borderLight}`,
+                }}
+            >
                 <Button
-                    variant="contained"
-                    onClick={onSave}
-                    disabled={!technologyValid}
                     fullWidth
+                    variant="contained"
                     startIcon={<Save sx={{ fontSize: 16 }} />}
+                    disabled={!technologyValid}
+                    onClick={onSave}
                     sx={{
                         textTransform: "none",
                         fontSize: "0.8rem",
@@ -270,17 +266,20 @@ function DraftField({
 
     if (field.kind === FieldKind.SELECT_TYPE_CODE) {
         const options = getTypeCodeOptionsByCategory(typesAll, field.typeCategory!);
+        const resolvedValue = resolveTypeCodeValue(value, options);
 
         return (
             <FormControl size="small" fullWidth disabled={disabled}>
                 <InputLabel sx={formLabelSx(theme)}>{label}</InputLabel>
+
                 <Select
-                    value={value}
+                    value={resolvedValue}
                     onChange={(e) => onChange(String(e.target.value))}
                     label={label}
                     sx={formSelectSx(theme)}
                     MenuProps={formMenuSx(theme)}
                     data-testid={field.testId}
+                    displayEmpty={false}
                 >
                     <MenuItem
                         value=""
@@ -310,6 +309,7 @@ function DraftField({
     return (
         <FormControl size="small" fullWidth disabled={disabled}>
             <InputLabel sx={formLabelSx(theme)}>{label}</InputLabel>
+
             <Select
                 value={value}
                 onChange={(e) => onChange(String(e.target.value))}
@@ -318,14 +318,7 @@ function DraftField({
                 MenuProps={formMenuSx(theme)}
                 data-testid={field.testId}
             >
-                <MenuItem
-                    value=""
-                    sx={{
-                        fontSize: "0.78rem",
-                        fontStyle: "italic",
-                        color: c.textDim,
-                    }}
-                >
+                <MenuItem value="" sx={{ fontSize: "0.78rem", color: c.textDim }}>
                     {"— не выбрано —"}
                 </MenuItem>
 
@@ -375,8 +368,8 @@ function AutocompleteField({
             disabled={disabled}
             options={options}
             value={value}
-            onChange={(_, v) => onChange(v ?? "")}
-            onInputChange={(_, v) => onChange(v)}
+            onChange={(_, nextValue) => onChange(nextValue ?? "")}
+            onInputChange={(_, nextValue) => onChange(nextValue)}
             size="small"
             fullWidth
             slotProps={{
@@ -398,4 +391,25 @@ function AutocompleteField({
             )}
         />
     );
+}
+
+function normalizeDictionaryValue(value: string | undefined | null): string {
+    return String(value ?? "").trim().toLocaleLowerCase("ru-RU");
+}
+
+function resolveTypeCodeValue(
+    value: string,
+    options: TypeResponseDto[],
+): string {
+    const normalized = normalizeDictionaryValue(value);
+
+    if (!normalized) return "";
+
+    const matched = options.find(
+        (option) =>
+            normalizeDictionaryValue(option.code) === normalized ||
+            normalizeDictionaryValue(option.name) === normalized,
+    );
+
+    return matched?.code ?? "";
 }

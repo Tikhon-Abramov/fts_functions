@@ -107,7 +107,6 @@ export function useFunctionForm({
   const collisionQuery = useFtsFunctionControllerListV1Query(
     {
       ftsFunctionNameIds: [parsedNameId],
-      limit: 1,
       ...(isEdit && editingFunctionId != null
         ? { idNot: editingFunctionId }
         : {}),

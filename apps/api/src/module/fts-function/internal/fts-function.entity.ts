@@ -5,6 +5,9 @@ import type {
   ftsFunctionListSelect,
   ftsFunctionToDtiSelect,
   ftsFunctionTreeSelect,
+  feedbackDetailedSelect,
+  downloadFtsFunctionSelect,
+  downloadFtsFunctionDetailSelect,
 } from './fts-function.selects';
 import type { Prisma } from '@prisma-client';
 
@@ -36,4 +39,16 @@ export type FtsFunctionTreeEntity = Prisma.FtsFunctionTreeGetPayload<{
 
 export type FtsFunctionToDtiEntity = Prisma.FtsFunctionToDtiGetPayload<{
   select: typeof ftsFunctionToDtiSelect;
+}>;
+
+export type FeedbackDetailedEntity = Prisma.FeedbackGetPayload<{
+  select: typeof feedbackDetailedSelect;
+}>;
+
+export type DownloadFtsFunctionEntity = Prisma.FtsFunctionGetPayload<{
+  select: typeof downloadFtsFunctionSelect;
+}>;
+
+export type DownloadFtsFunctionDetailEntity = Prisma.FtsFunctionDetailGetPayload<{
+  select: typeof downloadFtsFunctionDetailSelect;
 }>;

@@ -19,6 +19,7 @@ const boolFromString = z
     .union([z.string(), z.boolean()])
     .transform((v) => {
         if (typeof v === 'boolean') return v;
+
         return v === 'true' || v === '1';
     })
     .pipe(z.boolean());
@@ -72,8 +73,13 @@ export const FtsFunctionListQuerySchema = z.object({
     competencyCenterIds: idArrayQuery.optional(),
     ftsFunctionNameIds: idArrayQuery.optional(),
     ftsFunctionMarkerIds: idArrayQuery.optional(),
+    ftsCentralizationIds: idArrayQuery.optional(),
+    dtiIds: idArrayQuery.optional(),
+
     curatorCentralOfficeIds: idArrayQuery.optional(),
     managerInterregionalInspectionIds: idArrayQuery.optional(),
+    departmentHeadCentralOfficeIds: idArrayQuery.optional(),
+    departmentHeadInterregionalInspectionIds: idArrayQuery.optional(),
 
     ids: idArrayQuery.optional(),
     idNot: positiveInt.optional(),
@@ -130,10 +136,8 @@ export const CreateFtsFunctionDetailSchema = z.object({
     ftsFunctionActionTypeId: positiveInt.nullable().optional(),
     ftsFunctionEffectivenessId: positiveInt.nullable().optional(),
     technologicalSolutionId: positiveInt.nullable().optional(),
-    feedbackSourceId: positiveInt.nullable().optional(),
-    feedbackSourceIds: idArrayQuery.optional(),
     responsibleId: positiveInt.nullable().optional(),
-    ftsMethodologyStatusId: positiveInt.nullable().optional(),
+    
     ftsFunctionDetails: z.string().nullable().optional(),
     basis: z.string().nullable().optional(),
     artifact: z.string().nullable().optional(),
@@ -141,13 +145,6 @@ export const CreateFtsFunctionDetailSchema = z.object({
     purpose: z.string().nullable().optional(),
     number: z.string().nullable().optional(),
     algorithm: z.string().nullable().optional(),
-    problemDescription: z.string().nullable().optional(),
-    initiatorRequisites: z.string().nullable().optional(),
-    methodologyPosition: z.string().nullable().optional(),
-    initiatorAcceptance: z.string().nullable().optional(),
-    deadline: dateFromJson.nullable().optional(),
-    isAccepted: z.boolean().nullable().optional(),
-    rejectComment: z.string().nullable().optional(),
 });
 
 export const UpdateFtsFunctionDetailSchema =
@@ -162,15 +159,34 @@ export class UpdateFtsFunctionDetailDto extends createZodDto(
 ) {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// BODY DTOs — Feedback
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const AcceptFtsFunctionDetailSchema = z.object({
+export const CreateFeedbackSchema = z.object({
+    feedbackQualityMetricsId: positiveInt.nullable().optional(),
+    ftsMethodologyStatusId: positiveInt.nullable().optional(),
+    feedbackSourceIds: z.array(positiveInt).optional().default([]),
+
+    problemDescription: z.string().nullable().optional(),
+    initiatorRequisites: z.string().nullable().optional(),
+    initiatorAcceptance: z.string().nullable().optional(),
+    deadline: dateFromJson.nullable().optional(),
+});
+
+export const UpdateFeedbackSchema = CreateFeedbackSchema.partial();
+
+export const AcceptFeedbackSchema = z.object({
     isAccepted: z.boolean(),
     rejectComment: z.string().optional(),
 });
 
-export class AcceptFtsFunctionDetailDto extends createZodDto(
-    AcceptFtsFunctionDetailSchema,
-) {}
+export class CreateFeedbackDto extends createZodDto(CreateFeedbackSchema) {}
+export class UpdateFeedbackDto extends createZodDto(UpdateFeedbackSchema) {}
+export class AcceptFeedbackDto extends createZodDto(AcceptFeedbackSchema) {}
+
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // BODY DTOs — FtsFunctionTree
@@ -237,6 +253,48 @@ export const FtsFunctionListResponseSchema = z.object({
     overallTotal: z.number(),
 });
 
+export const FeedbackSchema = z.object({
+    id: z.number(),
+    ftsFunctionDetailId: z.number(),
+    feedbackQualityMetricsId: z.number().nullable(),
+    ftsMethodologyStatusId: z.number().nullable(),
+    problemDescription: z.string().nullable(),
+    initiatorRequisites: z.string().nullable(),
+    initiatorAcceptance: z.string().nullable(),
+    deadline: z.date().nullable(),
+    isAccepted: z.boolean().nullable(),
+
+    ftsMethodologyStatus: typeMinimalSchema.nullable(),
+    feedbackQualityMetrics: typeMinimalSchema.nullable(),
+    feedbackSources: z.array(
+        z.object({
+            feedbackSource: typeMinimalSchema,
+        }),
+    ),
+
+    feedbackAgreementHistory: z.array(
+        z.object({
+            id: z.number(),
+            feedbackId: z.number(),
+            fromStatus: z.string().nullable(),
+            toStatus: z.string(),
+            comment: z.string().nullable(),
+            createdAt: z.date(),
+        }),
+    ),
+});
+
+
+export class FeedbackResponseDto extends createZodDto(
+    FeedbackSchema,
+) {}
+
+export const FeedbackIdParamSchema = z.object({
+    feedbackId: positiveInt,
+});
+
+export class FeedbackIdParamDto extends createZodDto(FeedbackIdParamSchema) {}
+
 const FtsFunctionDetailBaseResponseSchema = z.object({
     id: z.number(),
     ftsFunctionId: z.number(),
@@ -248,10 +306,8 @@ const FtsFunctionDetailBaseResponseSchema = z.object({
     ftsFunctionActionTypeId: z.number().nullable(),
     ftsFunctionEffectivenessId: z.number().nullable(),
     technologicalSolutionId: positiveInt.nullable().optional(),
-    feedbackSourceId: positiveInt.nullable().optional(),
-    feedbackSourceIds: idArrayQuery.optional(),
     responsibleId: positiveInt.nullable().optional(),
-    ftsMethodologyStatusId: positiveInt.nullable().optional(),
+
     ftsFunctionDetails: z.string().nullable(),
     basis: z.string().nullable(),
     artifact: z.string().nullable(),
@@ -259,30 +315,16 @@ const FtsFunctionDetailBaseResponseSchema = z.object({
     purpose: z.string().nullable(),
     number: z.string().nullable().optional(),
     algorithm: z.string().nullable().optional(),
-    problemDescription: z.string().nullable().optional(),
-    initiatorRequisites: z.string().nullable().optional(),
-    methodologyPosition: z.string().nullable().optional(),
-    initiatorAcceptance: z.string().nullable().optional(),
-    deadline: dateFromJson.nullable().optional(),
-    isAccepted: z.boolean().nullable().optional(),
-    rejectComment: z.string().nullable().optional(),
-    feedbackAgreementHistory: z
-        .array(
-            z.object({
-                id: z.number(),
-                ftsFunctionDetailId: z.number(),
-                fromStatus: z.string().nullable(),
-                toStatus: z.string(),
-                comment: z.string().nullable(),
-                createdAt: z.date(),
-            }),
-        )
-        .optional()
-        .default([]),
+
     createdAt: z.date(),
     updatedAt: z.date(),
     isDeleted: z.boolean(),
     deletedAt: z.date().nullable(),
+
+    feedbacks: z
+        .array(FeedbackSchema)
+        .optional()
+        .default([]),
 });
 
 const FtsFunctionTreeEdgeResponseSchema = z.object({
@@ -303,17 +345,7 @@ const FtsFunctionDetailDetailedResponseSchema =
         ftsFunctionActionType: typeMinimalSchema.nullable(),
         ftsFunctionEffectiveness: typeMinimalSchema.nullable(),
         technologicalSolution: typeMinimalSchema.nullable(),
-        feedbackSource: typeMinimalSchema.nullable().optional(),
-        feedbackSources: z
-            .array(
-                z.object({
-                    feedbackSource: typeMinimalSchema,
-                }),
-            )
-            .optional()
-            .default([]),
         responsible: typeMinimalSchema.nullable(),
-        ftsMethodologyStatus: typeMinimalSchema.nullable(),
     });
 
 const FtsFunctionDetailInDetailedResponseSchema =

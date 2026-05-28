@@ -10,14 +10,26 @@
  * exported list. No other file changes.
  */
 import type { Theme } from "@mui/material";
-import type { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import type {
+  GridColDef,
+  GridFilterItem,
+  GridFilterOperator,
+  GridRenderCellParams,
+} from "@mui/x-data-grid";
 import type { TFunction } from "i18next";
+import type { Ref } from "react";
 import type { TypeLookupByName } from "src/entities/fts-function/hooks/colors/useTypeColorLookup";
 import type { SelectOption } from "src/entities/fts-function/hooks/data/useDictionary";
 import type { FunctionRecord } from "src/entities/fts-function/types";
 
-import { Box } from "@mui/material";
-import { getGridSingleSelectOperators } from "@mui/x-data-grid";
+import {
+  Box,
+  Checkbox,
+  FormControl,
+  ListItemText,
+  MenuItem,
+  Select,
+} from "@mui/material";
 import { FtsFunctionField } from "src/entities/fts-function/model";
 import { I18N } from "src/shared/i18n";
 import { ChipListCell } from "src/shared/ui/grid-cells/ChipListCell";
@@ -29,20 +41,15 @@ import {
 import { TypeChip } from "src/shared/ui/TypeChip";
 
 import { Category } from "@registry/shared/enums";
-
-// ---------- types ----------
+import { UserSlot } from "src/entities/fts-function/hooks/selectors/useUsersBySlot";
 
 export type ColumnDeps = {
   t: TFunction;
   theme: Theme;
   optionsByCategory: Readonly<Record<Category, SelectOption[]>>;
-  /** Display name for the FTS_FUNCTION_MARKER "DEBT_SETTLEMENT" code, if any.
-   *  Used as a heuristic-color fallback when the Type row carries no `color`. */
+  userOptionsBySlot: Record<UserSlot, SelectOption[]>;  // ← объект-словарь
   markerDebtSettlementName: string | undefined;
   lookupTypeByName: TypeLookupByName;
-  /** Id of the function currently open in the form panel above the table,
-   *  or `undefined` if no row is being edited. Used to render the edit icon
-   *  in an active state on the corresponding row. */
   editingId: number | undefined;
   onEdit: (id: number) => void;
   onCloseEdit: () => void;
@@ -50,14 +57,17 @@ export type ColumnDeps = {
   onOpenDetails: (id: number) => void;
 };
 
-// ---------- module-level constants ----------
+type NormalizedFilterOption = {
+  value: string | number;
+  label: string;
+};
 
-// Only the `isAnyOf` filter op is meaningful on ID-backed singleSelect columns
-// (the backend takes an array of FK ids; equality "is" maps to the same shape
-// with one element, so we hide it to keep the UX consistent).
-const SINGLE_SELECT_IS_ANY_OF_OPS = getGridSingleSelectOperators().filter(
-  (op) => op.value === "isAnyOf",
-);
+type ServerMultiSelectFilterInputProps = {
+  item: GridFilterItem;
+  applyValue: (item: GridFilterItem) => void;
+  focusElementRef?: Ref<HTMLInputElement>;
+  options: NormalizedFilterOption[];
+};
 
 const ID_COLUMN_WIDTH = 64;
 const ACTIONS_COLUMN_WIDTH = 108;
@@ -71,10 +81,120 @@ const PEOPLE_COLUMN_MIN_WIDTH = 140;
 const CENTRALIZATION_YES_CODE = "YES";
 const MARKER_DEBT_SETTLEMENT_CODE = "DEBT_SETTLEMENT";
 
-// ---------- per-column builders ----------
+function createServerSingleSelectIsAnyOfOps(
+    valueOptions: readonly SelectOption[] | undefined,
+): GridFilterOperator[] {
+  const normalizedOptions = normalizeFilterOptions(valueOptions);
 
-function idColumn({ t, theme }: ColumnDeps): GridColDef<FunctionRecord> {
+  return [
+    {
+      label: "один из",
+      value: "isAnyOf",
+      getApplyFilterFn: () => null,
+      InputComponent: (props) => (
+          <ServerMultiSelectFilterInput
+              {...(props as Omit<
+                  ServerMultiSelectFilterInputProps,
+                  "options"
+              >)}
+              options={normalizedOptions}
+          />
+      ),
+      getValueAsString: (value) => {
+        if (!Array.isArray(value)) return "";
+
+        const labelByValue = new Map(
+            normalizedOptions.map((option) => [
+              String(option.value),
+              option.label,
+            ]),
+        );
+
+        return value
+            .map((item) => labelByValue.get(String(item)) ?? String(item))
+            .join(", ");
+      },
+    },
+  ];
+}
+
+function ServerMultiSelectFilterInput({
+                                        item,
+                                        applyValue,
+                                        focusElementRef,
+                                        options,
+                                      }: ServerMultiSelectFilterInputProps) {
+  const selectedValues = Array.isArray(item.value)
+      ? item.value.map(String)
+      : [];
+
+  const labelByValue = new Map(
+      options.map((option) => [String(option.value), option.label]),
+  );
+
+  return (
+      <FormControl fullWidth size="small" variant="standard">
+        <Select
+            multiple
+            value={selectedValues}
+            inputRef={focusElementRef}
+            onChange={(event) => {
+              const rawValue = event.target.value;
+              const nextStringValues = Array.isArray(rawValue)
+                  ? rawValue.map(String)
+                  : String(rawValue).split(",");
+
+              const nextValue = nextStringValues.map((selectedValue) => {
+                const matched = options.find(
+                    (option) => String(option.value) === selectedValue,
+                );
+
+                return matched?.value ?? selectedValue;
+              });
+
+              applyValue({
+                ...item,
+                value: nextValue,
+              });
+            }}
+            renderValue={(selected) =>
+                selected
+                    .map((value) => labelByValue.get(String(value)) ?? String(value))
+                    .join(", ")
+            }
+        >
+          {options.map((option) => {
+            const optionValue = String(option.value);
+            const checked = selectedValues.includes(optionValue);
+
+            return (
+                <MenuItem key={optionValue} value={optionValue}>
+                  <Checkbox size="small" checked={checked} sx={{ mr: 0.5 }} />
+
+                  <ListItemText
+                      primary={option.label}
+                      primaryTypographyProps={{ fontSize: "0.78rem" }}
+                  />
+                </MenuItem>
+            );
+          })}
+        </Select>
+      </FormControl>
+  );
+}
+
+function normalizeFilterOptions(
+    valueOptions: readonly SelectOption[] | undefined,
+): NormalizedFilterOption[] {
+  return (valueOptions ?? []).map((option) => ({
+    value: option.value,
+    label: option.label,
+  }));
+}
+
+function idColumn({ theme }: ColumnDeps): GridColDef<FunctionRecord> {
   const c = theme.custom;
+
   return {
     field: FtsFunctionField.ID,
     headerName: "ID",
@@ -82,38 +202,37 @@ function idColumn({ t, theme }: ColumnDeps): GridColDef<FunctionRecord> {
     align: "center",
     headerAlign: "center",
     sortable: true,
-    filterable: true,
+    filterable: false,
+    disableColumnMenu: true,
     type: "number",
     valueFormatter: (value: unknown) => (value == null ? "" : String(value)),
     renderCell: (params: GridRenderCellParams<FunctionRecord>) => (
-      <Box sx={{ color: c.textMuted, fontSize: "0.72rem" }}>
-        {String(params.row.id)}
-      </Box>
+        <Box sx={{ color: c.textMuted, fontSize: "0.72rem" }}>
+          {String(params.row.id)}
+        </Box>
     ),
   };
 }
 
 function actionsColumn(deps: ColumnDeps): GridColDef<FunctionRecord> {
-  // `onDelete` / `onEdit` / `onOpenDetails` are PROPS received by this
-  // function (deps is the props object); the agario standard requires `onX`
-  // names for received callbacks. The naming-convention rule can't tell
-  // destructured parameters from local consts, so we silence it here.
-
-  const { t, theme, editingId, onDelete, onEdit, onCloseEdit, onOpenDetails } =
-    deps;
+  const { theme, editingId, onDelete, onEdit, onCloseEdit, onOpenDetails } =
+      deps;
   const c = theme.custom;
+
   const labels = {
     delete: "Удалить",
     edit: "Редактировать функцию",
     editClose: "Закрыть карточку редактирования",
     details: "Детализация",
   };
+
   const palette = {
     textMuted: c.textMuted,
     dangerHover: c.dangerHover,
     accentBlue: c.accentBlue,
     detailBtnHover: c.detailBtnHover,
   };
+
   return {
     field: FtsFunctionField.ACTIONS,
     headerName: "Действия",
@@ -124,62 +243,66 @@ function actionsColumn(deps: ColumnDeps): GridColDef<FunctionRecord> {
     align: "center",
     headerAlign: "center",
     renderCell: (params: GridRenderCellParams<FunctionRecord>) => (
-      <RowActionsCell
-        id={Number(params.row.id)}
-        palette={palette}
-        labels={labels}
-        isEditing={editingId === Number(params.row.id)}
-        onDelete={onDelete}
-        onEdit={onEdit}
-        onCloseEdit={onCloseEdit}
-        onOpenDetails={onOpenDetails}
-      />
+        <RowActionsCell
+            id={Number(params.row.id)}
+            palette={palette}
+            labels={labels}
+            isEditing={editingId === Number(params.row.id)}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            onCloseEdit={onCloseEdit}
+            onOpenDetails={onOpenDetails}
+        />
     ),
   };
 }
 
 function nameColumn({
-  t,
-  theme,
-  optionsByCategory,
-}: ColumnDeps): GridColDef<FunctionRecord> {
+                      theme,
+                      optionsByCategory,
+                    }: ColumnDeps): GridColDef<FunctionRecord> {
   const c = theme.custom;
+  const valueOptions = optionsByCategory[Category.FTS_FUNCTION_NAME];
+
   return {
     field: FtsFunctionField.NAME,
     headerName: "Наименование",
     flex: 2,
     minWidth: NAME_COLUMN_MIN_WIDTH,
     type: "singleSelect",
-    valueOptions: optionsByCategory[Category.FTS_FUNCTION_NAME],
-    filterOperators: SINGLE_SELECT_IS_ANY_OF_OPS,
+    valueOptions,
+    filterable: true,
+    filterOperators: createServerSingleSelectIsAnyOfOps(valueOptions),
     sortable: false,
     align: "left",
     headerAlign: "left",
     renderCell: (params) => (
-      <TextWrapCell sx={{ fontWeight: 500, color: c.textPrimary }}>
-        {String(params.value ?? "")}
-      </TextWrapCell>
+        <TextWrapCell sx={{ fontWeight: 500, color: c.textPrimary }}>
+          {String(params.value ?? "")}
+        </TextWrapCell>
     ),
   };
 }
 
 function markerColumn(deps: ColumnDeps): GridColDef<FunctionRecord> {
   const {
-    t,
     theme,
     optionsByCategory,
     lookupTypeByName,
     markerDebtSettlementName,
   } = deps;
   const c = theme.custom;
+  const valueOptions = optionsByCategory[Category.FTS_FUNCTION_MARKER];
+
   return {
     field: FtsFunctionField.MARKER,
     headerName: "Маркер",
     flex: 1,
     minWidth: MARKER_COLUMN_MIN_WIDTH,
     type: "singleSelect",
-    valueOptions: optionsByCategory[Category.FTS_FUNCTION_MARKER],
-    filterOperators: SINGLE_SELECT_IS_ANY_OF_OPS,
+    valueOptions,
+    filterable: true,
+    filterOperators: createServerSingleSelectIsAnyOfOps(valueOptions),
     sortable: false,
     align: "left",
     headerAlign: "left",
@@ -187,158 +310,171 @@ function markerColumn(deps: ColumnDeps): GridColDef<FunctionRecord> {
       const value = params.value as string | undefined;
       const tp = lookupTypeByName(Category.FTS_FUNCTION_MARKER, value);
       const fallback =
-        value === markerDebtSettlementName ? c.markerGreen : c.markerPink;
+          value === markerDebtSettlementName ? c.markerGreen : c.markerPink;
       const resolved = tp?.color ?? fallback;
+
       return (
-        <TextWrapCell sx={{ fontSize: "0.72rem", color: resolved }}>
-          {value ?? ""}
-        </TextWrapCell>
+          <TextWrapCell sx={{ fontSize: "0.72rem", color: resolved }}>
+            {value ?? ""}
+          </TextWrapCell>
       );
     },
   };
 }
 
 function strategyProjectsColumn({
-  t,
-  theme,
-  lookupTypeByName,
-}: ColumnDeps): GridColDef<FunctionRecord> {
+                                  theme,
+                                  optionsByCategory,
+                                  lookupTypeByName,
+                                }: ColumnDeps): GridColDef<FunctionRecord> {
   const c = theme.custom;
-  // Resolve each DTI's colour through the cached (category, name) Map. The
-  // dictionary already includes FTS_DTI rows, so this matches the dot colour
-  // shown in the form-panel `DtiMultiSelect` dropdown for the same item.
+  const valueOptions = optionsByCategory[Category.FTS_DTI];
+
   const colorFor = (name: string): string =>
-    lookupTypeByName(Category.FTS_DTI, name)?.color ?? c.strategyChipColor;
+      lookupTypeByName(Category.FTS_DTI, name)?.color ?? c.strategyChipColor;
+
   return {
     field: FtsFunctionField.STRATEGY_PROJECTS,
     headerName: "Стратегия Д",
     flex: 1.2,
     minWidth: STRATEGY_COLUMN_MIN_WIDTH,
+    type: "singleSelect",
+    valueOptions,
+    filterable: true,
+    filterOperators: createServerSingleSelectIsAnyOfOps(valueOptions),
     align: "left",
     headerAlign: "left",
     sortable: false,
-    filterable: false,
     renderCell: (params: GridRenderCellParams<FunctionRecord>) => (
-      <ChipListCell
-        values={params.value as string[] | undefined}
-        borderColor={c.strategyChipBg}
-        textColor={c.strategyChipColor}
-        colorFor={colorFor}
-      />
+        <ChipListCell
+            values={params.value as string[] | undefined}
+            borderColor={c.strategyChipBg}
+            textColor={c.strategyChipColor}
+            colorFor={colorFor}
+        />
     ),
   };
 }
 
 function centralizationColumn(deps: ColumnDeps): GridColDef<FunctionRecord> {
-  const { t, theme, optionsByCategory, lookupTypeByName } = deps;
+  const { theme, optionsByCategory, lookupTypeByName } = deps;
   const c = theme.custom;
+  const valueOptions = optionsByCategory[Category.FTS_CENTRALIZATION];
+
   return {
     field: FtsFunctionField.CENTRALIZATION,
     headerName: "Центр. функ.",
     flex: 0.7,
     minWidth: CENTRALIZATION_COLUMN_MIN_WIDTH,
     type: "singleSelect",
-    valueOptions: optionsByCategory[Category.FTS_CENTRALIZATION],
+    valueOptions,
+    filterable: true,
+    filterOperators: createServerSingleSelectIsAnyOfOps(valueOptions),
     sortable: false,
-    filterable: false,
     align: "center",
     headerAlign: "center",
     renderCell: (params) => {
       const value = (params.value as string | undefined) ?? "";
       const tp = lookupTypeByName(Category.FTS_CENTRALIZATION, value);
       const fallback =
-        tp?.code === CENTRALIZATION_YES_CODE ? c.accentBlue : c.textSecondary;
+          tp?.code === CENTRALIZATION_YES_CODE ? c.accentBlue : c.textSecondary;
+
       return (
-        <TypeChip
-          code={tp?.code}
-          name={value}
-          color={tp?.color}
-          fallbackColor={fallback}
-        />
+          <TypeChip
+              code={tp?.code}
+              name={value}
+              color={tp?.color}
+              fallbackColor={fallback}
+          />
       );
     },
   };
 }
 
 function competenceCenterColumn({
-  t,
-  theme,
-  optionsByCategory,
-}: ColumnDeps): GridColDef<FunctionRecord> {
+                                  theme,
+                                  optionsByCategory,
+                                }: ColumnDeps): GridColDef<FunctionRecord> {
   const c = theme.custom;
+  const valueOptions = optionsByCategory[Category.FTS_COMPETENCY_CENTER];
+
   return {
     field: FtsFunctionField.COMPETENCE_CENTER,
     headerName: "Центр комп.",
     flex: 1.8,
     minWidth: COMPETENCY_COLUMN_MIN_WIDTH,
     type: "singleSelect",
-    valueOptions: optionsByCategory[Category.FTS_COMPETENCY_CENTER],
-    filterOperators: SINGLE_SELECT_IS_ANY_OF_OPS,
+    valueOptions,
+    filterable: true,
+    filterOperators: createServerSingleSelectIsAnyOfOps(valueOptions),
     sortable: false,
     align: "center",
     headerAlign: "center",
     renderCell: (params) => (
-      <TextWrapCell
-        align={TextWrapCellAlign.CENTER}
-        sx={{ fontSize: "0.72rem", color: c.textBody }}
-        data-testid={`cell-competence-center-${params.row.id}`}
-      >
-        {String(params.value ?? "")}
-      </TextWrapCell>
+        <TextWrapCell
+            align={TextWrapCellAlign.CENTER}
+            sx={{ fontSize: "0.72rem", color: c.textBody }}
+            data-testid={`cell-competence-center-${params.row.id}`}
+        >
+          {String(params.value ?? "")}
+        </TextWrapCell>
     ),
   };
 }
 
-/**
- * People columns are rendered as plain text — they have no `valueOptions`
- * dictionary attached, so the grid would surface a "contains" text filter
- * the backend can't honour. The backend list endpoint accepts FK-id arrays
- * for `curatorCA` / `managerMiudol`, but until those columns are converted
- * to `type: "singleSelect"` with the user dictionary as `valueOptions`
- * (threading `usersAll` through `ColumnDeps`) we hide the filter affordance
- * for all four person columns to keep UX honest. Sorting on people is also
- * unsupported by the backend (`sortBy` only takes id/createdAt/updatedAt).
- */
 function makePersonColumn(
-  field: keyof FunctionRecord & string,
-  headerKey: string,
+    field: keyof FunctionRecord & string,
+    headerKey: string,
+    slot: UserSlot,        
 ): (deps: ColumnDeps) => GridColDef<FunctionRecord> {
-  return ({ t }) => ({
-    field,
-    headerName: t(headerKey),
-    flex: 1,
-    minWidth: PEOPLE_COLUMN_MIN_WIDTH,
-    sortable: false,
-    filterable: false,
-    align: "left",
-    headerAlign: "left",
-    renderCell: (params) => (
-      <TextWrapCell>{String(params.value ?? "")}</TextWrapCell>
-    ),
-  });
+
+  return ({ t, userOptionsBySlot }) => {
+    const options = userOptionsBySlot[slot]; 
+    return {
+      field,
+      headerName: t(headerKey),
+      flex: 1,
+      minWidth: PEOPLE_COLUMN_MIN_WIDTH,
+      type: "singleSelect",
+      valueOptions: options,
+      filterable: true,
+      filterOperators: createServerSingleSelectIsAnyOfOps(options),
+      sortable: false,
+      align: "left",
+      headerAlign: "left",
+      renderCell: (params) => (
+          <TextWrapCell>{String(params.value ?? "")}</TextWrapCell>
+      ),
+    }
+  };
 }
 
 const curatorCAColumn = makePersonColumn(
   FtsFunctionField.CURATOR_CA,
   I18N.registry.columns.curatorCA,
+  UserSlot.CURATOR_CA,                          // ← curator ЦА
 );
+
 const nuZnuColumn = makePersonColumn(
   FtsFunctionField.NU_ZNU,
   I18N.registry.columns.nuZnu,
+  UserSlot.DEPT_HEAD_CA,                        // ← начальник ЦА
 );
+
 const managerMiudolColumn = makePersonColumn(
   FtsFunctionField.MANAGER_MIUDOL,
   I18N.registry.columns.manager,
+  UserSlot.MANAGER_MIUDOL,                      // ← менеджер МИУДОЛ
 );
+
 const niZniColumn = makePersonColumn(
   FtsFunctionField.NI_ZNI,
   I18N.registry.columns.niZni,
+  UserSlot.DEPT_HEAD_MIUDOL,                    // ← начальник МИУДОЛ
 );
 
-// ---------- public factory ----------
-
 export function createFunctionColumns(
-  deps: ColumnDeps,
+    deps: ColumnDeps,
 ): Array<GridColDef<FunctionRecord>> {
   return [
     idColumn(deps),

@@ -290,8 +290,8 @@ model Type {
   /// Связи с функциями ФНС
   ftsFunctions FtsFunctionToDti[]
 
-  /// Связи с детализациями функций ФНС
-  feedbackSourcesToFtsFunctionDetails FtsFunctionDetailToFeedbackSource[]
+  /// Связи с таблицей источников обратных связей
+  feedbackSourcesToFeedback FeedbackToFeedbackSource[]
 
   /// Связи с таблицей функций ФНС
   ftsCentralizationToFtsFunctions FtsFunction[] @relation("fts_function__fts_centralization")
@@ -309,7 +309,8 @@ model Type {
   ftsFunctionEffectivenessToFtsFunctionDetails      FtsFunctionDetail[] @relation("fts_function_details__fts_function_effectiveness")
   technologicalSolutionToFtsFunctionDetails         FtsFunctionDetail[] @relation("technological_solution__fts_function_action_type")
   responsibleToFtsFunctionDetails                   FtsFunctionDetail[] @relation("responsible__fts_function_action_type")
-  ftsMethodologyStatusToFtsFunctionDetails          FtsFunctionDetail[] @relation("fts_methodology_status__fts_function_action_type")
+  ftsMethodologyStatusToFeedback                    Feedback[]          @relation("feedback__fts_methodology_status")
+  feedbackQualityMetricsToFeedback                  Feedback[]          @relation("feedback__feedback_quality_metrics")
   ftsFunctionTree                                   FtsFunctionTree[]
 
   @@index([code])
@@ -342,27 +343,6 @@ model FtsFunctionToDti {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// Таблица связки детализаций функций с набором источников обратной связи
-model FtsFunctionDetailToFeedbackSource {
-  /// Уникальный идентификатор функции ФНС
-  ftsFunctionDetailId Int      @map("fts_function_detail_id")
-  /// Уникальный идентификатор DTI
-  feedbackSourceId    Int      @map("feedback_source_id")
-  /// Дата создания связи
-  createdAt           DateTime @default(now()) @map("created_at")
-
-  /// Связь с таблицей функций ФНС
-  ftsFunctionDetail FtsFunctionDetail @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
-  /// Связь с таблицей типов
-  feedbackSource    Type              @relation(fields: [feedbackSourceId], references: [id])
-
-  @@id([ftsFunctionDetailId, feedbackSourceId])
-  @@index([feedbackSourceId])
-  @@map("fts_function_detail_to_feedback_sources")
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 /// Таблица функций ФНС
 model FtsFunction {
   /// Уникальный идентификатор функции ФНС
@@ -372,7 +352,7 @@ model FtsFunction {
   /// Уникальный идентификатор названия функции. Уникальность среди НЕ удалённых
   /// функций обеспечивается в сервисе (`ensureFtsFunctionNameAvailable`) — после
   /// soft-delete можно пересоздать функцию с тем же именем.
-  ftsFunctionNameId                       Int       @unique @map("fts_function_name_id")
+  ftsFunctionNameId                       Int       @map("fts_function_name_id")
   /// Уникальный идентификатор центра компетенции
   competencyCenterId                      Int       @map("competency_center_id")
   /// Уникальный идентификатор куратора ЦА
@@ -412,6 +392,7 @@ model FtsFunction {
   /// Связи с таблицей детализаций функций ФНС
   ftsFunctionDetails FtsFunctionDetail[]
 
+  @@index([ftsFunctionNameId])
   @@index([ftsCentralizationId])
   @@index([competencyCenterId])
   @@index([ftsFunctionMarkerId])
@@ -464,22 +445,6 @@ model FtsFunctionDetail {
   number                          String?   @map("number") @db.VarChar(64)
   /// Алгоритм срабатывания
   algorithm                       String?   @map("algorithm") @db.Text
-  /// Описание проблемы с указанием источника, метрики, способа решения
-  problemDescription              String?   @map("problem_description") @db.Text
-  /// Реквизиты автора инициативы
-  initiatorRequisites             String?   @map("initiator_requisites") @db.Text
-  /// Методология позиции ЦА ФНС России
-  methodologyPosition             String?   @map("methodology_position") @db.Text
-  /// Акцепт автора инициативы
-  initiatorAcceptance             String?   @map("initiator_acceptance") @db.Text
-  /// Методологическая позиция ЦА ФНС России из справочника
-  ftsMethodologyStatusId          Int?      @map("fts_methodology_status_id")
-  /// Срок реализации доработки
-  deadline                        DateTime? @map("deadline")
-  /// Статус согласования обратной связи
-  isAccepted                      Boolean?  @map("is_accepted")
-  /// Комментарий при отрицательном акцепте
-  rejectComment                   String?   @map("reject_comment") @db.Text
   /// Дата создания
   createdAt                       DateTime  @default(now()) @map("created_at")
   /// Дата обновления
@@ -502,10 +467,8 @@ model FtsFunctionDetail {
   ftsFunctionEffectiveness      Type? @relation("fts_function_details__fts_function_effectiveness", fields: [ftsFunctionEffectivenessId], references: [id])
   technologicalSolution         Type? @relation("technological_solution__fts_function_action_type", fields: [technologicalSolutionId], references: [id])
   responsible                   Type? @relation("responsible__fts_function_action_type", fields: [responsibleId], references: [id])
-  ftsMethodologyStatus          Type? @relation("fts_methodology_status__fts_function_action_type", fields: [ftsMethodologyStatusId], references: [id])
 
-  feedbackSources          FtsFunctionDetailToFeedbackSource[]
-  feedbackAgreementHistory FtsFunctionDetailAgreementHistory[]
+  feedbacks                Feedback[]
 
   parents  FtsFunctionTree[] @relation("data_parents")
   children FtsFunctionTree[] @relation("data_children")
@@ -520,38 +483,93 @@ model FtsFunctionDetail {
   @@index([ftsFunctionEffectivenessId])
   @@index([technologicalSolutionId])
   @@index([responsibleId])
-  @@index([ftsMethodologyStatusId])
-  @@index([deadline])
-  @@index([isAccepted])
   @@index([isDeleted])
   @@fulltext([ftsFunctionDetails, basis, artifact, artifactUsage, purpose, number])
   @@map("fts_function_details")
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Таблица обратной связи
+model Feedback {
+  /// Уникальный идентификатор обратной связи
+  id Int @id @default(autoincrement())
+  /// Уникальный идентификатор строки детализации
+  ftsFunctionDetailId Int @map("fts_function_detail_id")
+  /// Уникальный идентификатор метрики обратной связи
+  feedbackQualityMetricsId        Int?      @map("feedback_quality_metrics_id")
+  /// Описание проблемы с указанием источника, метрики, способа решения
+  problemDescription              String?   @map("problem_description") @db.Text
+  /// Реквизиты автора инициативы
+  initiatorRequisites             String?   @map("initiator_requisites") @db.Text
+  /// Методологическая позиция ЦА ФНС России из справочника
+  ftsMethodologyStatusId          Int?      @map("fts_methodology_status_id")
+  /// Срок реализации доработки
+  deadline                        DateTime? @map("deadline")
+  /// Акцепт автора инициативы
+  initiatorAcceptance             String?   @map("initiator_acceptance") @db.Text
+  /// Статус согласования обратной связи
+  isAccepted                      Boolean?  @map("is_accepted")
+  /// Флаг мягкого удаления
+  isDeleted                       Boolean   @default(false) @map("is_deleted")
+  /// Дата мягкого удаления (если удалена)
+  deletedAt                       DateTime? @map("deleted_at")
+
+
+  /// Связи
+  ftsFunctionDetail      FtsFunctionDetail @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
+  ftsMethodologyStatus   Type? @relation("feedback__fts_methodology_status", fields: [ftsMethodologyStatusId], references: [id])
+  feedbackQualityMetrics Type? @relation("feedback__feedback_quality_metrics", fields: [feedbackQualityMetricsId], references: [id])
+
+  /// Набор источников обратной связи
+  feedbackSources FeedbackToFeedbackSource[]
+  /// Связи с историей согласований
+  feedbackAgreementHistory FtsFunctionDetailAgreementHistory[]
+
+  @@map("feedback")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Таблица связки обратной связи с набором источников обратной связи
+model FeedbackToFeedbackSource {
+  /// Уникальный идентификатор обратной связи
+  feedbackId Int      @map("feedback_id")
+  /// Уникальный идентификатор источников обратной связи
+  feedbackSourceId    Int      @map("feedback_source_id")
+  /// Дата создания связи
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  /// Связь с таблицей обратной связи
+  feedback          Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  /// Связь с таблицей типов
+  feedbackSource    Type              @relation(fields: [feedbackSourceId], references: [id])
+
+  @@id([feedbackId, feedbackSourceId])
+  @@index([feedbackSourceId])
+  @@map("feedback_to_feedback_sources")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /// История согласования обратной связи по строке детализации
 model FtsFunctionDetailAgreementHistory {
   /// Уникальный идентификатор записи истории
   id Int @id @default(autoincrement())
-
-  /// Уникальный идентификатор строки детализации
-  ftsFunctionDetailId Int @map("fts_function_detail_id")
-
+  /// Уникальный идентификатор обратной связи
+  feedbackId Int @map("feedback_id")
   /// Статус, из которого выполнен переход: PENDING / ACCEPTED / REJECTED
   fromStatus String? @map("from_status") @db.VarChar(32)
-
   /// Статус, в который выполнен переход: PENDING / ACCEPTED / REJECTED
   toStatus String @map("to_status") @db.VarChar(32)
-
   /// Комментарий, например причина отказа
   comment String? @map("comment") @db.Text
-
   /// Дата создания записи истории
   createdAt DateTime @default(now()) @map("created_at")
 
-  /// Связь со строкой детализации
-  ftsFunctionDetail FtsFunctionDetail @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
+  /// Связь с обратной связи
+  feedback Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
 
-  @@index([ftsFunctionDetailId, createdAt], map: "fts_function_detail_agreement_history_detail_created_idx")
   @@map("fts_function_detail_agreement_history")
 }
 

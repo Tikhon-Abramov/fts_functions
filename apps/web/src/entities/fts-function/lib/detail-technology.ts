@@ -1,12 +1,9 @@
 import type { Row } from "src/entities/fts-function/types";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 
-import { findTypeNameByCode } from "src/entities/fts-function/api/mappers";
 import { FtsFunctionCategory } from "src/entities/fts-function/model";
 
 export type TypeCategory = string;
-
-export const FACTUAL_ACTION_NAME = "Фактическое действие";
 
 export const DETAIL_TYPE_CATEGORY = {
     FTS_FUNCTION_STEP: "FTS_FUNCTION_STEP",
@@ -18,6 +15,7 @@ export const DETAIL_TYPE_CATEGORY = {
     FTS_FUNCTION_EFFECTIVENESS: "FTS_FUNCTION_EFFECTIVENESS",
     TECHNOLOGICAL_SOLUTION: "TECHNOLOGICAL_SOLUTION",
     FEEDBACK_SOURCE: "FEEDBACK_SOURCE",
+    FEEDBACK_QUALITY_METRICS: "FEEDBACK_QUALITY_METRICS",
     RESPONSIBLE: "RESPONSIBLE",
     FTS_METHODOLOGY_STATUS: "FTS_METHODOLOGY_STATUS",
 } as const;
@@ -25,7 +23,7 @@ export const DETAIL_TYPE_CATEGORY = {
 export const TECHNOLOGY_DETAIL_LABELS = {
     technologicalSolution: "Технологическое решение",
     number: "Номер ПЗ / АЗ",
-    responsible: "Ответственный КЦА / ГНИТС / МЮА",
+    responsible: "Ответственный",
     algorithm: "Алгоритм срабатывания",
 } as const;
 
@@ -60,18 +58,6 @@ export type FeedbackStatus = "pending" | "accepted" | "rejected";
 
 function normalizeDictionaryValue(value: string | undefined | null): string {
     return String(value ?? "").trim().toLocaleLowerCase("ru-RU");
-}
-
-export function isFactualActionCode(
-    actionCode: string | undefined | null,
-    typesAll: TypeResponseDto[] | undefined,
-): boolean {
-    if (!actionCode || !typesAll?.length) return false;
-
-    const dbName = findTypeNameByCode(typesAll, actionCode);
-    return (
-        normalizeDictionaryValue(dbName) === normalizeDictionaryValue(FACTUAL_ACTION_NAME)
-    );
 }
 
 export function isActualActionCategory(

@@ -5,7 +5,6 @@ import type {
 } from "src/entities/fts-function/model";
 import type { Link, Row } from "src/entities/fts-function/types";
 import type {
-    AcceptFtsFunctionDetailDto,
     TypeResponseDto,
 } from "src/shared/api/ftsFunctionsApi";
 
@@ -22,12 +21,18 @@ import {
     RightTab,
 } from "src/entities/fts-function/model";
 import {
-    useFtsFunctionControllerAcceptDetailV1Mutation,
     useFtsFunctionControllerCreateDetailV1Mutation,
     useFtsFunctionControllerCreateTreeEdgeV1Mutation,
     useFtsFunctionControllerDeleteTreeEdgeV1Mutation,
     useFtsFunctionControllerSoftDeleteDetailV1Mutation,
     useFtsFunctionControllerUpdateDetailV1Mutation,
+    useFtsFunctionControllerCreateFeedbackV1Mutation,
+    useFtsFunctionControllerUpdateFeedbackV1Mutation,
+    useFtsFunctionControllerDeleteFeedbackV1Mutation,
+    useFtsFunctionControllerAcceptFeedbackV1Mutation,
+    AcceptFeedbackDto,
+    CreateFeedbackDto,
+    UpdateFeedbackDto,
 } from "src/shared/api/ftsFunctionsApi";
 import { I18N } from "src/shared/i18n";
 import { useAppDispatch } from "src/shared/store";
@@ -69,6 +74,15 @@ export type DetailActions = {
         s2Data: Omit<RowFormInput, "id" | "step">,
     ) => void;
     saveFeedback: (id: string, updates: Partial<Row>) => Promise<boolean>;
+    addFeedback: (
+        detailId: string,
+        dto: CreateFeedbackDto,
+    ) => Promise<number | null>;
+    editFeedback: (
+        feedbackId: string,
+        dto: UpdateFeedbackDto,
+    ) => Promise<boolean>;
+    removeFeedback: (feedbackId: string) => Promise<boolean>;
     setFeedbackAcceptance: (
         id: string,
         isAccepted: boolean,
@@ -82,7 +96,10 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
 
     const [createDetail] = useFtsFunctionControllerCreateDetailV1Mutation();
     const [updateDetail] = useFtsFunctionControllerUpdateDetailV1Mutation();
-    const [acceptDetail] = useFtsFunctionControllerAcceptDetailV1Mutation();
+    const [createFeedback] = useFtsFunctionControllerCreateFeedbackV1Mutation();
+    const [updateFeedback] = useFtsFunctionControllerUpdateFeedbackV1Mutation();
+    const [deleteFeedback] = useFtsFunctionControllerDeleteFeedbackV1Mutation();
+    const [acceptFeedback] = useFtsFunctionControllerAcceptFeedbackV1Mutation();
     const [deleteDetail] = useFtsFunctionControllerSoftDeleteDetailV1Mutation();
     const [createTreeEdge] = useFtsFunctionControllerCreateTreeEdgeV1Mutation();
     const [deleteTreeEdge] = useFtsFunctionControllerDeleteTreeEdgeV1Mutation();
@@ -334,11 +351,7 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
             try {
                 await updateDetail({
                     detailId: Number(id),
-                    updateFtsFunctionDetailDto: {
-                        ...dto,
-                        isAccepted: null,
-                        rejectComment: null,
-                    },
+                    updateFtsFunctionDetailDto: dto,
                 }).unwrap();
 
                 dispatch(showSnackbar({ message: "Обратная связь сохранена" }));
@@ -367,15 +380,15 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
                 return false;
             }
 
-            const acceptFtsFunctionDetailDto: AcceptFtsFunctionDetailDto = {
+            const acceptFeedbackDto: AcceptFeedbackDto = {
                 isAccepted,
                 ...(isAccepted ? {} : { rejectComment: trimmedRejectComment }),
             };
 
             try {
-                await acceptDetail({
-                    detailId: Number(id),
-                    acceptFtsFunctionDetailDto,
+                await acceptFeedback({
+                    feedbackId: Number(id),
+                    acceptFeedbackDto
                 }).unwrap();
 
                 dispatch(
@@ -390,7 +403,63 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
                 return false;
             }
         },
-        [acceptDetail, dispatch],
+        [acceptFeedback, dispatch],
+    );
+
+    const addFeedback = useCallback(
+        async (
+            detailId: string,
+            dto: CreateFeedbackDto,
+        ): Promise<number | null> => {
+            try {
+                const created = await createFeedback({
+                    detailId: Number(detailId),
+                    createFeedbackDto: dto,
+                }).unwrap();
+
+                dispatch(showSnackbar({ message: "Обратная связь добавлена" }));
+                return created.id;
+            } catch {
+                return null;
+            }
+        },
+        [createFeedback, dispatch],
+    );
+
+    const editFeedback = useCallback(
+        async (
+            feedbackId: string,
+            dto: UpdateFeedbackDto,
+        ): Promise<boolean> => {
+            try {
+                await updateFeedback({
+                    feedbackId: Number(feedbackId),
+                    updateFeedbackDto: dto,
+                }).unwrap();
+
+                dispatch(showSnackbar({ message: "Обратная связь обновлена" }));
+                return true;
+            } catch {
+                return false;
+            }
+        },
+        [updateFeedback, dispatch],
+    );
+
+    const removeFeedback = useCallback(
+        async (feedbackId: string): Promise<boolean> => {
+            try {
+                await deleteFeedback({
+                    feedbackId: Number(feedbackId),
+                }).unwrap();
+
+                dispatch(showSnackbar({ message: "Обратная связь удалена" }));
+                return true;
+            } catch {
+                return false;
+            }
+        },
+        [deleteFeedback, dispatch],
     );
 
     return {
@@ -402,6 +471,9 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
         quickLink,
         saveDual,
         saveFeedback,
+        addFeedback,
+        editFeedback,
+        removeFeedback,
         setFeedbackAcceptance,
     };
 }

@@ -143,7 +143,7 @@ export const TECHNOLOGY_FIELDS: ExtraFieldConfig[] = [
   {
     key: RowField.RESPONSIBLE,
     label: TECHNOLOGY_DETAIL_LABELS.responsible,
-    kind: FieldKind.AUTOCOMPLETE_FROM_TYPES,
+    kind: FieldKind.SELECT_TYPE_CODE,
     typeCategory: DETAIL_TYPE_CATEGORY.RESPONSIBLE,
     testId: "details-panel-responsible",
   },
@@ -169,6 +169,7 @@ export function countFilled(
 ): number {
   return fields.filter((f) => {
     const val = row[f.key];
+
     return val !== undefined && val !== null && String(val).trim() !== "";
   }).length;
 }

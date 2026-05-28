@@ -105,13 +105,6 @@ async function bootstrap(): Promise<void> {
 
     const { host, port, url } = await configureApp(app);
 
-    try {
-      const database = app.get(ConfigService).getOrThrow<DatabaseConfig>(CONFIG_KEY.DATABASE);
-      await setupSql(database);
-    } catch (sqlError) {
-      console.warn('SQL mount skipped:', sqlError);
-    }
-
     await app.listen({ port, host });
 
     console.log(`${LOG_MESSAGE.SERVER_STARTED} ${url}`);

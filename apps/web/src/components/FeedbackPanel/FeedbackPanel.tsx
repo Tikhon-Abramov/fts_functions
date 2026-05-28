@@ -126,13 +126,15 @@ function buildInitialHistory(row: Row | null): FeedbackAgreementHistoryItem[] {
     }
 
     if (status === "rejected") {
+        const rejectedItem: FeedbackAgreementHistoryItem = {
+            id: `${row.id}-rejected`,
+            fromStatus: "PENDING",
+            toStatus: "REJECTED",
+            ...(row.rejectComment ? { comment: row.rejectComment } : {}),
+        };
+
         return [
-            {
-                id: `${row.id}-rejected`,
-                fromStatus: "PENDING",
-                toStatus: "REJECTED",
-                comment: row.rejectComment || undefined,
-            },
+            rejectedItem,
             {
                 id: `${row.id}-pending`,
                 fromStatus: null,
@@ -198,7 +200,7 @@ export default function FeedbackPanel({
         () =>
             getTypeCodeOptionsByCategory(
                 typesAll,
-                DETAIL_TYPE_CATEGORY.FTS_FUNCTION_EFFECTIVENESS,
+                DETAIL_TYPE_CATEGORY.FEEDBACK_QUALITY_METRICS,
             ),
         [typesAll],
     );
@@ -206,9 +208,13 @@ export default function FeedbackPanel({
     const canSave = areFeedbackRequiredFieldsFilled(draft);
 
     const effectiveRow: Partial<Row> = {
-        ...row,
+        ...(row ?? {}),
         ...draft,
-        isAccepted: localAccepted === undefined ? row?.isAccepted : localAccepted,
+        ...(localAccepted !== undefined
+            ? { isAccepted: localAccepted }
+            : row?.isAccepted !== undefined
+                ? { isAccepted: row.isAccepted }
+                : {}),
         rejectComment:
             localAccepted === null ? "" : (row?.rejectComment ?? rejectComment),
     };

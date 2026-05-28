@@ -6,6 +6,7 @@ import type {
 } from "src/shared/api/ftsFunctionsApi";
 
 import { useMemo } from "react";
+
 import {
   mapFtsFunctionDetailApiToRow,
   mapFtsFunctionDetailsToLinks,
@@ -13,6 +14,7 @@ import {
 import {
   buildRowIndexMap,
   countStep1LinksByCategory,
+  flattenRowsByRenderedCategoryOrder,
   groupRowsByCategory,
   type RowsByCategory,
 } from "src/entities/fts-function/lib/detail-grouping";
@@ -31,46 +33,52 @@ export type StepRowsModel = {
   step1ByCategory: RowsByCategory;
   step2ByCategory: RowsByCategory;
   linkCountsPerCategory: Record<FtsFunctionCategory, number>;
-  /** Type code → color, sourced from the dictionary so action chips paint correctly. */
+
+  /**
+   * Type code → color, sourced from the dictionary so action chips paint
+   * correctly.
+   */
   colorByCode: Map<string, string | null | undefined>;
 };
 
 /**
  * Single hook that derives every row/link/category projection the modal needs
- * from a function record. Replaces 9 standalone `useMemo`s, each of which
- * walked the same row/link arrays.
+ * from a function record.
  */
 export function useStepRowsModel(
-  functionRecord: FtsFunctionDetailedResponseDto | null,
-  typesAll: TypeResponseDto[] | undefined,
+    functionRecord: FtsFunctionDetailedResponseDto | null,
+    typesAll: TypeResponseDto[] | undefined,
 ): StepRowsModel {
   const rows: Row[] = useMemo(
-    () =>
-      (functionRecord?.ftsFunctionDetails ?? [])
-        .map(mapFtsFunctionDetailApiToRow)
-        .filter((r): r is Row => r !== null),
-    [functionRecord],
+      () =>
+          (functionRecord?.ftsFunctionDetails ?? [])
+              .map(mapFtsFunctionDetailApiToRow)
+              .filter((row): row is Row => row !== null),
+      [functionRecord],
   );
 
   const links: Link[] = useMemo(
-    () =>
-      functionRecord
-        ? mapFtsFunctionDetailsToLinks(functionRecord.ftsFunctionDetails)
-        : [],
-    [functionRecord],
+      () =>
+          functionRecord
+              ? mapFtsFunctionDetailsToLinks(functionRecord.ftsFunctionDetails)
+              : [],
+      [functionRecord],
   );
 
   const rowMap = useMemo(() => {
     const map = new Map<string, Row>();
+
     for (const row of rows) {
       if (row?.id) map.set(row.id, row);
     }
+
     return map;
   }, [rows]);
 
   const stepBuckets = useMemo(() => {
     const step1: Row[] = [];
     const step2: Row[] = [];
+
     for (const row of rows) {
       if (row?.step === FtsFunctionStep.OBJECT_SELECTION) {
         step1.push(row);
@@ -78,39 +86,57 @@ export function useStepRowsModel(
         step2.push(row);
       }
     }
+
     return { step1, step2 };
   }, [rows]);
 
-  const step1IndexMap = useMemo(
-    () => buildRowIndexMap(stepBuckets.step1),
-    [stepBuckets.step1],
-  );
-  const step2IndexMap = useMemo(
-    () => buildRowIndexMap(stepBuckets.step2),
-    [stepBuckets.step2],
+  const step1ByCategory = useMemo(
+      () => groupRowsByCategory(stepBuckets.step1),
+      [stepBuckets.step1],
   );
 
-  const step1ByCategory = useMemo<RowsByCategory>(
-    () => groupRowsByCategory(stepBuckets.step1),
-    [stepBuckets.step1],
+  const step2ByCategory = useMemo(
+      () => groupRowsByCategory(stepBuckets.step2),
+      [stepBuckets.step2],
   );
-  const step2ByCategory = useMemo<RowsByCategory>(
-    () => groupRowsByCategory(stepBuckets.step2),
-    [stepBuckets.step2],
+
+  const step1RenderedRows = useMemo(
+      () => flattenRowsByRenderedCategoryOrder(step1ByCategory),
+      [step1ByCategory],
+  );
+
+  const step2RenderedRows = useMemo(
+      () => flattenRowsByRenderedCategoryOrder(step2ByCategory),
+      [step2ByCategory],
+  );
+
+  const step1IndexMap = useMemo(
+      () => buildRowIndexMap(step1RenderedRows),
+      [step1RenderedRows],
+  );
+
+  const step2IndexMap = useMemo(
+      () => buildRowIndexMap(step2RenderedRows),
+      [step2RenderedRows],
   );
 
   const linkCountsPerCategory = useMemo(
-    () => countStep1LinksByCategory(stepBuckets.step1, links, rowMap),
-    [stepBuckets.step1, links, rowMap],
+      () => countStep1LinksByCategory(stepBuckets.step1, links, rowMap),
+      [stepBuckets.step1, links, rowMap],
   );
 
   const colorByCode = useMemo(() => {
     const map = new Map<string, string | null | undefined>();
-    typesAll?.forEach((tp) => map.set(tp.code, tp.color));
+
+    typesAll?.forEach((type) => {
+      map.set(type.code, type.color);
+    });
+
     return map;
   }, [typesAll]);
 
   const { step1: step1Rows, step2: step2Rows } = stepBuckets;
+
   return {
     rows,
     links,

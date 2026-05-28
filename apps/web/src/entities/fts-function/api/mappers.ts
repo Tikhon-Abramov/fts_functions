@@ -204,7 +204,7 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
         detail.feedbackSource?.code ??
         detail.feedbackSources?.[0]?.feedbackSource?.code ??
         "",
-    feedbackQualityMetric: detail.ftsFunctionEffectiveness?.code ?? "",
+    feedbackQualityMetric: detail.feedbackQualityMetrics?.code ?? "",
     problemDescription: detail.problemDescription ?? "",
     initiatorRequisites: detail.initiatorRequisites ?? "",
     methodologyPosition:

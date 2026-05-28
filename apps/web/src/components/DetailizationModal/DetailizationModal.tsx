@@ -58,6 +58,7 @@ import RowDetailsPanel from "../RowDetailsPanel/RowDetailsPanel";
 import { DetailStepGrid } from "./ui/grid/DetailStepGrid";
 import { DetailHeader } from "./ui/header/DetailHeader";
 import { DetailRightPanel } from "./ui/header/DetailRightPanel";
+import type { Row } from "src/entities/fts-function/types";
 
 const DETAIL_RIGHT_PANEL_WIDTH = "30vw";
 const DETAIL_RIGHT_PANEL_MIN_WIDTH = 420;
@@ -117,18 +118,56 @@ export default function DetailizationModal() {
         typesAll,
         t,
     });
+    type AddRowPayload = Partial<Row> &
+        Pick<Row, "step" | "category" | "detailText" | "actionLabel">;
+
+    function toAddRowPayload(data: NewRowData): AddRowPayload {
+        const payload: AddRowPayload = {
+            step: data.step,
+            category: data.category,
+            detailText: data.detailText,
+            actionLabel: data.actionLabel,
+        };
+
+        if (data.who !== undefined) payload.who = data.who;
+        if (data.periodicity !== undefined) payload.periodicity = data.periodicity;
+        if (data.complexity !== undefined) payload.complexity = data.complexity;
+        if (data.artifact !== undefined) payload.artifact = data.artifact;
+        if (data.basis !== undefined) payload.basis = data.basis;
+        if (data.artifactUsage !== undefined) {
+            payload.artifactUsage = data.artifactUsage;
+        }
+        if (data.purpose !== undefined) payload.purpose = data.purpose;
+        if (data.technologicalSolution !== undefined) {
+            payload.technologicalSolution = data.technologicalSolution;
+        }
+        if (data.number !== undefined) payload.number = data.number;
+        if (data.responsible !== undefined) payload.responsible = data.responsible;
+        if (data.algorithm !== undefined) payload.algorithm = data.algorithm;
+
+        return payload;
+    }
+
+    const handleSaveSingle = useCallback(
+        (data: NewRowData): string => actions.addRow(toAddRowPayload(data)),
+        [actions.addRow],
+    );
 
     const handleSaveDetachedDual = useCallback(
         (s1: Omit<NewRowData, "step">, s2: Omit<NewRowData, "step">) => {
-            actions.addRow({
-                step: FtsFunctionStep.OBJECT_SELECTION,
-                ...s1,
-            });
+            actions.addRow(
+                toAddRowPayload({
+                    step: FtsFunctionStep.OBJECT_SELECTION,
+                    ...s1,
+                }),
+            );
 
-            actions.addRow({
-                step: FtsFunctionStep.CLUSTERING_IMPACT,
-                ...s2,
-            });
+            actions.addRow(
+                toAddRowPayload({
+                    step: FtsFunctionStep.CLUSTERING_IMPACT,
+                    ...s2,
+                }),
+            );
         },
         [actions.addRow],
     );
@@ -412,7 +451,7 @@ export default function DetailizationModal() {
                     <AddItemForm
                         allRows={model.rows}
                         typesAll={typesAll ?? []}
-                        onSaveSingle={actions.addRow}
+                        onSaveSingle={handleSaveSingle}
                         onSaveDual={handleSaveDetachedDual}
                         showQuickLink={false}
                         dualSaveHint={

@@ -4,10 +4,18 @@ import type { Row } from "src/entities/fts-function/types";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 
 import { Edit } from "@mui/icons-material";
-import { Box, Button, Chip, Divider, Typography, useTheme } from "@mui/material";
+import {
+    Box,
+    Button,
+    Chip,
+    Divider,
+    Typography,
+    useTheme,
+} from "@mui/material";
 
 import { findTypeNameByCode } from "src/entities/fts-function/api/mappers";
 import {
+    findTypeByCodeOrName,
     isActualActionCategory,
 } from "src/entities/fts-function/lib/detail-technology";
 import { FtsFunctionStep, RowField } from "src/entities/fts-function/model";
@@ -17,6 +25,8 @@ import { FieldLabel } from "src/shared/ui/form/FieldLabel";
 import {
     countFilled,
     EXTRA_FIELDS,
+    type ExtraFieldConfig,
+    FieldKind,
     getFieldLabel,
     TECHNOLOGY_FIELDS,
 } from "../lib/extra-fields";
@@ -27,26 +37,32 @@ export type RowDetailsViewProps = {
     onStartEdit: () => void;
 };
 
-const DB_LABEL_FIELDS: ReadonlySet<keyof Row> = new Set([
-    RowField.PERIODICITY,
-    RowField.COMPLEXITY,
-    RowField.TECHNOLOGICAL_SOLUTION,
-]);
-
-function resolveFieldValue(
-    row: Row,
-    key: keyof Row,
+function resolveDictionaryValue(
+    raw: unknown,
+    field: ExtraFieldConfig,
     typesAll: TypeResponseDto[],
 ): string | undefined {
-    const raw = row[key];
-
     if (raw === undefined || raw === null || raw === "") return undefined;
 
-    if (DB_LABEL_FIELDS.has(key)) {
-        return findTypeNameByCode(typesAll, String(raw));
+    const value = String(raw);
+
+    if (field.kind === FieldKind.SELECT_CODE) {
+        return findTypeNameByCode(typesAll, value);
     }
 
-    return String(raw);
+    if (field.kind === FieldKind.SELECT_TYPE_CODE && field.typeCategory) {
+        return findTypeByCodeOrName(typesAll, field.typeCategory, value)?.name ?? value;
+    }
+
+    return value;
+}
+
+function hasAnyFieldValue(row: Row, fields: readonly ExtraFieldConfig[]): boolean {
+    return fields.some((field) => {
+        const value = row[field.key];
+
+        return value !== undefined && value !== null && String(value).trim() !== "";
+    });
 }
 
 export function RowDetailsView({
@@ -64,23 +80,20 @@ export function RowDetailsView({
         ? theme.palette.primary.main
         : theme.palette.success.main;
 
-    const isActualAction = isActualActionCategory(row.category);
-    const visibleExtraFields = isActualAction
-        ? [...EXTRA_FIELDS, ...TECHNOLOGY_FIELDS]
-        : EXTRA_FIELDS;
-
-    const filledCount = countFilled(row, visibleExtraFields);
-
+    const filledCount = countFilled(row);
     const actionDisplay = row.actionLabel
         ? findTypeNameByCode(typesAll, row.actionLabel)
         : "Не указано";
 
+    const showTechnologyFields =
+        isActualActionCategory(row.category) || hasAnyFieldValue(row, TECHNOLOGY_FIELDS);
+
     return (
         <Box
             sx={{
+                height: "100%",
                 display: "flex",
                 flexDirection: "column",
-                height: "100%",
                 overflow: "hidden",
             }}
         >
@@ -96,37 +109,50 @@ export function RowDetailsView({
                     gap: 1,
                 }}
             >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Chip
-                        label={stepLabel}
-                        size="small"
-                        sx={{
-                            height: 22,
-                            bgcolor: stepColor,
-                            color: c.textBright,
-                            fontSize: "0.68rem",
-                            fontWeight: 600,
-                        }}
-                    />
+                <Box sx={{ minWidth: 0 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Chip
+                            label={stepLabel}
+                            size="small"
+                            sx={{
+                                height: 20,
+                                bgcolor: `${stepColor}22`,
+                                color: stepColor,
+                                fontSize: "0.66rem",
+                                fontWeight: 700,
+                                borderRadius: 1,
+                            }}
+                        />
+
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                color: c.textSecondary,
+                                fontWeight: 600,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                                fontSize: "0.65rem",
+                            }}
+                        >
+                            {"Сведения"}
+                        </Typography>
+                    </Box>
 
                     <Typography
-                        variant="caption"
                         sx={{
-                            color: c.textSecondary,
-                            fontWeight: 600,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            fontSize: "0.65rem",
+                            color: c.textMuted,
+                            fontSize: "0.68rem",
+                            mt: 0.5,
                         }}
                     >
-                        {"Паспорт"}
+                        {`Заполнено дополнительных полей: ${filledCount}`}
                     </Typography>
                 </Box>
 
                 <Button
                     size="small"
-                    startIcon={<Edit sx={{ fontSize: 14 }} />}
                     onClick={onStartEdit}
+                    startIcon={<Edit sx={{ fontSize: 14 }} />}
                     sx={{
                         textTransform: "none",
                         fontSize: "0.7rem",
@@ -144,7 +170,6 @@ export function RowDetailsView({
                     flex: 1,
                     overflow: "auto",
                     px: 2,
-                    pt: 1,
                     pb: 2,
                     display: "flex",
                     flexDirection: "column",
@@ -158,41 +183,62 @@ export function RowDetailsView({
                     c={c}
                 />
 
-                <ReadField label={"Детализация"} value={row.detailText} t={t} c={c} />
-
                 <ReadField
-                    label={"Кто делает"}
-                    value={row.who || "Не заполнено"}
+                    label={"Детализация"}
+                    value={row.detailText}
                     t={t}
                     c={c}
                 />
 
-                <ReadField label={"Что делать"} value={actionDisplay} t={t} c={c} />
+                <ReadField
+                    label={"Кто делает"}
+                    value={row.who || undefined}
+                    t={t}
+                    c={c}
+                />
 
-                <Divider sx={{ borderColor: c.borderLight, my: 0.5 }} />
+                <ReadField
+                    label={"Что делать"}
+                    value={actionDisplay}
+                    t={t}
+                    c={c}
+                />
 
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <FieldLabel fontSize="0.58rem" bold>
-                        {"Дополнительные сведения"}
-                    </FieldLabel>
+                <Divider sx={{ borderColor: c.borderLight, my: 0.25 }} />
 
-                    <Typography
-                        variant="caption"
-                        sx={{ color: c.textDim, fontSize: "0.62rem" }}
-                    >
-                        {`Заполнено: ${filledCount}`}
-                    </Typography>
-                </Box>
+                <FieldLabel fontSize="0.58rem" bold>
+                    {"Дополнительные сведения"}
+                </FieldLabel>
 
-                {visibleExtraFields.map((field) => (
+                {EXTRA_FIELDS.map((field) => (
                     <ReadField
                         key={field.key}
                         label={getFieldLabel(field, t)}
-                        value={resolveFieldValue(row, field.key, typesAll)}
+                        value={resolveDictionaryValue(row[field.key], field, typesAll)}
                         t={t}
                         c={c}
                     />
                 ))}
+
+                {showTechnologyFields && (
+                    <>
+                        <Divider sx={{ borderColor: c.borderLight, my: 0.25 }} />
+
+                        <FieldLabel fontSize="0.58rem" bold>
+                            {"Технологическое решение"}
+                        </FieldLabel>
+
+                        {TECHNOLOGY_FIELDS.map((field) => (
+                            <ReadField
+                                key={field.key}
+                                label={getFieldLabel(field, t)}
+                                value={resolveDictionaryValue(row[field.key], field, typesAll)}
+                                t={t}
+                                c={c}
+                            />
+                        ))}
+                    </>
+                )}
             </Box>
         </Box>
     );
@@ -208,13 +254,22 @@ type ReadFieldProps = {
 function ReadField({ label, value, c }: ReadFieldProps) {
     return (
         <Box>
-            <FieldLabel fontSize="0.58rem">{label}</FieldLabel>
+            <Typography
+                variant="caption"
+                sx={{
+                    display: "block",
+                    color: c.textMuted,
+                    fontSize: "0.66rem",
+                    mb: 0.25,
+                }}
+            >
+                {label}
+            </Typography>
 
             <Typography
-                variant="body2"
                 sx={{
                     color: value ? c.textBody : c.textDim,
-                    fontSize: "0.78rem",
+                    fontSize: "0.8rem",
                     whiteSpace: "pre-wrap",
                     wordBreak: "break-word",
                 }}
