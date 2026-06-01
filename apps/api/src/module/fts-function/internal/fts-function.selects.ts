@@ -256,10 +256,6 @@ export const feedbackDetailedSelect = {
 } satisfies Prisma.FeedbackSelect;
 
 
-
-
-
-
 export const downloadFtsFunctionSelect = {
   id: true,
   ftsCentralization: { select: typeMinimalSelect },
@@ -283,6 +279,7 @@ export const downloadFtsFunctionSelect = {
 
 export const downloadFtsFunctionDetailSelect = {
   ...ftsFunctionDetailDetailedSelect,
+  feedbacks: undefined,
   ftsFunction: {
     select: {
       ftsFunctionName: {
@@ -293,3 +290,55 @@ export const downloadFtsFunctionDetailSelect = {
   createdAt: true,
   updatedAt: true,
 } as const satisfies Prisma.FtsFunctionDetailSelect;
+
+export const downloadFeedbackSelect = {
+  ...feedbackSelect,
+  ftsFunctionDetail: {
+    select: {
+      id: true,
+      ftsFunction: {
+        select: {
+          id: true,
+          ftsFunctionName: {
+            select: typeMinimalSelect,
+          },
+        },
+      },
+      ftsFunctionDetails: true,
+    }
+  },
+  feedbackAgreementHistory: undefined,
+} as const satisfies Prisma.FeedbackSelect;
+
+export const downloadFtsFunctionTreeSelect = {
+  parentFtsFunction: {
+    select: {
+      id: true,
+      ftsFunction: {
+        select: {
+          id: true,
+          ftsFunctionName: {
+            select: typeMinimalSelect,
+          },
+        },
+      },
+      ftsFunctionDetails: true,
+    },
+  },
+  childFtsFunction: {
+    select: {
+      id: true,
+      ftsFunction: {
+        select: {
+          id: true,
+          ftsFunctionName: {
+            select: typeMinimalSelect,
+          },
+        },
+      },
+      ftsFunctionDetails: true,
+    },
+  },
+  relationType: { select: typeMinimalSelect },
+  createdAt: true,
+} as const satisfies Prisma.FtsFunctionTreeSelect;

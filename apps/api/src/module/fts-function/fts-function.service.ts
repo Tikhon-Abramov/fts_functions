@@ -17,6 +17,8 @@ import type {
   FeedbackDetailedEntity,
   DownloadFtsFunctionEntity,
   DownloadFtsFunctionDetailEntity,
+  DownloadFeedbackEntity,
+  DownloadFFtsFunctionTreeEntity,
 } from './internal/fts-function.entity';
 
 import { Injectable } from '@nestjs/common';
@@ -47,6 +49,8 @@ import {
   feedbackDetailedSelect,
   downloadFtsFunctionSelect,
   downloadFtsFunctionDetailSelect,
+  downloadFeedbackSelect,
+downloadFtsFunctionTreeSelect,
 } from './internal/fts-function.selects';
 import {
   CreateFtsFunctionDetailDto,
@@ -750,7 +754,7 @@ export class FtsFunctionService {
   }
 
   async getDownload(): Promise<ExcelJS.Buffer> {
-    const [ftsFunctions, ftsFunctionDetails] = await Promise.all([
+    const [ftsFunctions, ftsFunctionDetails, feedback, tree] = await Promise.all([
       this.prisma.ftsFunction.findMany({
         where: { isDeleted: false },
         select: downloadFtsFunctionSelect,
@@ -765,10 +769,41 @@ export class FtsFunctionService {
         select: downloadFtsFunctionDetailSelect,
         orderBy: [
           { ftsFunctionId: 'asc' },
-           { ftsFunctionStepId: 'asc' },
-           { ftsFunctionCategoryId: 'asc' },
+          { ftsFunctionStepId: 'asc' },
+          { ftsFunctionCategoryId: 'asc' },
         ],
-      })
+      }),
+
+      this.prisma.feedback.findMany({
+        where: {
+          isDeleted: false,
+          ftsFunctionDetail: {
+            isDeleted: false,
+            ftsFunction: { isDeleted: false },
+          },
+        },
+        select: downloadFeedbackSelect,
+        orderBy: [
+          { ftsFunctionDetail: { ftsFunctionId: 'asc' } },
+          { ftsFunctionDetail: { ftsFunctionStepId: 'asc' } },
+          { ftsFunctionDetail: { ftsFunctionCategoryId: 'asc' } },
+        ],
+      }),
+
+      this.prisma.ftsFunctionTree.findMany({
+        where: {
+          parentFtsFunction: {
+            isDeleted: false,
+            ftsFunction: { isDeleted: false },
+          },
+        },
+        select: downloadFtsFunctionTreeSelect,
+        orderBy: [
+          { parentFtsFunction: { ftsFunctionId: 'asc' } },
+          { parentFtsFunction: { ftsFunctionStepId: 'asc' } },
+          { parentFtsFunction: { ftsFunctionCategoryId: 'asc' } },
+        ],
+      }),
     ]);
 
     return this.excel.createExcelWorkbook({
@@ -901,42 +936,7 @@ export class FtsFunctionService {
               header: 'Алгоритм срабатывания',
               map: (row: DownloadFtsFunctionDetailEntity) => row.algorithm,
             },
-            // {
-            //   header: 'Источник обратной связи',
-            //   map: (row: DownloadFtsFunctionDetailEntity) => {
-            //     return row.feedbackSources.map(
-            //       ({ feedbackSource }) => feedbackSource.name
-            //     ).join(';\n');
-            //   },
-            // },
-            // {
-            //   header: 'Метрики качества процесса в рамках обратной связи',
-            //   map: (row: DownloadFtsFunctionDetailEntity) => row.feedbackQualityMetrics?.name,
-            // },
-            // {
-            //   header: 'Описание проблемы с указанием источника, метрики, способа решения',
-            //   map: (row: DownloadFtsFunctionDetailEntity) => row.problemDescription,
-            // },
-            // {
-            //   header: 'Реквизиты автора инициативы',
-            //   map: (row: DownloadFtsFunctionDetailEntity) => row.initiatorRequisites,
-            // },
-            // {
-            //   header: 'Методология позиции ЦА ФНС России',
-            //   map: (row: DownloadFtsFunctionDetailEntity) => row.methodologyPosition,
-            // },
-            // {
-            //   header: 'Акцепт автора инициативы',
-            //   map: (row: DownloadFtsFunctionDetailEntity) => row.initiatorAcceptance,
-            // },
-            // {
-            //   header: 'Методологическая позиция ЦА ФНС России из справочника',
-            //   map: (row: DownloadFtsFunctionDetailEntity) => row.ftsMethodologyStatus?.name,
-            // },
-            // {
-            //   header: 'Срок реализации доработки',
-            //   map: (row: DownloadFtsFunctionDetailEntity) => row.deadline,
-            // },
+          
             {
               header: 'Дата создания',
               map: (row: DownloadFtsFunctionDetailEntity) => row.createdAt,
@@ -944,6 +944,114 @@ export class FtsFunctionService {
             {
               header: 'Дата обновления',
               map: (row: DownloadFtsFunctionDetailEntity) => row.updatedAt,
+            },
+          ],
+        },
+        {
+          name: 'Обратная связь',
+          data: feedback,
+          columns: [
+            {
+              header: 'ID функции',
+              map: (row: DownloadFeedbackEntity) => row.ftsFunctionDetail.ftsFunction.id,
+            },
+            {
+              header: 'ID детализации',
+              map: (row: DownloadFeedbackEntity) => row.ftsFunctionDetail.id,
+            },
+            {
+              header: 'ID обратной связи',
+              map: (row: DownloadFeedbackEntity) => row.id,
+            },
+            {
+              header: 'Наименование функции',
+              map: (row: DownloadFeedbackEntity) => row.ftsFunctionDetail.ftsFunction.ftsFunctionName.name,
+            },
+            {
+              header: 'Детализация функции',
+              map: (row: DownloadFeedbackEntity) => row.ftsFunctionDetail.ftsFunctionDetails,
+            },
+            {
+              header: 'Источники обратной связи',
+              map: (row: DownloadFeedbackEntity) => {
+                return row.feedbackSources.map(
+                  ({ feedbackSource }) => feedbackSource.name
+                ).join(';\n');
+              },
+            },
+            {
+              header: 'Метрики качества процесса в рамках обратной связи',
+              map: (row: DownloadFeedbackEntity) => row.feedbackQualityMetrics?.name,
+            },
+            {
+              header: 'Описание проблемы с указанием источника, метрики, способа решения',
+              map: (row: DownloadFeedbackEntity) => row.problemDescription,
+            },
+            {
+              header: 'Реквизиты автора инициативы',
+              map: (row: DownloadFeedbackEntity) => row.initiatorRequisites,
+            },
+            {
+              header: 'Методология позиции ЦА ФНС России',
+              map: (row: DownloadFeedbackEntity) => row.ftsMethodologyStatus?.name,
+            },
+            {
+              header: 'Акцепт автора инициативы',
+              map: (row: DownloadFeedbackEntity) => row.initiatorAcceptance,
+            },
+            {
+              header: 'Методологическая позиция ЦА ФНС России из справочника',
+              map: (row: DownloadFeedbackEntity) => row.ftsMethodologyStatus?.name,
+            },
+            {
+              header: 'Срок реализации доработки',
+              map: (row: DownloadFeedbackEntity) => row.deadline,
+            },
+            {
+              header: 'Согласовано',
+              map: (row: DownloadFeedbackEntity) => row.isAccepted ? 'Да' : 'Нет',
+            },
+          ],
+        },
+        {
+          name: 'Дерево функций',
+          data: tree,
+          columns: [
+            {
+              header: 'ID функции',
+              map: (row: DownloadFFtsFunctionTreeEntity) => row.parentFtsFunction.ftsFunction.id,
+            },
+            {
+              header: 'ID детализации',
+              map: (row: DownloadFFtsFunctionTreeEntity) => row.parentFtsFunction.id,
+            },
+            {
+              header: 'Наименование функции',
+              map: (row: DownloadFFtsFunctionTreeEntity) => row.parentFtsFunction.ftsFunction.ftsFunctionName.name,
+            },
+            {
+              header: 'Детализация функции',
+              map: (row: DownloadFFtsFunctionTreeEntity) => row.parentFtsFunction.ftsFunctionDetails,
+            },
+            {
+              header: '',
+              map: (row: DownloadFFtsFunctionTreeEntity) => row.relationType.name,
+            },
+            {
+              header: 'ID функции',
+              map: (row: DownloadFFtsFunctionTreeEntity) => row.childFtsFunction.ftsFunction.id,
+            },
+            {
+              header: 'ID детализации',
+              map: (row: DownloadFFtsFunctionTreeEntity) => row.childFtsFunction.id,
+            },
+            {
+              header: 'Наименование функции',
+              map: (row: DownloadFFtsFunctionTreeEntity) => row.childFtsFunction.ftsFunction.ftsFunctionName.name,
+            },
+            {
+              header: 'Детализация функции',
+              map: (row: DownloadFFtsFunctionTreeEntity) => row.childFtsFunction.ftsFunctionDetails,
             },
           ],
         },

@@ -308,15 +308,5 @@ export function buildDetailInputFromRow(
     number: merged.number,
     responsible: merged.responsible,
     algorithm: merged.algorithm,
-
-    feedbackSource: merged.feedbackSource,
-    feedbackQualityMetric: merged.feedbackQualityMetric,
-    problemDescription: merged.problemDescription,
-    initiatorRequisites: merged.initiatorRequisites,
-    methodologyPosition: merged.methodologyPosition,
-    deadline: merged.deadline,
-    initiatorAcceptance: merged.initiatorAcceptance,
-    isAccepted: merged.isAccepted,
-    rejectComment: merged.rejectComment,
   };
 }
