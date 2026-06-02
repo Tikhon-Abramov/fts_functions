@@ -1,5 +1,4 @@
 import type {
-  FtsFunctionActionType,
   FtsFunctionCategory,
   FtsFunctionComplexity,
   FtsFunctionExecutionFrequency,
@@ -48,7 +47,6 @@ export type Row = {
   category: FtsFunctionCategory;
   detailText: string;
   who?: string;
-  actionLabel: FtsFunctionActionType | "";
   periodicity?: FtsFunctionExecutionFrequency | "";
   complexity?: FtsFunctionComplexity | "";
   artifact?: string;

@@ -1,15 +1,14 @@
 /**
- * Registry of UI row field keys.
- * Keeps field-name usage centralized and avoids string literals in forms,
- * details panels and resolvers.
+ * Registry of `Row` field names. Domain-meaningful identifiers — referenced
+ * via `[RowField.PERIODICITY]:` in resolver/lookup maps so that every
+ * reference to a row field flows through a single grep target. See
+ * patterns.md §Class 27 ("literal property keys for domain-meaningful
+ * identifiers").
  */
 export const RowField = {
-  ID: "id",
-  STEP: "step",
   CATEGORY: "category",
   DETAIL_TEXT: "detailText",
   WHO: "who",
-  ACTION_LABEL: "actionLabel",
   PERIODICITY: "periodicity",
   COMPLEXITY: "complexity",
   ARTIFACT: "artifact",
@@ -20,16 +19,6 @@ export const RowField = {
   NUMBER: "number",
   RESPONSIBLE: "responsible",
   ALGORITHM: "algorithm",
-  FEEDBACK_SOURCE: "feedbackSource",
-  FEEDBACK_QUALITY_METRIC: "feedbackQualityMetric",
-  PROBLEM_DESCRIPTION: "problemDescription",
-  INITIATOR_REQUISITES: "initiatorRequisites",
-  METHODOLOGY_POSITION: "methodologyPosition",
-  DEADLINE: "deadline",
-  INITIATOR_ACCEPTANCE: "initiatorAcceptance",
-  IS_ACCEPTED: "isAccepted",
-  REJECT_COMMENT: "rejectComment",
 } as const;
 
 export type RowFieldName = (typeof RowField)[keyof typeof RowField];
-export type RowField = RowFieldName;

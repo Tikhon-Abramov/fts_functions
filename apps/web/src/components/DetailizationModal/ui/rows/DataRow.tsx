@@ -1,5 +1,6 @@
 import type { SxProps } from "@mui/material";
 import type { CustomPalette } from "src/app/App";
+
 import type { RowPresentationResolver } from "src/entities/fts-function/hooks/detail-modal/useRowPresentation";
 import type { Row } from "src/entities/fts-function/types";
 
@@ -13,11 +14,9 @@ import {
     Typography,
     useTheme,
 } from "@mui/material";
-
 import { RowPresentation } from "src/entities/fts-function/hooks/detail-modal/useRowPresentation";
 import { ROW_HEIGHT } from "src/shared/config/ui";
 
-import { ActionChip } from "../chips/ActionChip";
 import { FeedbackStatusDot } from "./FeedbackStatusDot";
 
 export type DataRowProps = {
@@ -70,15 +69,14 @@ export function DataRow({
                             row,
                             indexLabel,
                             presentation,
-                            colorByCode,
                             onClick,
                             onRemove,
                             registerRef,
                         }: DataRowProps) {
     const theme = useTheme();
     const c = theme.custom;
-
     const presStyles = buildPresentationStyles(c);
+
     const style = presStyles[presentation(row)];
 
     const cellBase = {
@@ -176,59 +174,53 @@ export function DataRow({
                 </Typography>
             </TableCell>
 
-            <TableCell sx={{ ...cellBase, width: 148, px: 1 }}>
+            <TableCell
+                sx={{
+                    ...cellBase,
+                    width: 44,
+                    minWidth: 44,
+                    maxWidth: 44,
+                    px: 0.25,
+                }}
+            >
                 <Box
                     sx={{
                         display: "flex",
                         alignItems: "center",
-                        gap: 0.75,
+                        justifyContent: "flex-end",
+                        gap: 0.25,
                         minWidth: 0,
                     }}
                 >
-                    <ActionChip action={row.actionLabel} colorByCode={colorByCode} />
                     <FeedbackStatusDot row={row} />
-                </Box>
-            </TableCell>
 
-            <TableCell
-                sx={{
-                    ...cellBase,
-                    width: 28,
-                    minWidth: 28,
-                    maxWidth: 28,
-                    px: 0,
-                    position: "relative",
-                }}
-            >
-                <Tooltip title="Удалить строку">
-                    <IconButton
-                        size="small"
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            onRemove(row.id);
-                        }}
-                        sx={{
-                            position: "absolute",
-                            top: 2,
-                            right: 2,
-                            p: 0.25,
-                            width: 18,
-                            height: 18,
-                            minWidth: 18,
-                            minHeight: 18,
-                            color: c.textMuted,
-                            opacity: 0.65,
-                            "&:hover": {
-                                color: theme.palette.error.main,
-                                bgcolor: "transparent",
-                                opacity: 1,
-                            },
-                        }}
-                        data-testid={`button-delete-row-${row.id}`}
-                    >
-                        <Close sx={{ fontSize: 14 }} />
-                    </IconButton>
-                </Tooltip>
+                    <Tooltip title="Удалить строку">
+                        <IconButton
+                            size="small"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onRemove(row.id);
+                            }}
+                            sx={{
+                                p: 0.25,
+                                width: 18,
+                                height: 18,
+                                minWidth: 18,
+                                minHeight: 18,
+                                color: c.textMuted,
+                                opacity: 0.65,
+                                "&:hover": {
+                                    color: theme.palette.error.main,
+                                    bgcolor: "transparent",
+                                    opacity: 1,
+                                },
+                            }}
+                            data-testid={`button-delete-row-${row.id}`}
+                        >
+                            <Close sx={{ fontSize: 14 }} />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
             </TableCell>
         </TableRow>
     );

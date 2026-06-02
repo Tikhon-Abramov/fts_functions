@@ -13,7 +13,6 @@ import type {
   UserResponseDto,
 } from "src/shared/api/ftsFunctionsApi";
 
-import { FtsFunctionActionType } from "src/entities/fts-function/model/fts-function-action-type";
 import { FtsFunctionCategory } from "src/entities/fts-function/model/fts-function-category";
 import { FtsFunctionComplexity } from "src/entities/fts-function/model/fts-function-complexity";
 import { FtsFunctionExecutionFrequency } from "src/entities/fts-function/model/fts-function-execution-frequency";
@@ -73,14 +72,6 @@ function asCategory(
 ): FtsFunctionCategory | null {
   return code && code in FtsFunctionCategory
       ? (code as FtsFunctionCategory)
-      : null;
-}
-
-function asAction(
-    code: string | undefined | null,
-): FtsFunctionActionType | null {
-  return code && code in FtsFunctionActionType
-      ? (code as FtsFunctionActionType)
       : null;
 }
 
@@ -235,7 +226,6 @@ type DetailItem = FtsFunctionDetailedResponseDto["ftsFunctionDetails"][number];
 export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
   const step = asStep(detail.ftsFunctionStep?.code);
   const category = asCategory(detail.ftsFunctionCategory?.code);
-  const action = asAction(detail.ftsFunctionActionType?.code);
 
   if (step === null || category === null) return null;
 
@@ -248,7 +238,6 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
     category,
     detailText: detail.ftsFunctionDetails ?? "",
     who: detail.whoPerformsAction?.name ?? "",
-    actionLabel: action ?? "",
     periodicity: frequency ?? "",
     complexity: complexity ?? "",
     artifact: detail.artifact ?? "",

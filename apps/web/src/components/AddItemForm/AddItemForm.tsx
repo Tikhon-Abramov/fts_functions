@@ -1,5 +1,4 @@
 import type {
-    FtsFunctionActionType,
     FtsFunctionCategory,
     FtsFunctionComplexity,
     FtsFunctionExecutionFrequency,
@@ -11,7 +10,6 @@ import { useCallback, useMemo, useState, type FormEvent } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Link as LinkIcon, Save } from "@mui/icons-material";
 import { Box, Button, Typography, useTheme } from "@mui/material";
-
 import { FtsFunctionStep } from "src/entities/fts-function/model";
 import {
     areTechnologyRequiredFieldsFilled,
@@ -39,7 +37,6 @@ export type NewRowData = {
     category: FtsFunctionCategory;
     detailText: string;
     who?: string | undefined;
-    actionLabel: FtsFunctionActionType | "";
     periodicity?: FtsFunctionExecutionFrequency | "" | undefined;
     complexity?: FtsFunctionComplexity | "" | undefined;
     artifact?: string | undefined;
@@ -67,6 +64,7 @@ type AddItemFormProps = {
 
 function isStepTechnologyValid(fields: StepFields): boolean {
     if (!isActualActionCategory(fields.category)) return true;
+
     return areTechnologyRequiredFieldsFilled(fields);
 }
 
@@ -159,7 +157,6 @@ export default function AddItemForm({
             const step = canS1
                 ? FtsFunctionStep.OBJECT_SELECTION
                 : FtsFunctionStep.CLUSTERING_IMPACT;
-
             const fields = canS1 ? v1 : v2;
             const includeTechnology = canS1
                 ? includeS1Technology

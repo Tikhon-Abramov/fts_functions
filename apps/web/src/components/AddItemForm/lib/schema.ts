@@ -1,11 +1,9 @@
 import {
-  ACTIONS,
   CATEGORIES,
   COMPLEXITIES,
   PERIODICITIES,
 } from "src/entities/fts-function/constants";
 import {
-  FtsFunctionActionType,
   FtsFunctionCategory,
   FtsFunctionComplexity,
   FtsFunctionExecutionFrequency,
@@ -14,10 +12,6 @@ import { z } from "zod";
 
 const categoryEnum = z.enum(
     CATEGORIES as [FtsFunctionCategory, ...FtsFunctionCategory[]],
-);
-
-const actionEnum = z.enum(
-    ACTIONS as [FtsFunctionActionType, ...FtsFunctionActionType[]],
 );
 
 const periodicityEnum = z.enum(
@@ -35,7 +29,6 @@ export const stepFieldsSchema = z.object({
   category: categoryEnum,
   detailText: z.string(),
   who: z.string(),
-  actionLabel: actionEnum,
   periodicity: periodicityEnum,
   complexity: complexityEnum,
   artifact: z.string(),
@@ -62,7 +55,6 @@ export function emptyStep(): StepFields {
     category: FtsFunctionCategory.METHODOLOGY,
     detailText: "",
     who: "",
-    actionLabel: FtsFunctionActionType.KEEP,
     periodicity: FtsFunctionExecutionFrequency.DAILY,
     complexity: FtsFunctionComplexity.MIDDLE,
     artifact: "",
@@ -82,6 +74,7 @@ export function isStepFilled(s: StepFields | undefined): boolean {
 
 function emptyToUndefined(value: string | undefined): string | undefined {
   const trimmed = value?.trim() ?? "";
+
   return trimmed ? trimmed : undefined;
 }
 
@@ -96,7 +89,6 @@ export function fieldsToData(
     category: fields.category,
     detailText: fields.detailText.trim(),
     who: emptyToUndefined(fields.who),
-    actionLabel: fields.actionLabel,
     periodicity: fields.periodicity,
     complexity: fields.complexity,
     artifact: emptyToUndefined(fields.artifact),

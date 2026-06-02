@@ -1,4 +1,5 @@
 import type { AddItemFormValues, StepFields } from "../lib/schema";
+
 import type { Theme } from "@mui/material";
 import type { Control, FieldPath } from "react-hook-form";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
@@ -16,10 +17,8 @@ import {
     TextField,
     Tooltip,
 } from "@mui/material";
-
 import { findTypeNameByCode } from "src/entities/fts-function/api/mappers";
 import {
-    ACTIONS,
     CATEGORIES,
     COMPLEXITIES,
     PERIODICITIES,
@@ -143,16 +142,6 @@ export function StepTabBody({
                 label={"Кто делает"}
                 options={whoOptions}
                 testId={`add-detail-who-${step}`}
-                theme={theme}
-            />
-
-            <RHFCodeSelect
-                control={control}
-                name={`${step}.actionLabel`}
-                label={"Что делать"}
-                options={ACTIONS}
-                typesAll={typesAll}
-                testId={`add-detail-action-${step}`}
                 theme={theme}
             />
 

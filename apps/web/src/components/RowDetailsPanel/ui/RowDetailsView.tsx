@@ -1,4 +1,5 @@
 import type { TFunction } from "i18next";
+
 import type { CustomPalette } from "src/app/App";
 import type { Row } from "src/entities/fts-function/types";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
@@ -12,13 +13,12 @@ import {
     Typography,
     useTheme,
 } from "@mui/material";
-
 import { findTypeNameByCode } from "src/entities/fts-function/api/mappers";
 import {
     findTypeByCodeOrName,
     isActualActionCategory,
 } from "src/entities/fts-function/lib/detail-technology";
-import { FtsFunctionStep, RowField } from "src/entities/fts-function/model";
+import { FtsFunctionStep } from "src/entities/fts-function/model";
 import { useTranslation } from "src/shared/i18n";
 import { FieldLabel } from "src/shared/ui/form/FieldLabel";
 
@@ -81,12 +81,10 @@ export function RowDetailsView({
         : theme.palette.success.main;
 
     const filledCount = countFilled(row);
-    const actionDisplay = row.actionLabel
-        ? findTypeNameByCode(typesAll, row.actionLabel)
-        : "Не указано";
 
     const showTechnologyFields =
-        isActualActionCategory(row.category) || hasAnyFieldValue(row, TECHNOLOGY_FIELDS);
+        isActualActionCategory(row.category) ||
+        hasAnyFieldValue(row, TECHNOLOGY_FIELDS);
 
     return (
         <Box
@@ -193,13 +191,6 @@ export function RowDetailsView({
                 <ReadField
                     label={"Кто делает"}
                     value={row.who || undefined}
-                    t={t}
-                    c={c}
-                />
-
-                <ReadField
-                    label={"Что делать"}
-                    value={actionDisplay}
                     t={t}
                     c={c}
                 />

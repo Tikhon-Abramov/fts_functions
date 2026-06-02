@@ -2,7 +2,6 @@ import type { Row } from "src/entities/fts-function/types";
 import type { I18nKey } from "src/shared/i18n";
 
 import {
-  ACTIONS,
   CATEGORIES,
   COMPLEXITIES,
   PERIODICITIES,
@@ -51,10 +50,6 @@ const categoryOptions: SelectCodeOption[] = CATEGORIES.map((c) => ({
   value: c,
 }));
 
-const actionOptions: SelectCodeOption[] = ACTIONS.map((a) => ({
-  value: a,
-}));
-
 export const PRIMARY_FIELDS: ExtraFieldConfig[] = [
   {
     key: RowField.CATEGORY,
@@ -75,13 +70,6 @@ export const PRIMARY_FIELDS: ExtraFieldConfig[] = [
     kind: FieldKind.AUTOCOMPLETE_FROM_TYPES,
     typeCategory: DETAIL_TYPE_CATEGORY.WHO_PERFORMS_ACTION,
     testId: "details-panel-who",
-  },
-  {
-    key: RowField.ACTION_LABEL,
-    labelKey: I18N.field.action,
-    kind: FieldKind.SELECT_CODE,
-    options: actionOptions,
-    testId: "details-panel-action",
   },
 ];
 
@@ -160,6 +148,7 @@ export function getFieldLabel(
     t: (key: I18nKey) => string,
 ): string {
   if (field.label) return field.label;
+
   return field.labelKey ? t(field.labelKey) : "";
 }
 
