@@ -40,7 +40,15 @@ import {
   AcceptFeedbackDto,
   FeedbackResponseDto,
   FeedbackIdParamDto,
-  FeedbackIdParamSchema
+  FeedbackIdParamSchema,
+  CreateActionSchema,
+  UpdateActionSchema,
+  ActionIdParamSchema,
+  CreateActionDto,
+  UpdateActionDto,
+  ActionIdParamDto,
+  ActionSchema,
+  ActionResponseDto,
 } from './fts-function.schema';
 import { FtsFunctionService } from './fts-function.service';
 
@@ -225,23 +233,52 @@ export class FtsFunctionController {
 
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Action CRUD
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  // @Patch('details/accept/:detailId')
-  // @ApiOkResponse({
-  //   description: SWAGGER_DESCRIPTION.RESOURCE_UPDATED,
-  //   schema: { $ref: getSchemaPath(FtsFunctionDetailDetailedResponseDto) },
-  // })
-  // @ApiExtraModels(FtsFunctionDetailDetailedResponseDto)
-  // acceptDetail(
-  //   @Param(new ZodValidationPipe(DetailIdParamSchema)) params: DetailIdParamDto,
-  //   @Body(new ZodValidationPipe(AcceptFtsFunctionDetailSchema)) body: AcceptFtsFunctionDetailDto,
-  // ): Promise<FtsFunctionDetailDetailedResponseDto> {
-  //   return this.service.acceptDetail(params.detailId, body.isAccepted, body.rejectComment);
-  // }
+  @Post('details/:detailId/actions')
+  @ApiOkResponse({
+    description: SWAGGER_DESCRIPTION.RESOURCE_CREATED,
+    schema: { $ref: getSchemaPath(ActionResponseDto) },
+  })
+  @ApiExtraModels(ActionResponseDto)
+  creatAction(
+    @Param(new ZodValidationPipe(DetailIdParamSchema)) params: DetailIdParamDto,
+    @Body(new ZodValidationPipe(CreateActionSchema)) body: CreateActionDto,
+  ): Promise<ActionResponseDto> {
+    return this.service.createAction(params.detailId, body);
+  }
+
+  @Patch('actions/:actionId')
+  @ApiOkResponse({
+    description: SWAGGER_DESCRIPTION.RESOURCE_UPDATED,
+    schema: { $ref: getSchemaPath(ActionResponseDto) },
+  })
+  @ApiExtraModels(ActionResponseDto)
+  updateAction(
+    @Param(new ZodValidationPipe(ActionIdParamSchema)) params: ActionIdParamDto,
+    @Body(new ZodValidationPipe(UpdateActionSchema)) body: UpdateActionDto,
+  ): Promise<ActionResponseDto> {
+    return this.service.updateAction(params.actionId, body);
+  }
+
+  @Delete('actions/:actionId')
+  @ApiOkResponse({
+    description: SWAGGER_DESCRIPTION.RESOURCE_DELETED,
+    schema: { $ref: getSchemaPath(ActionResponseDto) },
+  })
+  @ApiExtraModels(ActionResponseDto)
+  deleteAction(
+    @Param(new ZodValidationPipe(ActionIdParamSchema)) params: ActionIdParamDto,
+  ): Promise<ActionResponseDto> {
+    return this.service.deleteAction(params.actionId);
+  }
 
 
 
 
+  
 
 
 

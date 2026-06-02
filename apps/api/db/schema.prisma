@@ -68,7 +68,8 @@ enum Category {
   FEEDBACK_SOURCE // Категория "Источник обратной связи"
   FEEDBACK_QUALITY_METRICS // Категория "Метрики качества обратной связи"
   RESPONSIBLE // Категория "Ответственный в технологическом решении"
-  FTS_METHODOLOGY_STATUS // Категория "Методологическая позиция ЦА ФНС России (поддержано/нет)
+  FTS_METHODOLOGY_STATUS // Категория "Методологическая позиция ЦА ФНС России" (поддержано/нет)
+  ACTION_STATUS // Категория "Статус действия"
 }
 
 /// Виды изменений данных
@@ -312,6 +313,7 @@ model Type {
   ftsMethodologyStatusToFeedback                    Feedback[]          @relation("feedback__fts_methodology_status")
   feedbackQualityMetricsToFeedback                  Feedback[]          @relation("feedback__feedback_quality_metrics")
   ftsFunctionTree                                   FtsFunctionTree[]
+  actions                                           Action[]
 
   @@index([code])
   @@index([category])
@@ -468,7 +470,8 @@ model FtsFunctionDetail {
   technologicalSolution         Type? @relation("technological_solution__fts_function_action_type", fields: [technologicalSolutionId], references: [id])
   responsible                   Type? @relation("responsible__fts_function_action_type", fields: [responsibleId], references: [id])
 
-  feedbacks                Feedback[]
+  feedbacks Feedback[]
+  actions   Action[]
 
   parents  FtsFunctionTree[] @relation("data_parents")
   children FtsFunctionTree[] @relation("data_children")
@@ -571,6 +574,30 @@ model FtsFunctionDetailAgreementHistory {
   feedback Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
 
   @@map("fts_function_detail_agreement_history")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Действия для каждой детализации
+model Action {
+  /// Уникальный идентификатор действия
+  id Int @id @default(autoincrement())
+  /// Уникальный идентификатор строки детализации
+  ftsFunctionDetailId Int    @map("fts_function_detail_id")
+  /// Уникальный идентификатор статуса действия
+  statusId            Int    @map("status_id")
+  /// Описание действия
+  description         String @db.Text @map("description")
+  /// Флаг мягкого удаления
+  isDeleted           Boolean   @default(false) @map("is_deleted")
+  /// Дата мягкого удаления (если удалена)
+  deletedAt           DateTime? @map("deleted_at")
+
+  /// Связи
+  ftsFunctionDetail FtsFunctionDetail @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
+  status            Type @relation(fields: [statusId], references: [id])
+
+  @@map("actions")
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

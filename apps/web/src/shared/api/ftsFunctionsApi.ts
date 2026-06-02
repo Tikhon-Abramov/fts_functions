@@ -246,6 +246,38 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["FtsFunction"],
       }),
+      ftsFunctionControllerCreatActionV1: build.mutation<
+        FtsFunctionControllerCreatActionV1ApiResponse,
+        FtsFunctionControllerCreatActionV1ApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/v1/fts-functions/details/${queryArg.detailId}/actions`,
+          method: "POST",
+          body: queryArg.createActionDto,
+        }),
+        invalidatesTags: ["FtsFunction"],
+      }),
+      ftsFunctionControllerUpdateActionV1: build.mutation<
+        FtsFunctionControllerUpdateActionV1ApiResponse,
+        FtsFunctionControllerUpdateActionV1ApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/v1/fts-functions/actions/${queryArg.actionId}`,
+          method: "PATCH",
+          body: queryArg.updateActionDto,
+        }),
+        invalidatesTags: ["FtsFunction"],
+      }),
+      ftsFunctionControllerDeleteActionV1: build.mutation<
+        FtsFunctionControllerDeleteActionV1ApiResponse,
+        FtsFunctionControllerDeleteActionV1ApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/v1/fts-functions/actions/${queryArg.actionId}`,
+          method: "DELETE",
+        }),
+        invalidatesTags: ["FtsFunction"],
+      }),
       ftsFunctionControllerCreateTreeEdgeV1: build.mutation<
         FtsFunctionControllerCreateTreeEdgeV1ApiResponse,
         FtsFunctionControllerCreateTreeEdgeV1ApiArg
@@ -339,6 +371,7 @@ export type ConstantControllerGetTypesV1ApiArg = {
     | "FEEDBACK_QUALITY_METRICS"
     | "RESPONSIBLE"
     | "FTS_METHODOLOGY_STATUS"
+    | "ACTION_STATUS"
   )[];
   supertypeIds?: number[];
 };
@@ -467,6 +500,23 @@ export type FtsFunctionControllerAcceptFeedbackV1ApiArg = {
   feedbackId: string | number;
   acceptFeedbackDto: AcceptFeedbackDto;
 };
+export type FtsFunctionControllerCreatActionV1ApiResponse =
+  /** status 200 Ресурс успешно создан */ ActionResponseDto;
+export type FtsFunctionControllerCreatActionV1ApiArg = {
+  detailId: string | number;
+  createActionDto: CreateActionDto;
+};
+export type FtsFunctionControllerUpdateActionV1ApiResponse =
+  /** status 200 Ресурс успешно обновлен */ ActionResponseDto;
+export type FtsFunctionControllerUpdateActionV1ApiArg = {
+  actionId: string | number;
+  updateActionDto: UpdateActionDto;
+};
+export type FtsFunctionControllerDeleteActionV1ApiResponse =
+  /** status 200 Ресурс успешно удален */ ActionResponseDto;
+export type FtsFunctionControllerDeleteActionV1ApiArg = {
+  actionId: string | number;
+};
 export type FtsFunctionControllerCreateTreeEdgeV1ApiResponse =
   /** status 200 Ресурс успешно создан */ FtsFunctionTreeResponseDto;
 export type FtsFunctionControllerCreateTreeEdgeV1ApiArg = {
@@ -525,7 +575,8 @@ export type TypeResponseDto = {
     | "FEEDBACK_SOURCE"
     | "FEEDBACK_QUALITY_METRICS"
     | "RESPONSIBLE"
-    | "FTS_METHODOLOGY_STATUS";
+    | "FTS_METHODOLOGY_STATUS"
+    | "ACTION_STATUS";
   color?: string | null;
 };
 export type ErrorResponseDto = {
@@ -560,7 +611,8 @@ export type TypeCreateDto = {
     | "FEEDBACK_SOURCE"
     | "FEEDBACK_QUALITY_METRICS"
     | "RESPONSIBLE"
-    | "FTS_METHODOLOGY_STATUS";
+    | "FTS_METHODOLOGY_STATUS"
+    | "ACTION_STATUS";
   color?: string | null;
 };
 export type TypeUpdateDto = {
@@ -586,7 +638,8 @@ export type TypeUpdateDto = {
     | "FEEDBACK_SOURCE"
     | "FEEDBACK_QUALITY_METRICS"
     | "RESPONSIBLE"
-    | "FTS_METHODOLOGY_STATUS";
+    | "FTS_METHODOLOGY_STATUS"
+    | "ACTION_STATUS";
   color?: string | null;
 };
 export type UserResponseDto = {
@@ -719,7 +772,8 @@ export type FtsFunctionDetailedResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   };
   ftsFunctionName: {
     id: number;
@@ -743,7 +797,8 @@ export type FtsFunctionDetailedResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   };
   competencyCenter: {
     id: number;
@@ -767,7 +822,8 @@ export type FtsFunctionDetailedResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   };
   ftsFunctionMarker: {
     id: number;
@@ -791,7 +847,8 @@ export type FtsFunctionDetailedResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   };
   curatorCentralOffice: {
     id: number;
@@ -838,7 +895,8 @@ export type FtsFunctionDetailedResponseDto = {
         | "FEEDBACK_SOURCE"
         | "FEEDBACK_QUALITY_METRICS"
         | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
     };
   }[];
   ftsFunctionDetails: {
@@ -896,7 +954,8 @@ export type FtsFunctionDetailedResponseDto = {
           | "FEEDBACK_SOURCE"
           | "FEEDBACK_QUALITY_METRICS"
           | "RESPONSIBLE"
-          | "FTS_METHODOLOGY_STATUS";
+          | "FTS_METHODOLOGY_STATUS"
+          | "ACTION_STATUS";
       } | null;
       feedbackQualityMetrics: {
         id: number;
@@ -920,7 +979,8 @@ export type FtsFunctionDetailedResponseDto = {
           | "FEEDBACK_SOURCE"
           | "FEEDBACK_QUALITY_METRICS"
           | "RESPONSIBLE"
-          | "FTS_METHODOLOGY_STATUS";
+          | "FTS_METHODOLOGY_STATUS"
+          | "ACTION_STATUS";
       } | null;
       feedbackSources: {
         feedbackSource: {
@@ -945,7 +1005,8 @@ export type FtsFunctionDetailedResponseDto = {
             | "FEEDBACK_SOURCE"
             | "FEEDBACK_QUALITY_METRICS"
             | "RESPONSIBLE"
-            | "FTS_METHODOLOGY_STATUS";
+            | "FTS_METHODOLOGY_STATUS"
+            | "ACTION_STATUS";
         };
       }[];
       feedbackAgreementHistory: {
@@ -956,6 +1017,34 @@ export type FtsFunctionDetailedResponseDto = {
         comment: string | null;
         createdAt: string;
       }[];
+    }[];
+    actions?: {
+      status: {
+        id: number;
+        code: string;
+        name: string;
+        category:
+          | "FTS_CENTRALIZATION"
+          | "FTS_FUNCTION_NAME"
+          | "FTS_FUNCTION_STEP"
+          | "FTS_FUNCTION_CATEGORY"
+          | "FTS_FUNCTION_MARKER"
+          | "FTS_FUNCTION_COMPLEXITY"
+          | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+          | "WHO_PERFORMS_ACTION"
+          | "FTS_FUNCTION_ACTION_TYPE"
+          | "FTS_FUNCTION_EFFECTIVENESS"
+          | "FTS_COMPETENCY_CENTER"
+          | "FTS_DTI"
+          | "FTS_FUNCTION_RELATION_TYPE"
+          | "TECHNOLOGICAL_SOLUTION"
+          | "FEEDBACK_SOURCE"
+          | "FEEDBACK_QUALITY_METRICS"
+          | "RESPONSIBLE"
+          | "FTS_METHODOLOGY_STATUS"
+          | "ACTION_STATUS";
+      };
+      description: string;
     }[];
     ftsFunctionStep: {
       id: number;
@@ -979,7 +1068,8 @@ export type FtsFunctionDetailedResponseDto = {
         | "FEEDBACK_SOURCE"
         | "FEEDBACK_QUALITY_METRICS"
         | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
     };
     ftsFunctionCategory: {
       id: number;
@@ -1003,7 +1093,8 @@ export type FtsFunctionDetailedResponseDto = {
         | "FEEDBACK_SOURCE"
         | "FEEDBACK_QUALITY_METRICS"
         | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
     } | null;
     ftsFunctionComplexity: {
       id: number;
@@ -1027,7 +1118,8 @@ export type FtsFunctionDetailedResponseDto = {
         | "FEEDBACK_SOURCE"
         | "FEEDBACK_QUALITY_METRICS"
         | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
     } | null;
     ftsFunctionExecutionFrequency: {
       id: number;
@@ -1051,7 +1143,8 @@ export type FtsFunctionDetailedResponseDto = {
         | "FEEDBACK_SOURCE"
         | "FEEDBACK_QUALITY_METRICS"
         | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
     } | null;
     whoPerformsAction: {
       id: number;
@@ -1075,7 +1168,8 @@ export type FtsFunctionDetailedResponseDto = {
         | "FEEDBACK_SOURCE"
         | "FEEDBACK_QUALITY_METRICS"
         | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
     } | null;
     ftsFunctionActionType: {
       id: number;
@@ -1099,7 +1193,8 @@ export type FtsFunctionDetailedResponseDto = {
         | "FEEDBACK_SOURCE"
         | "FEEDBACK_QUALITY_METRICS"
         | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
     } | null;
     ftsFunctionEffectiveness: {
       id: number;
@@ -1123,7 +1218,8 @@ export type FtsFunctionDetailedResponseDto = {
         | "FEEDBACK_SOURCE"
         | "FEEDBACK_QUALITY_METRICS"
         | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
     } | null;
     technologicalSolution: {
       id: number;
@@ -1147,7 +1243,8 @@ export type FtsFunctionDetailedResponseDto = {
         | "FEEDBACK_SOURCE"
         | "FEEDBACK_QUALITY_METRICS"
         | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
     } | null;
     responsible: {
       id: number;
@@ -1171,7 +1268,8 @@ export type FtsFunctionDetailedResponseDto = {
         | "FEEDBACK_SOURCE"
         | "FEEDBACK_QUALITY_METRICS"
         | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
     } | null;
     parents: {
       parentFtsFunctionId: number;
@@ -1200,7 +1298,8 @@ export type FtsFunctionDetailedResponseDto = {
           | "FEEDBACK_SOURCE"
           | "FEEDBACK_QUALITY_METRICS"
           | "RESPONSIBLE"
-          | "FTS_METHODOLOGY_STATUS";
+          | "FTS_METHODOLOGY_STATUS"
+          | "ACTION_STATUS";
       };
     }[];
     children: {
@@ -1230,7 +1329,8 @@ export type FtsFunctionDetailedResponseDto = {
           | "FEEDBACK_SOURCE"
           | "FEEDBACK_QUALITY_METRICS"
           | "RESPONSIBLE"
-          | "FTS_METHODOLOGY_STATUS";
+          | "FTS_METHODOLOGY_STATUS"
+          | "ACTION_STATUS";
       };
     }[];
   }[];
@@ -1300,7 +1400,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
         | "FEEDBACK_SOURCE"
         | "FEEDBACK_QUALITY_METRICS"
         | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
     } | null;
     feedbackQualityMetrics: {
       id: number;
@@ -1324,7 +1425,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
         | "FEEDBACK_SOURCE"
         | "FEEDBACK_QUALITY_METRICS"
         | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
     } | null;
     feedbackSources: {
       feedbackSource: {
@@ -1349,7 +1451,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
           | "FEEDBACK_SOURCE"
           | "FEEDBACK_QUALITY_METRICS"
           | "RESPONSIBLE"
-          | "FTS_METHODOLOGY_STATUS";
+          | "FTS_METHODOLOGY_STATUS"
+          | "ACTION_STATUS";
       };
     }[];
     feedbackAgreementHistory: {
@@ -1360,6 +1463,34 @@ export type FtsFunctionDetailDetailedResponseDto = {
       comment: string | null;
       createdAt: string;
     }[];
+  }[];
+  actions?: {
+    status: {
+      id: number;
+      code: string;
+      name: string;
+      category:
+        | "FTS_CENTRALIZATION"
+        | "FTS_FUNCTION_NAME"
+        | "FTS_FUNCTION_STEP"
+        | "FTS_FUNCTION_CATEGORY"
+        | "FTS_FUNCTION_MARKER"
+        | "FTS_FUNCTION_COMPLEXITY"
+        | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+        | "WHO_PERFORMS_ACTION"
+        | "FTS_FUNCTION_ACTION_TYPE"
+        | "FTS_FUNCTION_EFFECTIVENESS"
+        | "FTS_COMPETENCY_CENTER"
+        | "FTS_DTI"
+        | "FTS_FUNCTION_RELATION_TYPE"
+        | "TECHNOLOGICAL_SOLUTION"
+        | "FEEDBACK_SOURCE"
+        | "FEEDBACK_QUALITY_METRICS"
+        | "RESPONSIBLE"
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
+    };
+    description: string;
   }[];
   ftsFunctionStep: {
     id: number;
@@ -1383,7 +1514,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   };
   ftsFunctionCategory: {
     id: number;
@@ -1407,7 +1539,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   } | null;
   ftsFunctionComplexity: {
     id: number;
@@ -1431,7 +1564,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   } | null;
   ftsFunctionExecutionFrequency: {
     id: number;
@@ -1455,7 +1589,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   } | null;
   whoPerformsAction: {
     id: number;
@@ -1479,7 +1614,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   } | null;
   ftsFunctionActionType: {
     id: number;
@@ -1503,7 +1639,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   } | null;
   ftsFunctionEffectiveness: {
     id: number;
@@ -1527,7 +1664,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   } | null;
   technologicalSolution: {
     id: number;
@@ -1551,7 +1689,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   } | null;
   responsible: {
     id: number;
@@ -1575,7 +1714,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   } | null;
 };
 export type CreateFtsFunctionDetailDto = {
@@ -1646,7 +1786,8 @@ export type FeedbackResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   } | null;
   feedbackQualityMetrics: {
     id: number;
@@ -1670,7 +1811,8 @@ export type FeedbackResponseDto = {
       | "FEEDBACK_SOURCE"
       | "FEEDBACK_QUALITY_METRICS"
       | "RESPONSIBLE"
-      | "FTS_METHODOLOGY_STATUS";
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
   } | null;
   feedbackSources: {
     feedbackSource: {
@@ -1695,7 +1837,8 @@ export type FeedbackResponseDto = {
         | "FEEDBACK_SOURCE"
         | "FEEDBACK_QUALITY_METRICS"
         | "RESPONSIBLE"
-        | "FTS_METHODOLOGY_STATUS";
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
     };
   }[];
   feedbackAgreementHistory: {
@@ -1728,6 +1871,42 @@ export type UpdateFeedbackDto = {
 export type AcceptFeedbackDto = {
   isAccepted: boolean;
   rejectComment?: string;
+};
+export type ActionResponseDto = {
+  status: {
+    id: number;
+    code: string;
+    name: string;
+    category:
+      | "FTS_CENTRALIZATION"
+      | "FTS_FUNCTION_NAME"
+      | "FTS_FUNCTION_STEP"
+      | "FTS_FUNCTION_CATEGORY"
+      | "FTS_FUNCTION_MARKER"
+      | "FTS_FUNCTION_COMPLEXITY"
+      | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+      | "WHO_PERFORMS_ACTION"
+      | "FTS_FUNCTION_ACTION_TYPE"
+      | "FTS_FUNCTION_EFFECTIVENESS"
+      | "FTS_COMPETENCY_CENTER"
+      | "FTS_DTI"
+      | "FTS_FUNCTION_RELATION_TYPE"
+      | "TECHNOLOGICAL_SOLUTION"
+      | "FEEDBACK_SOURCE"
+      | "FEEDBACK_QUALITY_METRICS"
+      | "RESPONSIBLE"
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
+  };
+  description: string;
+};
+export type CreateActionDto = {
+  statusId: string | number;
+  description: string;
+};
+export type UpdateActionDto = {
+  statusId?: string | number;
+  description?: string;
 };
 export type FtsFunctionTreeResponseDto = {
   parentFtsFunctionId: number;
@@ -1769,6 +1948,9 @@ export const {
   useFtsFunctionControllerUpdateFeedbackV1Mutation,
   useFtsFunctionControllerDeleteFeedbackV1Mutation,
   useFtsFunctionControllerAcceptFeedbackV1Mutation,
+  useFtsFunctionControllerCreatActionV1Mutation,
+  useFtsFunctionControllerUpdateActionV1Mutation,
+  useFtsFunctionControllerDeleteActionV1Mutation,
   useFtsFunctionControllerCreateTreeEdgeV1Mutation,
   useFtsFunctionControllerDeleteTreeEdgeV1Mutation,
   useFtsFunctionControllerBatchAttachDtisV1V1Mutation,

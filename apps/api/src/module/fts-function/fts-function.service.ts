@@ -19,6 +19,8 @@ import type {
   DownloadFtsFunctionDetailEntity,
   DownloadFeedbackEntity,
   DownloadFFtsFunctionTreeEntity,
+  DownloadActionEntity,
+  ActionDetailedEntity,
 } from './internal/fts-function.entity';
 
 import { Injectable } from '@nestjs/common';
@@ -50,7 +52,9 @@ import {
   downloadFtsFunctionSelect,
   downloadFtsFunctionDetailSelect,
   downloadFeedbackSelect,
-downloadFtsFunctionTreeSelect,
+  downloadFtsFunctionTreeSelect,
+  downloadActionSelect,
+  actionSelect,
 } from './internal/fts-function.selects';
 import {
   CreateFtsFunctionDetailDto,
@@ -62,6 +66,8 @@ import {
   CreateFeedbackDto,
   UpdateFeedbackDto,
   AcceptFeedbackDto,
+  CreateActionDto,
+  UpdateActionDto,
 } from './fts-function.schema';
 import { FtsFunctionCounterService } from './fts-function-counter.service';
 import { ExcelService } from '../excel/excel.service';
@@ -455,6 +461,38 @@ export class FtsFunctionService {
     });
   }
 
+  createAction(
+    ftsFunctionDetailId: number,
+    dto: CreateActionDto,
+  ): Promise<ActionDetailedEntity> {
+    return this.prisma.action.create({
+      data: { 
+        ftsFunctionDetailId,
+        ...dto,
+      },
+      select: actionSelect,
+    });
+  }
+
+  updateAction(
+    actionId: number,
+    dto: UpdateActionDto
+  ): Promise<ActionDetailedEntity> {
+    return this.prisma.action.update({
+      where: { id: actionId },
+      data: dto,
+      select: actionSelect,
+    });
+  }
+
+  deleteAction(actionId: number): Promise<ActionDetailedEntity> {
+    return this.prisma.action.update({
+      where: { id: actionId },
+      data: { isDeleted: true },
+      select: actionSelect,
+    });
+  }
+
   async createTreeEdge(
       dto: CreateFtsFunctionTreeDto,
   ): Promise<FtsFunctionTreeEntity> {
@@ -754,7 +792,7 @@ export class FtsFunctionService {
   }
 
   async getDownload(): Promise<ExcelJS.Buffer> {
-    const [ftsFunctions, ftsFunctionDetails, feedback, tree] = await Promise.all([
+    const [ftsFunctions, ftsFunctionDetails, feedback, tree, actions] = await Promise.all([
       this.prisma.ftsFunction.findMany({
         where: { isDeleted: false },
         select: downloadFtsFunctionSelect,
@@ -804,6 +842,22 @@ export class FtsFunctionService {
           { parentFtsFunction: { ftsFunctionCategoryId: 'asc' } },
         ],
       }),
+
+      this.prisma.action.findMany({
+        where: {
+          isDeleted: false,
+          ftsFunctionDetail: {
+            isDeleted: false,
+            ftsFunction: { isDeleted: false },
+          },
+        },
+        select: downloadActionSelect,
+        orderBy: [
+          { ftsFunctionDetail: { ftsFunctionId: 'asc' } },
+          { ftsFunctionDetail: { ftsFunctionStepId: 'asc' } },
+          { ftsFunctionDetail: { ftsFunctionCategoryId: 'asc' } },
+        ],
+      })
     ]);
 
     return this.excel.createExcelWorkbook({
@@ -1052,6 +1106,36 @@ export class FtsFunctionService {
             {
               header: 'Детализация функции',
               map: (row: DownloadFFtsFunctionTreeEntity) => row.childFtsFunction.ftsFunctionDetails,
+            },
+          ],
+        },
+        {
+          name: 'Действия',
+          data: actions,
+          columns: [
+            {
+              header: 'ID функции',
+              map: (row: DownloadActionEntity) => row.ftsFunctionDetail.ftsFunction.id,
+            },
+            {
+              header: 'ID детализации',
+              map: (row: DownloadActionEntity) => row.ftsFunctionDetail.id,
+            },
+            {
+              header: 'Наименование функции',
+              map: (row: DownloadActionEntity) => row.ftsFunctionDetail.ftsFunction.ftsFunctionName.name,
+            },
+            {
+              header: 'Детализация функции',
+              map: (row: DownloadActionEntity) => row.ftsFunctionDetail.ftsFunctionDetails,
+            },
+            {
+              header: 'Статус',
+              map: (row: DownloadActionEntity) => row.status.name,
+            },
+            {
+              header: 'Описание',
+              map: (row: DownloadActionEntity) => row.description,
             },
           ],
         },

@@ -184,9 +184,24 @@ export class CreateFeedbackDto extends createZodDto(CreateFeedbackSchema) {}
 export class UpdateFeedbackDto extends createZodDto(UpdateFeedbackSchema) {}
 export class AcceptFeedbackDto extends createZodDto(AcceptFeedbackSchema) {}
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// BODY DTOs — Action
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+export const CreateActionSchema = z.object({
+    statusId: positiveInt,
+    description: z.string(),
+});
 
+export const UpdateActionSchema = CreateActionSchema.partial();
 
+export const ActionIdParamSchema = z.object({
+    actionId: positiveInt,
+});
+
+export class CreateActionDto extends createZodDto(CreateActionSchema) {}
+export class UpdateActionDto extends createZodDto(UpdateActionSchema) {}
+export class ActionIdParamDto extends createZodDto(ActionIdParamSchema) {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // BODY DTOs — FtsFunctionTree
@@ -295,6 +310,15 @@ export const FeedbackIdParamSchema = z.object({
 
 export class FeedbackIdParamDto extends createZodDto(FeedbackIdParamSchema) {}
 
+export const ActionSchema = z.object({
+    status: typeMinimalSchema,
+    description: z.string(),
+});
+
+export class ActionResponseDto extends createZodDto(
+    ActionSchema,
+) {}
+
 const FtsFunctionDetailBaseResponseSchema = z.object({
     id: z.number(),
     ftsFunctionId: z.number(),
@@ -323,6 +347,11 @@ const FtsFunctionDetailBaseResponseSchema = z.object({
 
     feedbacks: z
         .array(FeedbackSchema)
+        .optional()
+        .default([]),
+
+    actions: z
+        .array(ActionSchema)
         .optional()
         .default([]),
 });

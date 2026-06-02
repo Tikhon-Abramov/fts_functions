@@ -94,6 +94,11 @@ export const feedbackSelect = {
 
 } as const satisfies Prisma.FeedbackSelect;
 
+export const actionSelect = {
+  status: { select: typeMinimalSelect },
+  description: true,
+} as const satisfies Prisma.ActionSelect;
+
 export const ftsFunctionDetailDetailedSelect = {
   id: true,
   ftsFunctionId: true,
@@ -152,6 +157,13 @@ export const ftsFunctionDetailDetailedSelect = {
       isDeleted: false,
     }
   },
+
+  actions: {
+    select: actionSelect,
+    where: {
+      isDeleted: false,
+    }
+  }
 
 } as const satisfies Prisma.FtsFunctionDetailSelect;
 
@@ -342,3 +354,22 @@ export const downloadFtsFunctionTreeSelect = {
   relationType: { select: typeMinimalSelect },
   createdAt: true,
 } as const satisfies Prisma.FtsFunctionTreeSelect;
+
+export const downloadActionSelect = {
+  ftsFunctionDetail: {
+    select: {
+      id: true,
+      ftsFunction: {
+        select: {
+          id: true,
+          ftsFunctionName: {
+            select: typeMinimalSelect,
+          },
+        },
+      },
+      ftsFunctionDetails: true,
+    },
+  },
+  status: { select: typeMinimalSelect },
+  description: true,
+} as const satisfies Prisma.ActionSelect;

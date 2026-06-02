@@ -10,6 +10,8 @@ import type {
   downloadFtsFunctionDetailSelect,
   downloadFeedbackSelect,
   downloadFtsFunctionTreeSelect,
+  downloadActionSelect,
+  actionSelect,
 } from './fts-function.selects';
 import type { Prisma } from '@prisma-client';
 
@@ -47,6 +49,10 @@ export type FeedbackDetailedEntity = Prisma.FeedbackGetPayload<{
   select: typeof feedbackDetailedSelect;
 }>;
 
+export type ActionDetailedEntity = Prisma.ActionGetPayload<{
+  select: typeof actionSelect;
+}>;
+
 export type DownloadFtsFunctionEntity = Prisma.FtsFunctionGetPayload<{
   select: typeof downloadFtsFunctionSelect;
 }>;
@@ -61,4 +67,8 @@ export type DownloadFeedbackEntity = Prisma.FeedbackGetPayload<{
 
 export type DownloadFFtsFunctionTreeEntity = Prisma.FtsFunctionTreeGetPayload<{
   select: typeof downloadFtsFunctionTreeSelect;
+}>;
+
+export type DownloadActionEntity = Prisma.ActionGetPayload<{
+  select: typeof downloadActionSelect;
 }>;
