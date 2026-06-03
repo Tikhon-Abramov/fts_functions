@@ -10,6 +10,7 @@ import {
   Post,
   Query,
   Req,
+  Res,
   StreamableFile,
 } from '@nestjs/common';
 import {
@@ -22,7 +23,7 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import type { MultipartFile } from '@fastify/multipart';
-import type { FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ZodValidationPipe } from '@common/pipes/validation.pipe';
 import { SWAGGER_DESCRIPTION } from '@common/strings';
 import { Buffer } from 'node:buffer';
@@ -128,6 +129,25 @@ async function saveDetailFile(
   await pipeline(file.file, createWriteStream(fullPath));
 
   return storedFileName;
+}
+
+function buildSafeDownloadFileName(fileName: string): string {
+  const cleanFileName = stripGeneratedFilePrefixes(basename(fileName));
+  const extension = extname(cleanFileName).replace(/[^\x20-\x7E]/g, '');
+  const baseName = basename(cleanFileName, extension)
+      .replace(/[^\x20-\x7E]/g, '_')
+      .replace(/["\\;=]/g, '_')
+      .replace(/\s+/g, '_')
+      .slice(0, 80)
+      .trim();
+
+  return `${baseName || 'download'}${extension || ''}`;
+}
+
+function buildContentDisposition(fileName: string): string {
+  const safeFileName = buildSafeDownloadFileName(fileName);
+
+  return `attachment; filename="${safeFileName}"`;
 }
 
 // TODO: auth-gating these endpoints is a follow-up product decision (see
@@ -333,6 +353,7 @@ export class FtsFunctionController {
   async downloadDetailAlgorithmFile(
       @Param(new ZodValidationPipe(DetailIdParamSchema))
       params: DetailIdParamDto,
+      @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<StreamableFile> {
     const detail = await this.prisma.ftsFunctionDetail.findFirst({
       where: {
@@ -359,15 +380,10 @@ export class FtsFunctionController {
       throw new NotFoundException('Файл не найден');
     }
 
-    /*
-     * ВАЖНО:
-     * Здесь специально НЕ выставляется Content-Disposition.
-     * Любое русское/нестандартное имя в этом header может уронить Fastify/Node
-     * с ERR_INVALID_CHAR. Имя скачиваемого файла задаёт фронт через link.download.
-     */
-    return new StreamableFile(createReadStream(filePath), {
-      type: 'application/octet-stream',
-    });
+    reply.header('Content-Type', 'application/octet-stream');
+    reply.header('Content-Disposition', buildContentDisposition(safeFileName));
+
+    return new StreamableFile(createReadStream(filePath));
   }
 
   @Delete('details/:detailId')

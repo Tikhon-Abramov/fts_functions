@@ -244,7 +244,7 @@ export function RowDetailsEdit({
                                 <>
                                     <Divider sx={{ borderColor: c.borderLight, mb: 1.25 }} />
 
-
+                                   
                                 </>
                             )}
 

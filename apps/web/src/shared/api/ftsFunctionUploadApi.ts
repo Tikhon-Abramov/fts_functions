@@ -14,26 +14,6 @@ function normalizeDownloadFileName(fileName: string | undefined): string {
   return stripGeneratedFilePrefixes(trimmed) || "download";
 }
 
-function getFileNameFromContentDisposition(
-    contentDisposition: string | null,
-): string | null {
-  if (!contentDisposition) return null;
-
-  const quotedMatch = contentDisposition.match(/filename="([^"]+)"/i);
-
-  if (quotedMatch?.[1]) {
-    return quotedMatch[1];
-  }
-
-  const plainMatch = contentDisposition.match(/filename=([^;]+)/i);
-
-  if (plainMatch?.[1]) {
-    return plainMatch[1].trim();
-  }
-
-  return null;
-}
-
 function downloadBlob(blob: Blob, fileName: string): void {
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -91,16 +71,17 @@ export const ftsFunctionUploadApi = baseApi.injectEndpoints({
             throw new Error(message || "Не удалось скачать файл");
           }
 
+          const contentType = response.headers.get("Content-Type") ?? "";
+
+          if (contentType.includes("application/json")) {
+            const message = await response.text();
+
+            throw new Error(message || "Не удалось скачать файл");
+          }
+
           const blob = await response.blob();
 
-          const fileName =
-              fallbackFileName ||
-              getFileNameFromContentDisposition(
-                  response.headers.get("Content-Disposition"),
-              ) ||
-              "download";
-
-          downloadBlob(blob, fileName);
+          downloadBlob(blob, fallbackFileName || "download");
 
           return undefined;
         },

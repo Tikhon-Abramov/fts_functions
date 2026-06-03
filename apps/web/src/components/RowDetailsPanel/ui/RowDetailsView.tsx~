@@ -244,7 +244,7 @@ export function RowDetailsView({
                     <>
                         <Divider sx={{ borderColor: c.borderLight, my: 0.25 }} />
 
-
+                       
 
                         {TECHNOLOGY_FIELDS.map((field) =>
                             field.key === RowField.ALGORITHM ? (

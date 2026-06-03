@@ -1,503 +1,316 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Header,
-  Param,
-  Patch,
-  Post,
-  Query,
-  Req,
-  Res,
-  StreamableFile,
-} from '@nestjs/common';
-import {
-  ApiBody,
-  ApiConsumes,
-  ApiExtraModels,
-  ApiOkResponse,
-  ApiOperation,
-  ApiProduces,
-  getSchemaPath,
-} from '@nestjs/swagger';
-import type { MultipartFile } from '@fastify/multipart';
-import type { FastifyRequest } from 'fastify';
-import { createWriteStream } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
-import { extname, join } from 'node:path';
-import { pipeline } from 'node:stream/promises';
-
-import { ZodValidationPipe } from '@common/pipes/validation.pipe';
-import { SWAGGER_DESCRIPTION } from '@common/strings';
-
-import {
-  AcceptFeedbackDto,
-  AcceptFeedbackSchema,
-  ActionIdParamDto,
-  ActionIdParamSchema,
-  ActionResponseDto,
-  BatchAttachDtisRequestDto,
-  BatchAttachDtisRequestSchema,
-  CreateActionDto,
-  CreateActionSchema,
-  CreateFeedbackDto,
-  CreateFeedbackSchema,
+import type {
+  FtsFunctionCategory,
+  FtsFunctionComplexity,
+  FtsFunctionExecutionFrequency,
+  FtsFunctionStep,
+} from "src/entities/fts-function/model";
+import type { Row } from "src/entities/fts-function/types";
+import type {
   CreateFtsFunctionDetailDto,
-  CreateFtsFunctionDetailSchema,
-  CreateFtsFunctionDto,
-  CreateFtsFunctionSchema,
-  CreateFtsFunctionTreeDto,
-  CreateFtsFunctionTreeSchema,
-  DetailIdParamDto,
-  DetailIdParamSchema,
-  DtiParamDto,
-  DtiParamSchema,
-  FeedbackIdParamDto,
-  FeedbackIdParamSchema,
-  FeedbackResponseDto,
-  FtsFunctionBaseResponseDto,
-  FtsFunctionDetailDetailedResponseDto,
-  FtsFunctionDetailedResponseDto,
-  FtsFunctionListQueryDto,
-  FtsFunctionListQuerySchema,
-  FtsFunctionListResponseDto,
-  FtsFunctionToDtiResponseDto,
-  FtsFunctionTreeResponseDto,
-  IdParamDto,
-  IdParamSchema,
-  TreeEdgeParamDto,
-  TreeEdgeParamSchema,
-  UpdateActionDto,
-  UpdateActionSchema,
-  UpdateFeedbackDto,
-  UpdateFeedbackSchema,
+  TypeResponseDto,
   UpdateFtsFunctionDetailDto,
-  UpdateFtsFunctionDetailSchema,
-  UpdateFtsFunctionDto,
-  UpdateFtsFunctionSchema,
-} from './fts-function.schema';
-import { FtsFunctionService } from './fts-function.service';
+} from "src/shared/api/ftsFunctionsApi";
 
-const XLSX_MIME =
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+import { findTypeIdByCode } from "src/entities/fts-function/api/mappers";
+import {
+  areFeedbackRequiredFieldsFilled,
+  DETAIL_TYPE_CATEGORY,
+  findTypeByCodeOrName,
+  hasFeedback,
+  isActualActionCategory,
+  type TypeCategory,
+} from "src/entities/fts-function/lib/detail-technology";
 
-const DETAIL_FILES_ROOT = 'uploads/fts-function-details';
+export type ResolvedDetailDto = CreateFtsFunctionDetailDto &
+    UpdateFtsFunctionDetailDto &
+    Record<string, unknown>;
 
-type MultipartFastifyRequest = FastifyRequest & {
-  file: () => Promise<MultipartFile | undefined>;
+export type DetailInput = {
+  step: FtsFunctionStep;
+  category: FtsFunctionCategory;
+  periodicity?: FtsFunctionExecutionFrequency | "" | undefined;
+  complexity?: FtsFunctionComplexity | "" | undefined;
+  detailText?: string | undefined;
+  who?: string | undefined;
+  actionLabel?: string | "" | undefined;
+  artifact?: string | undefined;
+  basis?: string | undefined;
+  artifactUsage?: string | undefined;
+  purpose?: string | undefined;
+  technologicalSolution?: string | undefined;
+  number?: string | undefined;
+  responsible?: string | undefined;
+  algorithm?: string | undefined;
+  feedbackSource?: string | undefined;
+  feedbackQualityMetric?: string | undefined;
+  problemDescription?: string | undefined;
+  initiatorRequisites?: string | undefined;
+  methodologyPosition?: string | undefined;
+  deadline?: string | undefined;
+  initiatorAcceptance?: string | undefined;
+  isAccepted?: boolean | null | undefined;
+  rejectComment?: string | undefined;
 };
 
-function sanitizeFileBaseName(fileName: string): string {
-  return fileName
-      .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_')
-      .replace(/\s+/g, '_')
-      .slice(0, 120);
+function trimValue(value: string | null | undefined): string {
+  return value?.trim() ?? "";
 }
 
-function buildStoredFileName(originalName: string): string {
-  const ext = extname(originalName);
-  const baseName = sanitizeFileBaseName(
-      originalName.slice(0, originalName.length - ext.length),
+function findTypeIdByCodeOrNull(
+    types: TypeResponseDto[] | undefined,
+    code: string,
+): number | null {
+  return findTypeIdByCode(types, code) ?? null;
+}
+
+function findTypeIdByCategoryAndName(
+    types: TypeResponseDto[] | undefined,
+    category: TypeCategory,
+    name: string,
+): number | null {
+  const trimmed = name.trim();
+
+  if (!trimmed) return null;
+
+  return (
+      (types ?? []).find(
+          (type) => type.category === category && type.name === trimmed,
+      )?.id ?? null
   );
-
-  return `${Date.now()}-${baseName}${ext}`;
 }
 
-async function saveDetailFile(
-    detailId: number,
-    file: MultipartFile,
-): Promise<string> {
-  const storedFileName = buildStoredFileName(file.filename);
-  const dir = join(DETAIL_FILES_ROOT, String(detailId));
-  const fullPath = join(dir, storedFileName);
-
-  await mkdir(dir, { recursive: true });
-  await pipeline(file.file, createWriteStream(fullPath));
-
-  return storedFileName;
+function findTypeIdByCategoryAndCodeOrName(
+    types: TypeResponseDto[] | undefined,
+    category: TypeCategory,
+    value: string,
+): number | null {
+  return findTypeByCodeOrName(types, category, value)?.id ?? null;
 }
 
-// TODO: auth-gating these endpoints is a follow-up product decision (see
-// docs/known-limitations.md). For now @Public() opens them to anonymous users.
-@Controller({
-  path: 'fts-functions',
-  version: '1',
-})
-export class FtsFunctionController {
-  constructor(private readonly service: FtsFunctionService) {}
+function hasRequiredTechnologyFields(input: {
+  number?: string;
+  responsible?: string;
+  algorithm?: string;
+}): boolean {
+  return Boolean(
+      trimValue(input.number) &&
+      trimValue(input.responsible) &&
+      trimValue(input.algorithm),
+  );
+}
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // LIST / DETAIL
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+export function resolveDetailDto(
+    item: DetailInput,
+    types: TypeResponseDto[] | undefined,
+): ResolvedDetailDto | null {
+  const stepId = findTypeIdByCode(types, item.step);
+  const categoryId = findTypeIdByCode(types, item.category);
 
-  @Get()
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_FOUND,
-    schema: { $ref: getSchemaPath(FtsFunctionListResponseDto) },
-  })
-  @ApiExtraModels(FtsFunctionListResponseDto, FtsFunctionBaseResponseDto)
-  list(
-      @Query(new ZodValidationPipe(FtsFunctionListQuerySchema))
-      query: FtsFunctionListQueryDto,
-  ): Promise<FtsFunctionListResponseDto> {
-    return this.service.list(query);
+  if (stepId == null || categoryId == null) return null;
+
+  let complexityId: number | null = null;
+
+  if (item.complexity) {
+    const id = findTypeIdByCode(types, item.complexity);
+
+    if (id == null) return null;
+
+    complexityId = id;
   }
 
-  @Get(':id')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_FOUND,
-    schema: { $ref: getSchemaPath(FtsFunctionDetailedResponseDto) },
-  })
-  @ApiExtraModels(FtsFunctionDetailedResponseDto)
-  getById(
-      @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
-  ): Promise<FtsFunctionDetailedResponseDto> {
-    return this.service.getById(params.id);
+  let frequencyId: number | null = null;
+
+  if (item.periodicity) {
+    const id = findTypeIdByCode(types, item.periodicity);
+
+    if (id == null) return null;
+
+    frequencyId = id;
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // FtsFunction CRUD
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  let whoPerformsActionId: number | null = null;
 
-  @Post()
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_CREATED,
-    schema: { $ref: getSchemaPath(FtsFunctionBaseResponseDto) },
-  })
-  @ApiExtraModels(FtsFunctionBaseResponseDto)
-  create(
-      @Body(new ZodValidationPipe(CreateFtsFunctionSchema))
-      body: CreateFtsFunctionDto,
-  ): Promise<FtsFunctionBaseResponseDto> {
-    return this.service.create(body);
+  if (item.who && item.who.trim().length > 0) {
+    whoPerformsActionId = findTypeIdByCategoryAndName(
+        types,
+        DETAIL_TYPE_CATEGORY.WHO_PERFORMS_ACTION,
+        item.who,
+    );
   }
 
-  @Patch(':id')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_UPDATED,
-    schema: { $ref: getSchemaPath(FtsFunctionBaseResponseDto) },
-  })
-  @ApiExtraModels(FtsFunctionBaseResponseDto)
-  update(
-      @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
-      @Body(new ZodValidationPipe(UpdateFtsFunctionSchema))
-      body: UpdateFtsFunctionDto,
-  ): Promise<FtsFunctionBaseResponseDto> {
-    return this.service.update(params.id, body);
+  const actionLabel = trimValue(item.actionLabel);
+  const ftsFunctionActionTypeId = actionLabel
+      ? findTypeIdByCategoryAndCodeOrName(
+          types,
+          DETAIL_TYPE_CATEGORY.FTS_FUNCTION_ACTION_TYPE,
+          actionLabel,
+      )
+      : null;
+
+  const includeActualActionFields = isActualActionCategory(item.category);
+
+  const technologicalSolutionCode = includeActualActionFields
+      ? trimValue(item.technologicalSolution)
+      : "";
+
+  const technologicalSolutionId: string | number | null =
+      technologicalSolutionCode.length > 0
+          ? findTypeIdByCodeOrNull(types, technologicalSolutionCode)
+          : null;
+
+  if (technologicalSolutionCode && technologicalSolutionId === null) {
+    return null;
   }
 
-  @Delete(':id')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_DELETED,
-    schema: { $ref: getSchemaPath(FtsFunctionBaseResponseDto) },
-  })
-  @ApiExtraModels(FtsFunctionBaseResponseDto)
-  softDelete(
-      @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
-  ): Promise<FtsFunctionBaseResponseDto> {
-    return this.service.softDelete(params.id);
-  }
+  const number = trimValue(item.number);
+  const responsibleValue = trimValue(item.responsible);
+  const algorithm = trimValue(item.algorithm);
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // FtsFunctionDetail CRUD
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  let responsibleId: string | number | null = null;
 
-  @Post(':id/details')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_CREATED,
-    schema: { $ref: getSchemaPath(FtsFunctionDetailDetailedResponseDto) },
-  })
-  @ApiExtraModels(FtsFunctionDetailDetailedResponseDto)
-  createDetail(
-      @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
-      @Body(new ZodValidationPipe(CreateFtsFunctionDetailSchema))
-      body: CreateFtsFunctionDetailDto,
-  ): Promise<FtsFunctionDetailDetailedResponseDto> {
-    return this.service.createDetail(params.id, body);
-  }
-
-  @Patch('details/:detailId')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_UPDATED,
-    schema: { $ref: getSchemaPath(FtsFunctionDetailDetailedResponseDto) },
-  })
-  @ApiExtraModels(FtsFunctionDetailDetailedResponseDto)
-  updateDetail(
-      @Param(new ZodValidationPipe(DetailIdParamSchema))
-      params: DetailIdParamDto,
-      @Body(new ZodValidationPipe(UpdateFtsFunctionDetailSchema))
-      body: UpdateFtsFunctionDetailDto,
-  ): Promise<FtsFunctionDetailDetailedResponseDto> {
-    return this.service.updateDetail(params.detailId, body);
-  }
-
-  @Post('details/:detailId/algorithm-file')
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-      required: ['file'],
-    },
-  })
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_UPDATED,
-    schema: {
-      $ref: getSchemaPath(FtsFunctionDetailDetailedResponseDto),
-    },
-  })
-  @ApiExtraModels(FtsFunctionDetailDetailedResponseDto)
-  async uploadDetailAlgorithmFile(
-      @Param(new ZodValidationPipe(DetailIdParamSchema))
-      params: DetailIdParamDto,
-      @Req() request: MultipartFastifyRequest,
-  ): Promise<FtsFunctionDetailDetailedResponseDto> {
-    const file = await request.file();
-
-    if (!file) {
-      throw new BadRequestException('Файл не передан');
+  if (technologicalSolutionId !== null) {
+    if (!hasRequiredTechnologyFields({ number, responsible: responsibleValue, algorithm })) {
+      return null;
     }
 
-    const storedFileName = await saveDetailFile(params.detailId, file);
-
-    return this.service.uploadDetailAlgorithmFile(
-        params.detailId,
-        storedFileName,
+    responsibleId = findTypeIdByCategoryAndCodeOrName(
+        types,
+        DETAIL_TYPE_CATEGORY.RESPONSIBLE,
+        responsibleValue,
     );
+
+    if (responsibleId === null) return null;
   }
 
-  @Delete('details/:detailId')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_DELETED,
-    schema: { $ref: getSchemaPath(FtsFunctionDetailDetailedResponseDto) },
-  })
-  @ApiExtraModels(FtsFunctionDetailDetailedResponseDto)
-  softDeleteDetail(
-      @Param(new ZodValidationPipe(DetailIdParamSchema))
-      params: DetailIdParamDto,
-  ): Promise<FtsFunctionDetailDetailedResponseDto> {
-    return this.service.softDeleteDetail(params.detailId);
+  const includeFeedbackFields = includeActualActionFields && hasFeedback(item);
+
+  const feedbackSourceCode = includeFeedbackFields
+      ? trimValue(item.feedbackSource)
+      : "";
+
+  const feedbackSourceId: string | number | null =
+      feedbackSourceCode.length > 0
+          ? findTypeIdByCodeOrNull(types, feedbackSourceCode)
+          : null;
+
+  const feedbackQualityMetricCode = includeFeedbackFields
+      ? trimValue(item.feedbackQualityMetric)
+      : "";
+
+  const ftsFunctionEffectivenessId: string | number | null =
+      feedbackQualityMetricCode.length > 0
+          ? findTypeIdByCodeOrNull(types, feedbackQualityMetricCode)
+          : null;
+
+  const methodologyPosition = includeFeedbackFields
+      ? trimValue(item.methodologyPosition)
+      : "";
+
+  const ftsMethodologyStatusId: string | number | null = methodologyPosition
+      ? findTypeIdByCategoryAndCodeOrName(
+          types,
+          DETAIL_TYPE_CATEGORY.FTS_METHODOLOGY_STATUS,
+          methodologyPosition,
+      )
+      : null;
+
+  if (includeFeedbackFields) {
+    if (!areFeedbackRequiredFieldsFilled(item)) return null;
+
+    if (
+        feedbackSourceId === null ||
+        ftsFunctionEffectivenessId === null ||
+        ftsMethodologyStatusId === null
+    ) {
+      return null;
+    }
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Feedback CRUD
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  const dto: ResolvedDetailDto = {
+    ftsFunctionStepId: stepId,
+    ftsFunctionCategoryId: categoryId,
+    ftsFunctionActionTypeId,
+    ftsFunctionComplexityId: complexityId,
+    ftsFunctionExecutionFrequencyId: frequencyId,
+    whoPerformsActionId,
+    ftsFunctionDetails: item.detailText ?? "",
+    artifact: item.artifact?.trim() || null,
+    basis: item.basis?.trim() || null,
+    artifactUsage: item.artifactUsage?.trim() || null,
+    purpose: item.purpose?.trim() || null,
+    technologicalSolutionId,
+    responsibleId,
+    number: technologicalSolutionId !== null ? number : null,
+    algorithm: technologicalSolutionId !== null ? algorithm : null,
+    ftsFunctionEffectivenessId:
+        includeFeedbackFields && ftsFunctionEffectivenessId !== null
+            ? ftsFunctionEffectivenessId
+            : null,
+    feedbackSourceId:
+        includeFeedbackFields && feedbackSourceId !== null
+            ? feedbackSourceId
+            : null,
+    ftsMethodologyStatusId:
+        includeFeedbackFields && ftsMethodologyStatusId !== null
+            ? ftsMethodologyStatusId
+            : null,
+    problemDescription: includeFeedbackFields
+        ? item.problemDescription?.trim() || null
+        : null,
+    initiatorRequisites: includeFeedbackFields
+        ? item.initiatorRequisites?.trim() || null
+        : null,
+    deadline: includeFeedbackFields ? item.deadline?.trim() || null : null,
+    isAccepted: includeFeedbackFields ? item.isAccepted ?? null : null,
+    rejectComment: includeFeedbackFields
+        ? item.rejectComment?.trim() || null
+        : null,
+  };
 
-  @Post('details/:detailId/feedbacks')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_CREATED,
-    schema: { $ref: getSchemaPath(FeedbackResponseDto) },
-  })
-  @ApiExtraModels(FeedbackResponseDto)
-  createFeedback(
-      @Param(new ZodValidationPipe(DetailIdParamSchema))
-      params: DetailIdParamDto,
-      @Body(new ZodValidationPipe(CreateFeedbackSchema))
-      body: CreateFeedbackDto,
-  ): Promise<FeedbackResponseDto> {
-    return this.service.createFeedback(params.detailId, body);
-  }
+  return dto;
+}
 
-  @Patch('feedbacks/:feedbackId')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_UPDATED,
-    schema: { $ref: getSchemaPath(FeedbackResponseDto) },
-  })
-  @ApiExtraModels(FeedbackResponseDto)
-  updateFeedback(
-      @Param(new ZodValidationPipe(FeedbackIdParamSchema))
-      params: FeedbackIdParamDto,
-      @Body(new ZodValidationPipe(UpdateFeedbackSchema))
-      body: UpdateFeedbackDto,
-  ): Promise<FeedbackResponseDto> {
-    return this.service.updateFeedback(params.feedbackId, body);
-  }
+export function buildDetailInputFromRow(
+    existing: Row,
+    updates: Partial<Row>,
+): DetailInput {
+  const merged = { ...existing, ...updates } as Row & {
+    actionLabel?: string;
+    feedbackSource?: string;
+    feedbackQualityMetric?: string;
+    problemDescription?: string;
+    initiatorRequisites?: string;
+    methodologyPosition?: string;
+    deadline?: string;
+    initiatorAcceptance?: string;
+    isAccepted?: boolean | null;
+    rejectComment?: string;
+  };
 
-  @Patch('feedbacks/accept/:feedbackId')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_UPDATED,
-    schema: { $ref: getSchemaPath(FeedbackResponseDto) },
-  })
-  @ApiExtraModels(FeedbackResponseDto)
-  acceptFeedback(
-      @Param(new ZodValidationPipe(FeedbackIdParamSchema))
-      params: FeedbackIdParamDto,
-      @Body(new ZodValidationPipe(AcceptFeedbackSchema))
-      body: AcceptFeedbackDto,
-  ): Promise<FeedbackResponseDto> {
-    return this.service.acceptFeedback(
-        params.feedbackId,
-        body.isAccepted,
-        body.rejectComment,
-    );
-  }
-
-  @Delete('feedbacks/:feedbackId')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_DELETED,
-    schema: { $ref: getSchemaPath(FeedbackResponseDto) },
-  })
-  @ApiExtraModels(FeedbackResponseDto)
-  deleteFeedback(
-      @Param(new ZodValidationPipe(FeedbackIdParamSchema))
-      params: FeedbackIdParamDto,
-  ): Promise<FeedbackResponseDto> {
-    return this.service.deleteFeedback(params.feedbackId);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Action CRUD
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  @Post('details/:detailId/actions')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_CREATED,
-    schema: { $ref: getSchemaPath(ActionResponseDto) },
-  })
-  @ApiExtraModels(ActionResponseDto)
-  creatAction(
-      @Param(new ZodValidationPipe(DetailIdParamSchema))
-      params: DetailIdParamDto,
-      @Body(new ZodValidationPipe(CreateActionSchema))
-      body: CreateActionDto,
-  ): Promise<ActionResponseDto> {
-    return this.service.createAction(params.detailId, body);
-  }
-
-  @Patch('actions/:actionId')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_UPDATED,
-    schema: { $ref: getSchemaPath(ActionResponseDto) },
-  })
-  @ApiExtraModels(ActionResponseDto)
-  updateAction(
-      @Param(new ZodValidationPipe(ActionIdParamSchema))
-      params: ActionIdParamDto,
-      @Body(new ZodValidationPipe(UpdateActionSchema))
-      body: UpdateActionDto,
-  ): Promise<ActionResponseDto> {
-    return this.service.updateAction(params.actionId, body);
-  }
-
-  @Delete('actions/:actionId')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_DELETED,
-    schema: { $ref: getSchemaPath(ActionResponseDto) },
-  })
-  @ApiExtraModels(ActionResponseDto)
-  deleteAction(
-      @Param(new ZodValidationPipe(ActionIdParamSchema))
-      params: ActionIdParamDto,
-  ): Promise<ActionResponseDto> {
-    return this.service.deleteAction(params.actionId);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Tree edges
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  @Post('tree')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_CREATED,
-    schema: { $ref: getSchemaPath(FtsFunctionTreeResponseDto) },
-  })
-  @ApiExtraModels(FtsFunctionTreeResponseDto)
-  createTreeEdge(
-      @Body(new ZodValidationPipe(CreateFtsFunctionTreeSchema))
-      body: CreateFtsFunctionTreeDto,
-  ): Promise<FtsFunctionTreeResponseDto> {
-    return this.service.createTreeEdge(body);
-  }
-
-  @Delete('tree/:parentId/:childId')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_DELETED,
-    schema: { $ref: getSchemaPath(FtsFunctionTreeResponseDto) },
-  })
-  @ApiExtraModels(FtsFunctionTreeResponseDto)
-  deleteTreeEdge(
-      @Param(new ZodValidationPipe(TreeEdgeParamSchema))
-      params: TreeEdgeParamDto,
-  ): Promise<FtsFunctionTreeResponseDto> {
-    return this.service.deleteTreeEdge(params.parentId, params.childId);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // DTIs
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // The batch-attach endpoint below is additive-only and must stay that
-  // way. The planned full-replace `PUT /v1/fts-functions/:id/dtis` is
-  // tracked in `docs/known-limitations.md`.
-  @Post(':id/dtis/batch')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_UPDATED,
-    schema: { $ref: getSchemaPath(FtsFunctionDetailedResponseDto) },
-  })
-  @ApiExtraModels(FtsFunctionDetailedResponseDto)
-  batchAttachDtisV1(
-      @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
-      @Body(new ZodValidationPipe(BatchAttachDtisRequestSchema))
-      body: BatchAttachDtisRequestDto,
-  ): Promise<FtsFunctionDetailedResponseDto> {
-    return this.service.batchAttachDtis(params.id, body.dtiIds);
-  }
-
-  @Post(':id/dtis/:dtiId')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_CREATED,
-    schema: { $ref: getSchemaPath(FtsFunctionToDtiResponseDto) },
-  })
-  @ApiExtraModels(FtsFunctionToDtiResponseDto)
-  attachDti(
-      @Param(new ZodValidationPipe(DtiParamSchema)) params: DtiParamDto,
-  ): Promise<FtsFunctionToDtiResponseDto> {
-    return this.service.attachDti(params.id, params.dtiId);
-  }
-
-  @Delete(':id/dtis/:dtiId')
-  @ApiOkResponse({
-    description: SWAGGER_DESCRIPTION.RESOURCE_DELETED,
-    schema: { $ref: getSchemaPath(FtsFunctionToDtiResponseDto) },
-  })
-  @ApiExtraModels(FtsFunctionToDtiResponseDto)
-  detachDti(
-      @Param(new ZodValidationPipe(DtiParamSchema)) params: DtiParamDto,
-  ): Promise<FtsFunctionToDtiResponseDto> {
-    return this.service.detachDti(params.id, params.dtiId);
-  }
-
-  @Get('download')
-  @ApiOperation({
-    summary: 'Скачивание выгрузки по функциям',
-    description:
-        'Выгружает все функции с их детализациями в формате XLSX-файла.',
-  })
-  @ApiProduces(XLSX_MIME)
-  @ApiOkResponse({
-    description: 'Файл успешно выгружен',
-    content: {
-      [XLSX_MIME]: {
-        schema: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  async getDownload(): Promise<StreamableFile> {
-    const buffer = await this.service.getDownload();
-
-    return new StreamableFile(Buffer.from(buffer as ArrayBuffer), {
-      type: XLSX_MIME,
-      disposition: 'attachment; filename="fts-functions.xlsx"',
-    });
-  }
+  return {
+    step: merged.step,
+    category: merged.category,
+    periodicity: merged.periodicity,
+    complexity: merged.complexity,
+    detailText: merged.detailText,
+    who: merged.who,
+    actionLabel: merged.actionLabel ?? "",
+    artifact: merged.artifact,
+    basis: merged.basis,
+    artifactUsage: merged.artifactUsage,
+    purpose: merged.purpose,
+    technologicalSolution: merged.technologicalSolution,
+    number: merged.number,
+    responsible: merged.responsible,
+    algorithm: merged.algorithm,
+    feedbackSource: merged.feedbackSource,
+    feedbackQualityMetric: merged.feedbackQualityMetric,
+    problemDescription: merged.problemDescription,
+    initiatorRequisites: merged.initiatorRequisites,
+    methodologyPosition: merged.methodologyPosition,
+    deadline: merged.deadline,
+    initiatorAcceptance: merged.initiatorAcceptance,
+    isAccepted: merged.isAccepted,
+    rejectComment: merged.rejectComment,
+  };
 }

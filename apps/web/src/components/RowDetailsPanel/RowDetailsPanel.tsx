@@ -1,12 +1,9 @@
-import type { TFunction } from "i18next";
-
 import type { CustomPalette } from "src/app/App";
 import type { Row } from "src/entities/fts-function/types";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Box, Typography, useTheme } from "@mui/material";
-import { useTranslation } from "src/shared/i18n";
 
 import { useRowDetailsDraft } from "./hooks/useRowDetailsDraft";
 import { RowDetailsEdit } from "./ui/RowDetailsEdit";
@@ -28,20 +25,22 @@ export default function RowDetailsPanel({
                                             onUpdateRow,
                                             onUploadAlgorithmFile,
                                         }: RowDetailsPanelProps) {
-    const { t } = useTranslation();
     const theme = useTheme();
     const c = theme.custom;
 
     const [algorithmFile, setAlgorithmFile] = useState<File | null>(null);
 
-    const {
-        editing,
-        draft,
-        startEdit,
-        cancelEdit,
-        finishEdit,
-        setField,
-    } = useRowDetailsDraft(row);
+    const { editing, draft, startEdit, cancelEdit, finishEdit, setField } =
+        useRowDetailsDraft(row);
+
+    const editDraft = useMemo<Row | null>(() => {
+        if (!row) return null;
+
+        return {
+            ...row,
+            ...draft,
+        };
+    }, [row, draft]);
 
     const handleStartEdit = useCallback(() => {
         setAlgorithmFile(null);
@@ -56,7 +55,9 @@ export default function RowDetailsPanel({
     const handleSave = useCallback(async () => {
         if (!row) return;
 
-        let nextDraft: Partial<Row> = { ...draft };
+        let nextDraft: Partial<Row> = {
+            ...draft,
+        };
 
         if (algorithmFile) {
             const uploadedFileName = await onUploadAlgorithmFile(
@@ -85,13 +86,13 @@ export default function RowDetailsPanel({
     ]);
 
     if (!row) {
-        return <EmptyState t={t} c={c} />;
+        return <EmptyState c={c} />;
     }
 
-    if (editing) {
+    if (editing && editDraft) {
         return (
             <RowDetailsEdit
-                draft={draft}
+                draft={editDraft}
                 typesAll={typesAll ?? []}
                 algorithmFile={algorithmFile}
                 onChangeField={setField}
@@ -111,7 +112,7 @@ export default function RowDetailsPanel({
     );
 }
 
-function EmptyState({ c }: { t: TFunction; c: CustomPalette }) {
+function EmptyState({ c }: { c: CustomPalette }) {
     return (
         <Box
             sx={{
