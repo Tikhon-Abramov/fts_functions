@@ -1019,6 +1019,9 @@ export type FtsFunctionDetailedResponseDto = {
       }[];
     }[];
     actions?: {
+      id: number;
+      ftsFunctionDetailId: number;
+      statusId: number;
       status: {
         id: number;
         code: string;
@@ -1465,6 +1468,9 @@ export type FtsFunctionDetailDetailedResponseDto = {
     }[];
   }[];
   actions?: {
+    id: number;
+    ftsFunctionDetailId: number;
+    statusId: number;
     status: {
       id: number;
       code: string;
@@ -1873,6 +1879,9 @@ export type AcceptFeedbackDto = {
   rejectComment?: string;
 };
 export type ActionResponseDto = {
+  id: number;
+  ftsFunctionDetailId: number;
+  statusId: number;
   status: {
     id: number;
     code: string;

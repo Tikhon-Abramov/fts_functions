@@ -1,5 +1,4 @@
 import { type ReactNode, useMemo } from "react";
-
 import { RightTab } from "src/entities/fts-function/model";
 import { I18N, type I18nKey } from "src/shared/i18n";
 
@@ -19,13 +18,9 @@ export type UseRightTabConfigArgs = {
     renderDetails: () => ReactNode;
     renderFeedback: () => ReactNode;
     renderLinker: () => ReactNode;
+    renderAction: () => ReactNode;
 };
 
-/**
- * Declarative tab configuration for the right-side panel.
- * The add-detail form is intentionally not part of this panel anymore:
- * it opens from the modal header.
- */
 export function useRightTabConfig(args: UseRightTabConfigArgs): RightTabDef[] {
     const {
         hasSelectedRow,
@@ -34,6 +29,7 @@ export function useRightTabConfig(args: UseRightTabConfigArgs): RightTabDef[] {
         renderDetails,
         renderFeedback,
         renderLinker,
+        renderAction,
     } = args;
 
     return useMemo(
@@ -66,6 +62,13 @@ export function useRightTabConfig(args: UseRightTabConfigArgs): RightTabDef[] {
                 disabled: !hasSelectedRow,
                 render: renderLinker,
             },
+            {
+                id: RightTab.ACTION,
+                label: "Действие",
+                testId: "tab-action",
+                disabled: !hasSelectedRow,
+                render: renderAction,
+            },
         ],
         [
             hasSelectedRow,
@@ -74,6 +77,7 @@ export function useRightTabConfig(args: UseRightTabConfigArgs): RightTabDef[] {
             renderDetails,
             renderFeedback,
             renderLinker,
+            renderAction,
         ],
     );
 }

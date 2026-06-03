@@ -1,6 +1,5 @@
 import { createZodDto } from '@anatine/zod-nestjs';
 import z from 'zod';
-
 import { Category } from '@prisma-client';
 
 const intFromStringOrNumber = z
@@ -11,7 +10,11 @@ const intFromStringOrNumber = z
 const positiveInt = intFromStringOrNumber.pipe(z.number().int().positive());
 
 const idArrayQuery = z
-    .union([z.string(), z.number(), z.array(z.union([z.string(), z.number()]))])
+    .union([
+        z.string(),
+        z.number(),
+        z.array(z.union([z.string(), z.number()])),
+    ])
     .transform((v) => (Array.isArray(v) ? v : [v]))
     .pipe(z.array(intFromStringOrNumber.pipe(z.number().int().positive())));
 
@@ -75,7 +78,6 @@ export const FtsFunctionListQuerySchema = z.object({
     ftsFunctionMarkerIds: idArrayQuery.optional(),
     ftsCentralizationIds: idArrayQuery.optional(),
     dtiIds: idArrayQuery.optional(),
-
     curatorCentralOfficeIds: idArrayQuery.optional(),
     managerInterregionalInspectionIds: idArrayQuery.optional(),
     departmentHeadCentralOfficeIds: idArrayQuery.optional(),
@@ -90,6 +92,7 @@ export const FtsFunctionListQuerySchema = z.object({
 
     includeDeleted: boolFromString.optional(),
     search: z.string().trim().min(1).max(256).optional(),
+
     sortBy: z.enum(['createdAt', 'updatedAt', 'id']).optional(),
     sortDir: z.enum(['asc', 'desc']).optional(),
 });
@@ -137,7 +140,6 @@ export const CreateFtsFunctionDetailSchema = z.object({
     ftsFunctionEffectivenessId: positiveInt.nullable().optional(),
     technologicalSolutionId: positiveInt.nullable().optional(),
     responsibleId: positiveInt.nullable().optional(),
-    
     ftsFunctionDetails: z.string().nullable().optional(),
     basis: z.string().nullable().optional(),
     artifact: z.string().nullable().optional(),
@@ -166,7 +168,6 @@ export const CreateFeedbackSchema = z.object({
     feedbackQualityMetricsId: positiveInt.nullable().optional(),
     ftsMethodologyStatusId: positiveInt.nullable().optional(),
     feedbackSourceIds: z.array(positiveInt).optional().default([]),
-
     problemDescription: z.string().nullable().optional(),
     initiatorRequisites: z.string().nullable().optional(),
     initiatorAcceptance: z.string().nullable().optional(),
@@ -190,7 +191,7 @@ export class AcceptFeedbackDto extends createZodDto(AcceptFeedbackSchema) {}
 
 export const CreateActionSchema = z.object({
     statusId: positiveInt,
-    description: z.string(),
+    description: z.string().trim().min(1),
 });
 
 export const UpdateActionSchema = CreateActionSchema.partial();
@@ -278,7 +279,6 @@ export const FeedbackSchema = z.object({
     initiatorAcceptance: z.string().nullable(),
     deadline: z.date().nullable(),
     isAccepted: z.boolean().nullable(),
-
     ftsMethodologyStatus: typeMinimalSchema.nullable(),
     feedbackQualityMetrics: typeMinimalSchema.nullable(),
     feedbackSources: z.array(
@@ -286,7 +286,6 @@ export const FeedbackSchema = z.object({
             feedbackSource: typeMinimalSchema,
         }),
     ),
-
     feedbackAgreementHistory: z.array(
         z.object({
             id: z.number(),
@@ -299,10 +298,7 @@ export const FeedbackSchema = z.object({
     ),
 });
 
-
-export class FeedbackResponseDto extends createZodDto(
-    FeedbackSchema,
-) {}
+export class FeedbackResponseDto extends createZodDto(FeedbackSchema) {}
 
 export const FeedbackIdParamSchema = z.object({
     feedbackId: positiveInt,
@@ -311,13 +307,14 @@ export const FeedbackIdParamSchema = z.object({
 export class FeedbackIdParamDto extends createZodDto(FeedbackIdParamSchema) {}
 
 export const ActionSchema = z.object({
+    id: z.number(),
+    ftsFunctionDetailId: z.number(),
+    statusId: z.number(),
     status: typeMinimalSchema,
     description: z.string(),
 });
 
-export class ActionResponseDto extends createZodDto(
-    ActionSchema,
-) {}
+export class ActionResponseDto extends createZodDto(ActionSchema) {}
 
 const FtsFunctionDetailBaseResponseSchema = z.object({
     id: z.number(),
@@ -331,7 +328,6 @@ const FtsFunctionDetailBaseResponseSchema = z.object({
     ftsFunctionEffectivenessId: z.number().nullable(),
     technologicalSolutionId: positiveInt.nullable().optional(),
     responsibleId: positiveInt.nullable().optional(),
-
     ftsFunctionDetails: z.string().nullable(),
     basis: z.string().nullable(),
     artifact: z.string().nullable(),
@@ -339,21 +335,12 @@ const FtsFunctionDetailBaseResponseSchema = z.object({
     purpose: z.string().nullable(),
     number: z.string().nullable().optional(),
     algorithm: z.string().nullable().optional(),
-
     createdAt: z.date(),
     updatedAt: z.date(),
     isDeleted: z.boolean(),
     deletedAt: z.date().nullable(),
-
-    feedbacks: z
-        .array(FeedbackSchema)
-        .optional()
-        .default([]),
-
-    actions: z
-        .array(ActionSchema)
-        .optional()
-        .default([]),
+    feedbacks: z.array(FeedbackSchema).optional().default([]),
+    actions: z.array(ActionSchema).optional().default([]),
 });
 
 const FtsFunctionTreeEdgeResponseSchema = z.object({

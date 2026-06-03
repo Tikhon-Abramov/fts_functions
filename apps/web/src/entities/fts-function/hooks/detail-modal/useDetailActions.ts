@@ -1,9 +1,12 @@
 import type { TFunction } from "i18next";
+
 import type {
     FtsFunctionActionType,
     FtsFunctionCategory,
 } from "src/entities/fts-function/model";
 import type {
+    DetailAction,
+    DetailActionFormInput,
     Feedback,
     FeedbackFormInput,
     Link,
@@ -11,19 +14,20 @@ import type {
 } from "src/entities/fts-function/types";
 import type {
     AcceptFeedbackDto,
+    CreateActionDto,
     CreateFeedbackDto,
     TypeResponseDto,
     UpdateFeedbackDto,
 } from "src/shared/api/ftsFunctionsApi";
 
 import { useCallback } from "react";
-
 import {
     buildDetailInputFromRow,
     resolveDetailDto,
 } from "src/entities/fts-function/api/detail-resolvers";
 import {
     findTypeIdByCode,
+    mapActionApiToDetailAction,
     mapFeedbackApiToFeedback,
 } from "src/entities/fts-function/api/mappers";
 import {
@@ -33,9 +37,11 @@ import {
 } from "src/entities/fts-function/model";
 import {
     useFtsFunctionControllerAcceptFeedbackV1Mutation,
+    useFtsFunctionControllerCreatActionV1Mutation,
     useFtsFunctionControllerCreateDetailV1Mutation,
     useFtsFunctionControllerCreateFeedbackV1Mutation,
     useFtsFunctionControllerCreateTreeEdgeV1Mutation,
+    useFtsFunctionControllerDeleteActionV1Mutation,
     useFtsFunctionControllerDeleteFeedbackV1Mutation,
     useFtsFunctionControllerDeleteTreeEdgeV1Mutation,
     useFtsFunctionControllerSoftDeleteDetailV1Mutation,
@@ -77,7 +83,6 @@ export type DetailActions = {
         s1Data: Omit<RowFormInput, "step">,
         s2Data: Omit<RowFormInput, "step">,
     ) => void;
-
     createFeedback: (
         detailId: string,
         input: FeedbackFormInput,
@@ -92,7 +97,11 @@ export type DetailActions = {
         rejectComment?: string,
     ) => Promise<Feedback | null>;
     deleteFeedback: (feedbackId: string) => Promise<boolean>;
-
+    createAction: (
+        detailId: string,
+        input: DetailActionFormInput,
+    ) => Promise<DetailAction | null>;
+    deleteAction: (actionId: string) => Promise<boolean>;
     /**
      * Compatibility aliases for components that still use old names.
      */
@@ -149,20 +158,28 @@ function buildFeedbackDto(
     };
 }
 
+function buildActionDto(input: DetailActionFormInput): CreateActionDto | null {
+    const statusId = toPositiveNumber(input.statusId);
+    const description = input.description.trim();
+
+    if (!statusId || !description) return null;
+
+    return {
+        statusId,
+        description,
+    };
+}
+
 export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
     const { modalFunctionId, selectedId, rowMap, links, typesAll, t } = ctx;
+
     const dispatch = useAppDispatch();
 
     const [createDetail] = useFtsFunctionControllerCreateDetailV1Mutation();
     const [updateDetail] = useFtsFunctionControllerUpdateDetailV1Mutation();
-    const [deleteDetail] =
-        useFtsFunctionControllerSoftDeleteDetailV1Mutation();
-
-    const [createTreeEdge] =
-        useFtsFunctionControllerCreateTreeEdgeV1Mutation();
-    const [deleteTreeEdge] =
-        useFtsFunctionControllerDeleteTreeEdgeV1Mutation();
-
+    const [deleteDetail] = useFtsFunctionControllerSoftDeleteDetailV1Mutation();
+    const [createTreeEdge] = useFtsFunctionControllerCreateTreeEdgeV1Mutation();
+    const [deleteTreeEdge] = useFtsFunctionControllerDeleteTreeEdgeV1Mutation();
     const [createFeedbackMutation] =
         useFtsFunctionControllerCreateFeedbackV1Mutation();
     const [updateFeedbackMutation] =
@@ -171,13 +188,19 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
         useFtsFunctionControllerDeleteFeedbackV1Mutation();
     const [acceptFeedbackMutation] =
         useFtsFunctionControllerAcceptFeedbackV1Mutation();
+    const [createActionMutation] =
+        useFtsFunctionControllerCreatActionV1Mutation();
+    const [deleteActionMutation] =
+        useFtsFunctionControllerDeleteActionV1Mutation();
 
     const runMutation = useCallback((work: () => Promise<void>): void => {
         void (async () => {
             try {
                 await work();
             } catch {
-                /* RTK middleware reports failures globally */
+                /*
+                 * RTK middleware reports failures globally.
+                 */
             }
         })();
     }, []);
@@ -310,7 +333,6 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
                         }),
                     }),
                 );
-
                 dispatch(setRightTabAction(RightTab.LINKS));
             });
         },
@@ -342,12 +364,10 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
                 { ...s1Data, step: FtsFunctionStep.OBJECT_SELECTION },
                 typesAll,
             );
-
             const dto2 = resolveDetailDto(
                 { ...s2Data, step: FtsFunctionStep.CLUSTERING_IMPACT },
                 typesAll,
             );
-
             const relationTypeId = findTypeIdByCode(
                 typesAll,
                 FtsFunctionRelationType.CONNECTED,
@@ -531,6 +551,68 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
         [acceptFeedbackMutation, dispatch],
     );
 
+    const createAction = useCallback(
+        async (
+            detailId: string,
+            input: DetailActionFormInput,
+        ): Promise<DetailAction | null> => {
+            const createActionDto = buildActionDto(input);
+
+            if (!createActionDto) {
+                dispatch(
+                    showSnackbar({
+                        message: "Заполните описание и статус действия",
+                    }),
+                );
+
+                return null;
+            }
+
+            try {
+                const created = await createActionMutation({
+                    detailId: Number(detailId),
+                    createActionDto,
+                }).unwrap();
+
+                dispatch(showSnackbar({ message: "Операция добавлена" }));
+
+                return mapActionApiToDetailAction(created, detailId);
+            } catch {
+                dispatch(
+                    showSnackbar({
+                        message: "Не удалось добавить операцию",
+                    }),
+                );
+
+                return null;
+            }
+        },
+        [createActionMutation, dispatch],
+    );
+
+    const deleteAction = useCallback(
+        async (actionId: string): Promise<boolean> => {
+            try {
+                await deleteActionMutation({
+                    actionId: Number(actionId),
+                }).unwrap();
+
+                dispatch(showSnackbar({ message: "Операция удалена" }));
+
+                return true;
+            } catch {
+                dispatch(
+                    showSnackbar({
+                        message: "Не удалось удалить операцию",
+                    }),
+                );
+
+                return false;
+            }
+        },
+        [deleteActionMutation, dispatch],
+    );
+
     return {
         addRow,
         updateRow,
@@ -539,12 +621,12 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
         createLinks,
         quickLink,
         saveDual,
-
         createFeedback,
         updateFeedback,
         setFeedbackAcceptance,
         deleteFeedback,
-
+        createAction,
+        deleteAction,
         addFeedback: createFeedback,
         editFeedback: updateFeedback,
         removeFeedback: deleteFeedback,

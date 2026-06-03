@@ -41,6 +41,20 @@ export type FeedbackFormInput = {
   initiatorAcceptance: string;
 };
 
+export type DetailAction = {
+  id: string;
+  ftsFunctionDetailId?: string;
+  statusId?: string | null;
+  statusCode?: string;
+  statusName?: string;
+  description: string;
+};
+
+export type DetailActionFormInput = {
+  description: string;
+  statusId: string;
+};
+
 export type Row = {
   id: string;
   step: FtsFunctionStep;
@@ -58,6 +72,7 @@ export type Row = {
   responsible?: string;
   algorithm?: string;
   feedbacks: Feedback[];
+  actions: DetailAction[];
 };
 
 export type Link = {

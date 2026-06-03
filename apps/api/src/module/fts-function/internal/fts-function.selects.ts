@@ -91,11 +91,15 @@ export const feedbackSelect = {
       createdAt: true,
     },
   },
-
 } as const satisfies Prisma.FeedbackSelect;
 
 export const actionSelect = {
-  status: { select: typeMinimalSelect },
+  id: true,
+  ftsFunctionDetailId: true,
+  statusId: true,
+  status: {
+    select: typeMinimalSelect,
+  },
   description: true,
 } as const satisfies Prisma.ActionSelect;
 
@@ -122,7 +126,6 @@ export const ftsFunctionDetailDetailedSelect = {
   updatedAt: true,
   isDeleted: true,
   deletedAt: true,
-
   ftsFunctionStep: {
     select: typeMinimalSelect,
   },
@@ -150,21 +153,18 @@ export const ftsFunctionDetailDetailedSelect = {
   responsible: {
     select: typeMinimalSelect,
   },
-
   feedbacks: {
     select: feedbackSelect,
     where: {
       isDeleted: false,
-    }
+    },
   },
-
   actions: {
     select: actionSelect,
     where: {
       isDeleted: false,
-    }
-  }
-
+    },
+  },
 } as const satisfies Prisma.FtsFunctionDetailSelect;
 
 export const ftsFunctionDetailedSelect = {
@@ -234,56 +234,78 @@ export const ftsFunctionDetailedSelect = {
   },
 } as const satisfies Prisma.FtsFunctionSelect;
 
-
 export const feedbackDetailedSelect = {
-    id: true,
-    ftsFunctionDetailId: true,
-    feedbackQualityMetricsId: true,
-    ftsMethodologyStatusId: true,
-    problemDescription: true,
-    initiatorRequisites: true,
-    initiatorAcceptance: true,
-    deadline: true,
-    isAccepted: true,
-    feedbackQualityMetrics: { select: typeMinimalSelect },
-    ftsMethodologyStatus: { select: typeMinimalSelect },
-    feedbackSources: {
-        select: {
-            feedbackSourceId: true,
-            createdAt: true,
-            feedbackSource: { select: typeMinimalSelect },
-        },
+  id: true,
+  ftsFunctionDetailId: true,
+  feedbackQualityMetricsId: true,
+  ftsMethodologyStatusId: true,
+  problemDescription: true,
+  initiatorRequisites: true,
+  initiatorAcceptance: true,
+  deadline: true,
+  isAccepted: true,
+  feedbackQualityMetrics: {
+    select: typeMinimalSelect,
+  },
+  ftsMethodologyStatus: {
+    select: typeMinimalSelect,
+  },
+  feedbackSources: {
+    select: {
+      feedbackSourceId: true,
+      createdAt: true,
+      feedbackSource: {
+        select: typeMinimalSelect,
+      },
     },
-    feedbackAgreementHistory: {
-        select: {
-            id: true,
-            feedbackId: true,
-            fromStatus: true,
-            toStatus: true,
-            comment: true,
-            createdAt: true,
-        },
-        orderBy: { createdAt: 'asc' },
+  },
+  feedbackAgreementHistory: {
+    select: {
+      id: true,
+      feedbackId: true,
+      fromStatus: true,
+      toStatus: true,
+      comment: true,
+      createdAt: true,
     },
+    orderBy: {
+      createdAt: 'asc',
+    },
+  },
 } satisfies Prisma.FeedbackSelect;
-
 
 export const downloadFtsFunctionSelect = {
   id: true,
-  ftsCentralization: { select: typeMinimalSelect },
-  ftsFunctionName: { select: typeMinimalSelect },
-  competencyCenter: { select: typeMinimalSelect },
-  ftsFunctionMarker: { select: typeMinimalSelect },
-  curatorCentralOffice: { select: userMinimalSelect },
-  managerInterregionalInspection: { select: userMinimalSelect },
-  departmentHeadCentralOffice: { select: userMinimalSelect },
-  departmentHeadInterregionalInspection: { select: userMinimalSelect },
+  ftsCentralization: {
+    select: typeMinimalSelect,
+  },
+  ftsFunctionName: {
+    select: typeMinimalSelect,
+  },
+  competencyCenter: {
+    select: typeMinimalSelect,
+  },
+  ftsFunctionMarker: {
+    select: typeMinimalSelect,
+  },
+  curatorCentralOffice: {
+    select: userMinimalSelect,
+  },
+  managerInterregionalInspection: {
+    select: userMinimalSelect,
+  },
+  departmentHeadCentralOffice: {
+    select: userMinimalSelect,
+  },
+  departmentHeadInterregionalInspection: {
+    select: userMinimalSelect,
+  },
   createdAt: true,
   updatedAt: true,
   dtis: {
     select: {
       dti: {
-        select: typeMinimalSelect
+        select: typeMinimalSelect,
       },
     },
   },
@@ -317,7 +339,7 @@ export const downloadFeedbackSelect = {
         },
       },
       ftsFunctionDetails: true,
-    }
+    },
   },
   feedbackAgreementHistory: undefined,
 } as const satisfies Prisma.FeedbackSelect;
@@ -351,11 +373,16 @@ export const downloadFtsFunctionTreeSelect = {
       ftsFunctionDetails: true,
     },
   },
-  relationType: { select: typeMinimalSelect },
+  relationType: {
+    select: typeMinimalSelect,
+  },
   createdAt: true,
 } as const satisfies Prisma.FtsFunctionTreeSelect;
 
 export const downloadActionSelect = {
+  id: true,
+  ftsFunctionDetailId: true,
+  statusId: true,
   ftsFunctionDetail: {
     select: {
       id: true,
@@ -370,6 +397,8 @@ export const downloadActionSelect = {
       ftsFunctionDetails: true,
     },
   },
-  status: { select: typeMinimalSelect },
+  status: {
+    select: typeMinimalSelect,
+  },
   description: true,
 } as const satisfies Prisma.ActionSelect;

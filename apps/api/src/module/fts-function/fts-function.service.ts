@@ -461,34 +461,49 @@ export class FtsFunctionService {
     });
   }
 
-  createAction(
-    ftsFunctionDetailId: number,
-    dto: CreateActionDto,
+  async createAction(
+      ftsFunctionDetailId: number,
+      dto: CreateActionDto,
   ): Promise<ActionDetailedEntity> {
+    await this.ensureDetailAlive(ftsFunctionDetailId);
+
     return this.prisma.action.create({
-      data: { 
+      data: {
         ftsFunctionDetailId,
-        ...dto,
+        statusId: dto.statusId,
+        description: dto.description.trim(),
       },
       select: actionSelect,
     });
   }
 
-  updateAction(
-    actionId: number,
-    dto: UpdateActionDto
+  async updateAction(
+      actionId: number,
+      dto: UpdateActionDto,
   ): Promise<ActionDetailedEntity> {
     return this.prisma.action.update({
-      where: { id: actionId },
-      data: dto,
+      where: {
+        id: actionId,
+      },
+      data: {
+        ...(dto.statusId !== undefined ? { statusId: dto.statusId } : {}),
+        ...(dto.description !== undefined
+            ? { description: dto.description.trim() }
+            : {}),
+      },
       select: actionSelect,
     });
   }
 
-  deleteAction(actionId: number): Promise<ActionDetailedEntity> {
+  async deleteAction(actionId: number): Promise<ActionDetailedEntity> {
     return this.prisma.action.update({
-      where: { id: actionId },
-      data: { isDeleted: true },
+      where: {
+        id: actionId,
+      },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
       select: actionSelect,
     });
   }

@@ -1,4 +1,5 @@
 import type {
+  DetailAction,
   Feedback,
   FeedbackAgreementStatus,
   FunctionRecord,
@@ -141,6 +142,14 @@ function stringId(value: number | string | null | undefined): string | null {
   return String(value);
 }
 
+function optionalString(
+    value: number | string | null | undefined,
+): string | undefined {
+  if (value === null || value === undefined) return undefined;
+
+  return String(value);
+}
+
 type DetailApi = FtsFunctionDetailedResponseDto["ftsFunctionDetails"][number];
 
 type DetailFeedbackApi = NonNullable<DetailApi["feedbacks"]>[number];
@@ -161,6 +170,37 @@ type ApiFeedbackHistoryItem = {
   comment?: string | null;
   createdAt?: string | Date | null;
 };
+
+type ApiActionLike = {
+  id?: number | string | null;
+  ftsFunctionDetailId?: number | string | null;
+  statusId?: number | string | null;
+  description?: string | null;
+  status?: {
+    id?: number | string | null;
+    code?: string | null;
+    name?: string | null;
+  } | null;
+};
+
+export function mapActionApiToDetailAction(
+    apiAction: unknown,
+    fallbackDetailId?: string,
+): DetailAction {
+  const action = apiAction as ApiActionLike;
+
+  const statusId = action.statusId ?? action.status?.id ?? null;
+
+  return {
+    id: String(action.id ?? ""),
+    ftsFunctionDetailId:
+        optionalString(action.ftsFunctionDetailId) ?? fallbackDetailId,
+    statusId: statusId === null || statusId === undefined ? null : String(statusId),
+    statusCode: action.status?.code ?? "",
+    statusName: action.status?.name ?? "",
+    description: action.description ?? "",
+  };
+}
 
 export function mapFeedbackApiToFeedback(apiFeedback: FeedbackApi): Feedback {
   const feedbackSources = Array.isArray(apiFeedback.feedbackSources)
@@ -232,6 +272,10 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
   const frequency = asFrequency(detail.ftsFunctionExecutionFrequency?.code);
   const complexity = asComplexity(detail.ftsFunctionComplexity?.code);
 
+  const actions = ((detail as DetailItem & { actions?: unknown[] }).actions ?? [])
+      .filter((action) => action !== null && action !== undefined)
+      .map((action) => mapActionApiToDetailAction(action, String(detail.id)));
+
   return {
     id: String(detail.id),
     step,
@@ -249,6 +293,7 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
     responsible: detail.responsible?.code ?? detail.responsible?.name ?? "",
     algorithm: detail.algorithm ?? "",
     feedbacks: detail.feedbacks?.map(mapFeedbackApiToFeedback) ?? [],
+    actions,
   };
 }
 

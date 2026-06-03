@@ -17,7 +17,6 @@ import {
     Typography,
     useTheme,
 } from "@mui/material";
-
 import { useDetailActions } from "src/entities/fts-function/hooks/detail-modal/useDetailActions";
 import { useRightTabConfig } from "src/entities/fts-function/hooks/detail-modal/useRightTabConfig";
 import { useRowPresentation } from "src/entities/fts-function/hooks/detail-modal/useRowPresentation";
@@ -51,6 +50,7 @@ import {
     setSelectedRowId,
 } from "src/shared/store/uiSlice";
 
+import ActionPanel from "../ActionPanel/ActionPanel";
 import AddItemForm, { type NewRowData } from "../AddItemForm/AddItemForm";
 import FeedbackPanel from "../FeedbackPanel/FeedbackPanel";
 import LinkPicker from "../LinkPicker/LinkPicker";
@@ -103,6 +103,7 @@ export default function DetailizationModal() {
     const { t } = useTranslation();
     const theme = useTheme();
     const c = theme.custom;
+
     const dispatch = useAppDispatch();
 
     const modalFunctionId = useAppSelector(selectModalFunctionId);
@@ -119,7 +120,6 @@ export default function DetailizationModal() {
         {},
         DICTIONARY_QUERY_OPTIONS,
     );
-
 
     const [rightOpen, setRightOpen] = useState(false);
     const [addOpen, setAddOpen] = useState(false);
@@ -298,17 +298,28 @@ export default function DetailizationModal() {
                     onCreateLinks={actions.createLinks}
                 />
             ) : null,
+        renderAction: () =>
+            selectedRow ? (
+                <ActionPanel
+                    row={selectedRow}
+                    typesAll={typesAll ?? []}
+                    onCreateAction={actions.createAction}
+                    onDeleteAction={actions.deleteAction}
+                />
+            ) : null,
     });
 
     if (!modalFunctionId) return null;
 
     const modalTitle = functionRecord?.ftsFunctionName?.name ?? "";
+
     const backdropBg =
         theme.palette.mode === "dark" ? "rgba(0,0,0,0.7)" : "rgba(0,0,0,0.5)";
 
     const visibleRightTab =
         rightTab === RightTab.ADD ||
-        (rightTab === RightTab.FEEDBACK && !hasFeedbackRow)
+        (rightTab === RightTab.FEEDBACK && !hasFeedbackRow) ||
+        (rightTab === RightTab.ACTION && !selectedRow)
             ? RightTab.DETAILS
             : rightTab;
 
@@ -450,7 +461,6 @@ export default function DetailizationModal() {
                                 {"Панель"}
                             </Box>
                         )}
-
                     </Box>
                 </DialogContent>
             </Dialog>
