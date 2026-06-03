@@ -4,7 +4,7 @@ import {
   Controller,
   Delete,
   Get,
-  NotFoundException,
+  Header,
   Param,
   Patch,
   Post,
@@ -23,14 +23,14 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import type { MultipartFile } from '@fastify/multipart';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyRequest } from 'fastify';
+import { createWriteStream } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
+import { extname, join } from 'node:path';
+import { pipeline } from 'node:stream/promises';
+
 import { ZodValidationPipe } from '@common/pipes/validation.pipe';
 import { SWAGGER_DESCRIPTION } from '@common/strings';
-import { Buffer } from 'node:buffer';
-import { constants, createReadStream, createWriteStream } from 'node:fs';
-import { access, mkdir } from 'node:fs/promises';
-import { basename, extname, join } from 'node:path';
-import { pipeline } from 'node:stream/promises';
 
 import {
   AcceptFeedbackDto,
@@ -79,7 +79,6 @@ import {
   UpdateFtsFunctionSchema,
 } from './fts-function.schema';
 import { FtsFunctionService } from './fts-function.service';
-import { PrismaService } from '../prisma/prisma.service';
 
 const XLSX_MIME =
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -90,10 +89,6 @@ type MultipartFastifyRequest = FastifyRequest & {
   file: () => Promise<MultipartFile | undefined>;
 };
 
-function stripGeneratedFilePrefixes(fileName: string): string {
-  return fileName.replace(/^(?:\d{10,17}-)+/, '');
-}
-
 function sanitizeFileBaseName(fileName: string): string {
   return fileName
       .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_')
@@ -102,19 +97,12 @@ function sanitizeFileBaseName(fileName: string): string {
 }
 
 function buildStoredFileName(originalName: string): string {
-  const originalBaseName = basename(originalName);
-  const withoutGeneratedPrefixes = stripGeneratedFilePrefixes(originalBaseName);
-
-  const ext = extname(withoutGeneratedPrefixes);
-  const rawBaseName = withoutGeneratedPrefixes.slice(
-      0,
-      withoutGeneratedPrefixes.length - ext.length,
+  const ext = extname(originalName);
+  const baseName = sanitizeFileBaseName(
+      originalName.slice(0, originalName.length - ext.length),
   );
 
-  const safeBaseName = sanitizeFileBaseName(rawBaseName);
-  const safeExtension = ext.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '');
-
-  return `${safeBaseName || 'file'}${safeExtension}`;
+  return `${Date.now()}-${baseName}${ext}`;
 }
 
 async function saveDetailFile(
@@ -131,25 +119,6 @@ async function saveDetailFile(
   return storedFileName;
 }
 
-function buildSafeDownloadFileName(fileName: string): string {
-  const cleanFileName = stripGeneratedFilePrefixes(basename(fileName));
-  const extension = extname(cleanFileName).replace(/[^\x20-\x7E]/g, '');
-  const baseName = basename(cleanFileName, extension)
-      .replace(/[^\x20-\x7E]/g, '_')
-      .replace(/["\\;=]/g, '_')
-      .replace(/\s+/g, '_')
-      .slice(0, 80)
-      .trim();
-
-  return `${baseName || 'download'}${extension || ''}`;
-}
-
-function buildContentDisposition(fileName: string): string {
-  const safeFileName = buildSafeDownloadFileName(fileName);
-
-  return `attachment; filename="${safeFileName}"`;
-}
-
 // TODO: auth-gating these endpoints is a follow-up product decision (see
 // docs/known-limitations.md). For now @Public() opens them to anonymous users.
 @Controller({
@@ -157,10 +126,7 @@ function buildContentDisposition(fileName: string): string {
   version: '1',
 })
 export class FtsFunctionController {
-  constructor(
-      private readonly service: FtsFunctionService,
-      private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly service: FtsFunctionService) {}
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // LIST / DETAIL
@@ -177,33 +143,6 @@ export class FtsFunctionController {
       query: FtsFunctionListQueryDto,
   ): Promise<FtsFunctionListResponseDto> {
     return this.service.list(query);
-  }
-
-  @Get('download')
-  @ApiOperation({
-    summary: 'Скачивание выгрузки по функциям',
-    description:
-        'Выгружает все функции с их детализациями в формате XLSX-файла.',
-  })
-  @ApiProduces(XLSX_MIME)
-  @ApiOkResponse({
-    description: 'Файл успешно выгружен',
-    content: {
-      [XLSX_MIME]: {
-        schema: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  async getDownload(): Promise<StreamableFile> {
-    const buffer = await this.service.getDownload();
-
-    return new StreamableFile(Buffer.from(buffer as ArrayBuffer), {
-      type: XLSX_MIME,
-      disposition: 'attachment; filename="fts-functions.xlsx"',
-    });
   }
 
   @Get(':id')
@@ -332,58 +271,6 @@ export class FtsFunctionController {
         params.detailId,
         storedFileName,
     );
-  }
-
-  @Get('details/:detailId/algorithm-file')
-  @ApiOperation({
-    summary: 'Скачивание прикреплённого файла алгоритма / результата отработки',
-  })
-  @ApiProduces('application/octet-stream')
-  @ApiOkResponse({
-    description: 'Файл успешно выгружен',
-    content: {
-      'application/octet-stream': {
-        schema: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  async downloadDetailAlgorithmFile(
-      @Param(new ZodValidationPipe(DetailIdParamSchema))
-      params: DetailIdParamDto,
-      @Res({ passthrough: true }) reply: FastifyReply,
-  ): Promise<StreamableFile> {
-    const detail = await this.prisma.ftsFunctionDetail.findFirst({
-      where: {
-        id: params.detailId,
-        isDeleted: false,
-      },
-      select: {
-        algorithm: true,
-      },
-    });
-
-    const storedFileName = detail?.algorithm?.trim();
-
-    if (!storedFileName) {
-      throw new NotFoundException('Файл не прикреплён');
-    }
-
-    const safeFileName = basename(storedFileName);
-    const filePath = join(DETAIL_FILES_ROOT, String(params.detailId), safeFileName);
-
-    try {
-      await access(filePath, constants.R_OK);
-    } catch {
-      throw new NotFoundException('Файл не найден');
-    }
-
-    reply.header('Content-Type', 'application/octet-stream');
-    reply.header('Content-Disposition', buildContentDisposition(safeFileName));
-
-    return new StreamableFile(createReadStream(filePath));
   }
 
   @Delete('details/:detailId')
@@ -546,6 +433,9 @@ export class FtsFunctionController {
   // DTIs
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // The batch-attach endpoint below is additive-only and must stay that
+  // way. The planned full-replace `PUT /v1/fts-functions/:id/dtis` is
+  // tracked in `docs/known-limitations.md`.
   @Post(':id/dtis/batch')
   @ApiOkResponse({
     description: SWAGGER_DESCRIPTION.RESOURCE_UPDATED,
@@ -582,5 +472,32 @@ export class FtsFunctionController {
       @Param(new ZodValidationPipe(DtiParamSchema)) params: DtiParamDto,
   ): Promise<FtsFunctionToDtiResponseDto> {
     return this.service.detachDti(params.id, params.dtiId);
+  }
+
+  @Get('download')
+  @ApiOperation({
+    summary: 'Скачивание выгрузки по функциям',
+    description:
+        'Выгружает все функции с их детализациями в формате XLSX-файла.',
+  })
+  @ApiProduces(XLSX_MIME)
+  @ApiOkResponse({
+    description: 'Файл успешно выгружен',
+    content: {
+      [XLSX_MIME]: {
+        schema: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  async getDownload(): Promise<StreamableFile> {
+    const buffer = await this.service.getDownload();
+
+    return new StreamableFile(Buffer.from(buffer as ArrayBuffer), {
+      type: XLSX_MIME,
+      disposition: 'attachment; filename="fts-functions.xlsx"',
+    });
   }
 }

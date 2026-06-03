@@ -4,21 +4,29 @@ import type { CustomPalette } from "src/app/App";
 import type { Row } from "src/entities/fts-function/types";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 
-import { Edit } from "@mui/icons-material";
+import {
+    Download,
+    Edit,
+    InsertDriveFileOutlined,
+} from "@mui/icons-material";
 import {
     Box,
     Button,
     Chip,
+    CircularProgress,
     Divider,
+    Tooltip,
     Typography,
     useTheme,
 } from "@mui/material";
 import { findTypeNameByCode } from "src/entities/fts-function/api/mappers";
 import {
     findTypeByCodeOrName,
+    getAlgorithmAttachmentLabel,
     isActualActionCategory,
 } from "src/entities/fts-function/lib/detail-technology";
-import { FtsFunctionStep } from "src/entities/fts-function/model";
+import { FtsFunctionStep, RowField } from "src/entities/fts-function/model";
+import { useDownloadDetailAlgorithmFileMutation } from "src/shared/api/ftsFunctionUploadApi";
 import { useTranslation } from "src/shared/i18n";
 import { FieldLabel } from "src/shared/ui/form/FieldLabel";
 
@@ -74,6 +82,9 @@ export function RowDetailsView({
     const theme = useTheme();
     const c = theme.custom;
 
+    const [downloadDetailAlgorithmFile, { isLoading: isDownloading }] =
+        useDownloadDetailAlgorithmFileMutation();
+
     const isStep1 = row.step === FtsFunctionStep.OBJECT_SELECTION;
     const stepLabel = isStep1 ? "Шаг 1" : "Шаг 2";
     const stepColor = isStep1
@@ -86,29 +97,47 @@ export function RowDetailsView({
         isActualActionCategory(row.category) ||
         hasAnyFieldValue(row, TECHNOLOGY_FIELDS);
 
+    const algorithmLabel = getAlgorithmAttachmentLabel(row.step);
+
+    const handleDownloadAlgorithmFile = () => {
+        if (!row.algorithm?.trim() || isDownloading) return;
+
+        void downloadDetailAlgorithmFile({
+            detailId: Number(row.id),
+            fallbackFileName: row.algorithm,
+        });
+    };
+
     return (
         <Box
             sx={{
                 height: "100%",
+                minHeight: 0,
                 display: "flex",
                 flexDirection: "column",
-                overflow: "hidden",
+                bgcolor: c.bgSurface,
             }}
         >
             <Box
                 sx={{
                     px: 2,
-                    pt: 1.5,
-                    pb: 1,
-                    flexShrink: 0,
+                    py: 1.25,
+                    borderBottom: `1px solid ${c.borderLight}`,
                     display: "flex",
-                    alignItems: "center",
+                    alignItems: "flex-start",
                     justifyContent: "space-between",
-                    gap: 1,
+                    gap: 1.5,
                 }}
             >
                 <Box sx={{ minWidth: 0 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Box
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.75,
+                            minWidth: 0,
+                        }}
+                    >
                         <Chip
                             label={stepLabel}
                             size="small"
@@ -219,15 +248,26 @@ export function RowDetailsView({
                             {"Технологическое решение"}
                         </FieldLabel>
 
-                        {TECHNOLOGY_FIELDS.map((field) => (
-                            <ReadField
-                                key={field.key}
-                                label={getFieldLabel(field, t)}
-                                value={resolveDictionaryValue(row[field.key], field, typesAll)}
-                                t={t}
-                                c={c}
-                            />
-                        ))}
+                        {TECHNOLOGY_FIELDS.map((field) =>
+                            field.key === RowField.ALGORITHM ? (
+                                <FileReadField
+                                    key={field.key}
+                                    label={algorithmLabel}
+                                    fileName={row.algorithm}
+                                    c={c}
+                                    isDownloading={isDownloading}
+                                    onDownload={handleDownloadAlgorithmFile}
+                                />
+                            ) : (
+                                <ReadField
+                                    key={field.key}
+                                    label={getFieldLabel(field, t)}
+                                    value={resolveDictionaryValue(row[field.key], field, typesAll)}
+                                    t={t}
+                                    c={c}
+                                />
+                            ),
+                        )}
                     </>
                 )}
             </Box>
@@ -267,6 +307,131 @@ function ReadField({ label, value, c }: ReadFieldProps) {
             >
                 {value || "Не заполнено"}
             </Typography>
+        </Box>
+    );
+}
+
+type FileReadFieldProps = {
+    label: string;
+    fileName: string | undefined;
+    c: CustomPalette;
+    isDownloading: boolean;
+    onDownload: () => void;
+};
+
+function FileReadField({
+                           label,
+                           fileName,
+                           c,
+                           isDownloading,
+                           onDownload,
+                       }: FileReadFieldProps) {
+    const theme = useTheme();
+    const hasFile = Boolean(fileName?.trim());
+
+    return (
+        <Box>
+            <Typography
+                variant="caption"
+                sx={{
+                    display: "block",
+                    color: c.textMuted,
+                    fontSize: "0.66rem",
+                    mb: 0.25,
+                }}
+            >
+                {label}
+            </Typography>
+
+            <Tooltip
+                title={
+                    hasFile
+                        ? isDownloading
+                            ? "Файл скачивается..."
+                            : "Скачать файл"
+                        : "Файл не прикреплён"
+                }
+            >
+                <Box
+                    component={hasFile ? "button" : "div"}
+                    type={hasFile ? "button" : undefined}
+                    onClick={hasFile && !isDownloading ? onDownload : undefined}
+                    sx={{
+                        width: "100%",
+                        minHeight: 38,
+                        px: 1,
+                        py: 0.75,
+                        borderRadius: 1.25,
+                        border: `1px solid ${
+                            hasFile ? theme.palette.primary.main : c.borderLight
+                        }`,
+                        bgcolor: hasFile ? `${theme.palette.primary.main}12` : c.bgInput,
+                        color: hasFile ? theme.palette.primary.main : c.textDim,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.75,
+                        minWidth: 0,
+                        cursor: hasFile && !isDownloading ? "pointer" : "default",
+                        textAlign: "left",
+                        font: "inherit",
+                        transition: "all 0.15s ease",
+                        opacity: isDownloading ? 0.7 : 1,
+                        "&:hover": hasFile
+                            ? {
+                                bgcolor: `${theme.palette.primary.main}1f`,
+                                borderColor: theme.palette.primary.dark,
+                            }
+                            : undefined,
+                    }}
+                    data-testid="details-panel-algorithm-file-download"
+                >
+                    {isDownloading ? (
+                        <CircularProgress
+                            size={17}
+                            thickness={4}
+                            sx={{
+                                color: theme.palette.primary.main,
+                                flexShrink: 0,
+                            }}
+                        />
+                    ) : (
+                        <InsertDriveFileOutlined
+                            sx={{
+                                fontSize: 18,
+                                flexShrink: 0,
+                                opacity: hasFile ? 1 : 0.45,
+                            }}
+                        />
+                    )}
+
+                    <Typography
+                        sx={{
+                            color: "inherit",
+                            fontSize: "0.8rem",
+                            fontWeight: hasFile ? 700 : 400,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            textDecoration: hasFile ? "underline" : "none",
+                            textUnderlineOffset: "3px",
+                        }}
+                        title={fileName || "Не прикреплено"}
+                    >
+                        {isDownloading ? "Скачивание..." : fileName || "Не прикреплено"}
+                    </Typography>
+
+                    {hasFile && !isDownloading && (
+                        <Download
+                            sx={{
+                                fontSize: 16,
+                                color: "inherit",
+                                flexShrink: 0,
+                                ml: "auto",
+                            }}
+                        />
+                    )}
+                </Box>
+            </Tooltip>
         </Box>
     );
 }

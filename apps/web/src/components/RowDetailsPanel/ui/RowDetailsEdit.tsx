@@ -1,34 +1,37 @@
-import type { RowDraft } from "../hooks/useRowDetailsDraft";
-import type { Theme } from "@mui/material";
-import type { TFunction } from "i18next";
 import type { Row } from "src/entities/fts-function/types";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 
-import { useMemo } from "react";
-import { Close, Save } from "@mui/icons-material";
+import { Save } from "@mui/icons-material";
 import {
     Autocomplete,
     Box,
     Button,
+    Divider,
     FormControl,
     InputLabel,
     MenuItem,
     Select,
     TextField,
+    Tooltip,
     Typography,
     useTheme,
 } from "@mui/material";
-
-import { findTypeNameByCode } from "src/entities/fts-function/api/mappers";
+import {
+    findTypeNameByCode,
+} from "src/entities/fts-function/api/mappers";
 import {
     areTechnologyRequiredFieldsFilled,
-    getTypeCodeOptionsByCategory,
+    findTypeByCodeOrName,
+    getAlgorithmAttachmentLabel,
     getTypeNameOptionsByCategory,
     hasTechnologicalSolution,
     isActualActionCategory,
 } from "src/entities/fts-function/lib/detail-technology";
 import { RowField } from "src/entities/fts-function/model";
+import { useDownloadDetailAlgorithmFileMutation } from "src/shared/api/ftsFunctionUploadApi";
 import { useTranslation } from "src/shared/i18n";
+import { FileAttachmentInput } from "src/shared/ui/FileAttachmentInput";
+import { FieldLabel } from "src/shared/ui/form/FieldLabel";
 import {
     formInputSx,
     formLabelSx,
@@ -45,23 +48,48 @@ import {
     TECHNOLOGY_FIELDS,
 } from "../lib/extra-fields";
 
-export const ROW_DETAILS_EDIT_TEST_IDS = {
-    CANCEL: "button-cancel-edit",
-    SAVE: "button-save-details",
-} as const;
+export type RowDraft = Row;
 
 export type RowDetailsEditProps = {
     draft: RowDraft;
     typesAll: TypeResponseDto[];
+    algorithmFile: File | null;
     onChangeField: (key: keyof Row, value: string) => void;
+    onChangeAlgorithmFile: (file: File | null) => void;
     onSave: () => void;
     onCancel: () => void;
 };
 
+function resolveTypeOptions(
+    field: ExtraFieldConfig,
+    typesAll: TypeResponseDto[],
+): TypeResponseDto[] {
+    if (!field.typeCategory) return [];
+
+    return typesAll.filter((item) => item.category === field.typeCategory);
+}
+
+function resolveAutocompleteOptions(
+    field: ExtraFieldConfig,
+    typesAll: TypeResponseDto[],
+): readonly string[] {
+    if (!field.typeCategory) return [];
+
+    return getTypeNameOptionsByCategory(typesAll, field.typeCategory);
+}
+
+function getCurrentValue(draft: RowDraft, field: ExtraFieldConfig): string {
+    const value = draft[field.key];
+
+    return value === undefined || value === null ? "" : String(value);
+}
+
 export function RowDetailsEdit({
                                    draft,
                                    typesAll,
+                                   algorithmFile,
                                    onChangeField,
+                                   onChangeAlgorithmFile,
                                    onSave,
                                    onCancel,
                                }: RowDetailsEditProps) {
@@ -69,10 +97,36 @@ export function RowDetailsEdit({
     const theme = useTheme();
     const c = theme.custom;
 
-    const isActualAction = isActualActionCategory(draft.category ?? "");
+    const [downloadDetailAlgorithmFile, { isLoading: isDownloading }] =
+        useDownloadDetailAlgorithmFileMutation();
+
+    const isActualAction = isActualActionCategory(draft.category);
     const technologySelected = hasTechnologicalSolution(draft);
+    const algorithmLabel = getAlgorithmAttachmentLabel(draft.step);
+
+    const algorithmFilled = Boolean(
+        String(draft.algorithm ?? "").trim() || algorithmFile,
+    );
+
     const technologyValid =
-        !isActualAction || areTechnologyRequiredFieldsFilled(draft);
+        !isActualAction ||
+        !technologySelected ||
+        Boolean(
+            String(draft.number ?? "").trim() &&
+            String(draft.responsible ?? "").trim() &&
+            algorithmFilled,
+        );
+
+    const handleDownloadAlgorithmFile = () => {
+        if (!draft.id || !draft.algorithm?.trim() || algorithmFile || isDownloading) {
+            return;
+        }
+
+        void downloadDetailAlgorithmFile({
+            detailId: Number(draft.id),
+            fallbackFileName: draft.algorithm,
+        });
+    };
 
     const editFields = isActualAction
         ? [...PRIMARY_FIELDS, ...EXTRA_FIELDS, ...TECHNOLOGY_FIELDS]
@@ -81,49 +135,88 @@ export function RowDetailsEdit({
     return (
         <Box
             sx={{
+                height: "100%",
+                minHeight: 0,
                 display: "flex",
                 flexDirection: "column",
-                height: "100%",
-                overflow: "hidden",
+                bgcolor: c.bgSurface,
             }}
         >
             <Box
                 sx={{
                     px: 2,
-                    pt: 1.5,
-                    pb: 1,
-                    flexShrink: 0,
+                    py: 1.25,
+                    borderBottom: `1px solid ${c.borderLight}`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
+                    gap: 1,
+                    flexShrink: 0,
                 }}
             >
-                <Typography
-                    variant="caption"
-                    sx={{
-                        color: c.textSecondary,
-                        fontWeight: 600,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                        fontSize: "0.65rem",
-                    }}
-                >
-                    {"Редактирование"}
-                </Typography>
+                <Box>
+                    <Typography
+                        variant="caption"
+                        sx={{
+                            color: c.textSecondary,
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                            fontSize: "0.65rem",
+                        }}
+                    >
+                        {"Редактирование сведений"}
+                    </Typography>
 
-                <Button
-                    size="small"
-                    onClick={onCancel}
-                    startIcon={<Close sx={{ fontSize: 14 }} />}
-                    sx={{
-                        textTransform: "none",
-                        fontSize: "0.7rem",
-                        color: c.textSecondary,
-                    }}
-                    data-testid={ROW_DETAILS_EDIT_TEST_IDS.CANCEL}
-                >
-                    {"Отмена"}
-                </Button>
+                    {!technologyValid && (
+                        <Typography
+                            sx={{
+                                color: theme.palette.warning.main,
+                                fontSize: "0.68rem",
+                                mt: 0.5,
+                            }}
+                        >
+                            {
+                                "Если выбрано технологическое решение, заполните номер ПЗ / АЗ, ответственного и прикрепите файл"
+                            }
+                        </Typography>
+                    )}
+                </Box>
+
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                    <Button
+                        size="small"
+                        onClick={onCancel}
+                        sx={{
+                            textTransform: "none",
+                            fontSize: "0.72rem",
+                            color: c.textSecondary,
+                        }}
+                    >
+                        {"Отмена"}
+                    </Button>
+
+                    <Button
+                        size="small"
+                        variant="contained"
+                        onClick={onSave}
+                        disabled={!technologyValid}
+                        startIcon={<Save sx={{ fontSize: 14 }} />}
+                        sx={{
+                            textTransform: "none",
+                            fontSize: "0.72rem",
+                            bgcolor: c.saveBtn,
+                            "&:hover": { bgcolor: c.saveBtnHover },
+                            "&.Mui-disabled": {
+                                bgcolor: c.borderMain,
+                                color: c.textDim,
+                            },
+                        }}
+                        data-testid="button-save-details"
+                    >
+                        {"Сохранить"}
+                    </Button>
+                </Box>
             </Box>
 
             <Box
@@ -131,77 +224,60 @@ export function RowDetailsEdit({
                     flex: 1,
                     overflow: "auto",
                     px: 2,
-                    pb: 1.5,
+                    py: 1.5,
                     display: "flex",
                     flexDirection: "column",
                     gap: 1.25,
                 }}
             >
-                {editFields.map((field) => {
-                    const isTechnologyDependent =
-                        field.key === RowField.NUMBER ||
-                        field.key === RowField.RESPONSIBLE ||
-                        field.key === RowField.ALGORITHM;
-
-                    const disabled = isTechnologyDependent && !technologySelected;
-                    const required = isTechnologyDependent && technologySelected;
-                    const value = String(draft[field.key] ?? "");
+                {editFields.map((field, index) => {
+                    const isTechnologyBlockStart =
+                        field.key === RowField.TECHNOLOGICAL_SOLUTION;
 
                     return (
-                        <DraftField
-                            key={field.key}
-                            field={field}
-                            value={value}
-                            onChange={(nextValue) => onChangeField(field.key, nextValue)}
-                            typesAll={typesAll}
-                            t={t}
-                            theme={theme}
-                            disabled={disabled}
-                            required={required}
-                        />
+                        <Box key={field.key}>
+                            {index === PRIMARY_FIELDS.length && (
+                                <Divider sx={{ borderColor: c.borderLight, mb: 1.25 }} />
+                            )}
+
+                            {isTechnologyBlockStart && (
+                                <>
+                                    <Divider sx={{ borderColor: c.borderLight, mb: 1.25 }} />
+
+                                    <FieldLabel fontSize="0.58rem" bold>
+                                        {"Технологическое решение"}
+                                    </FieldLabel>
+                                </>
+                            )}
+
+                            {field.key === RowField.ALGORITHM ? (
+                                <FileAttachmentInput
+                                    label={algorithmLabel}
+                                    fileName={String(draft.algorithm ?? "")}
+                                    selectedFile={algorithmFile}
+                                    disabled={technologySelected ? false : !isActualAction}
+                                    required={technologySelected}
+                                    isDownloading={isDownloading}
+                                    testId="details-panel-algorithm-file"
+                                    onChangeFile={onChangeAlgorithmFile}
+                                    onDownloadFile={handleDownloadAlgorithmFile}
+                                />
+                            ) : (
+                                <DraftField
+                                    field={field}
+                                    draft={draft}
+                                    typesAll={typesAll}
+                                    disabled={
+                                        field.key !== RowField.TECHNOLOGICAL_SOLUTION &&
+                                        TECHNOLOGY_FIELDS.some((item) => item.key === field.key) &&
+                                        !technologySelected
+                                    }
+                                    onChangeField={onChangeField}
+                                />
+                            )}
+                        </Box>
                     );
                 })}
-
-                {!technologyValid && (
-                    <Typography
-                        variant="caption"
-                        sx={{
-                            color: theme.palette.warning.main,
-                            fontSize: "0.68rem",
-                            lineHeight: 1.35,
-                        }}
-                    >
-                        {
-                            "Если выбрано технологическое решение, заполните номер ПЗ / АЗ, ответственного и алгоритм срабатывания"
-                        }
-                    </Typography>
-                )}
-            </Box>
-
-            <Box
-                sx={{
-                    p: 2,
-                    flexShrink: 0,
-                    borderTop: `1px solid ${c.borderLight}`,
-                }}
-            >
-                <Button
-                    fullWidth
-                    variant="contained"
-                    startIcon={<Save sx={{ fontSize: 16 }} />}
-                    disabled={!technologyValid}
-                    onClick={onSave}
-                    sx={{
-                        textTransform: "none",
-                        fontSize: "0.8rem",
-                        bgcolor: c.saveBtn,
-                        "&:hover": { bgcolor: c.saveBtnHover },
-                        "&.Mui-disabled": { bgcolor: c.borderMain, color: c.textDim },
-                    }}
-                    data-testid={ROW_DETAILS_EDIT_TEST_IDS.SAVE}
-                >
-                    {"Сохранить изменения"}
-                </Button>
             </Box>
         </Box>
     );
@@ -209,77 +285,67 @@ export function RowDetailsEdit({
 
 type DraftFieldProps = {
     field: ExtraFieldConfig;
-    value: string;
-    onChange: (value: string) => void;
+    draft: RowDraft;
     typesAll: TypeResponseDto[];
-    t: TFunction;
-    theme: Theme;
-    disabled?: boolean;
-    required?: boolean;
+    disabled: boolean;
+    onChangeField: (key: keyof Row, value: string) => void;
 };
 
 function DraftField({
                         field,
-                        value,
-                        onChange,
+                        draft,
                         typesAll,
-                        t,
-                        theme,
-                        disabled = false,
-                        required = false,
+                        disabled,
+                        onChangeField,
                     }: DraftFieldProps) {
+    const { t } = useTranslation();
+    const theme = useTheme();
     const c = theme.custom;
-    const label = `${getFieldLabel(field, t)}${required ? " *" : ""}`;
 
-    if (field.kind === FieldKind.AUTOCOMPLETE_FROM_TYPES) {
+    const label = getFieldLabel(field, t);
+    const value = getCurrentValue(draft, field);
+
+    if (field.kind === FieldKind.SELECT_CODE) {
         return (
-            <AutocompleteField
-                field={field}
-                label={label}
-                value={value}
-                onChange={onChange}
-                typesAll={typesAll}
-                theme={theme}
-                disabled={disabled}
-            />
-        );
-    }
+            <FormControl size="small" fullWidth disabled={disabled}>
+                <InputLabel sx={formLabelSx(theme)}>{label}</InputLabel>
 
-    if (field.kind === FieldKind.TEXT || field.kind === FieldKind.TEXTAREA) {
-        const multiline = field.kind === FieldKind.TEXTAREA;
-
-        return (
-            <TextField
-                label={label}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                fullWidth
-                size="small"
-                multiline={multiline}
-                rows={multiline ? 2 : undefined}
-                disabled={disabled}
-                sx={formInputSx(theme)}
-                data-testid={field.testId}
-            />
+                <Select
+                    value={value}
+                    label={label}
+                    onChange={(event) => onChangeField(field.key, String(event.target.value))}
+                    sx={formSelectSx(theme)}
+                    MenuProps={formMenuSx(theme)}
+                    data-testid={field.testId}
+                >
+                    {(field.options ?? []).map((option) => (
+                        <MenuItem
+                            key={option.value}
+                            value={option.value}
+                            sx={{ fontSize: "0.78rem" }}
+                        >
+                            {findTypeNameByCode(typesAll, option.value)}
+                        </MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
         );
     }
 
     if (field.kind === FieldKind.SELECT_TYPE_CODE) {
-        const options = getTypeCodeOptionsByCategory(typesAll, field.typeCategory!);
-        const resolvedValue = resolveTypeCodeValue(value, options);
+        const options = resolveTypeOptions(field, typesAll);
 
         return (
             <FormControl size="small" fullWidth disabled={disabled}>
                 <InputLabel sx={formLabelSx(theme)}>{label}</InputLabel>
 
                 <Select
-                    value={resolvedValue}
-                    onChange={(e) => onChange(String(e.target.value))}
+                    value={value}
                     label={label}
+                    onChange={(event) => onChangeField(field.key, String(event.target.value))}
                     sx={formSelectSx(theme)}
                     MenuProps={formMenuSx(theme)}
                     data-testid={field.testId}
-                    displayEmpty={false}
                 >
                     <MenuItem
                         value=""
@@ -306,110 +372,71 @@ function DraftField({
         );
     }
 
-    return (
-        <FormControl size="small" fullWidth disabled={disabled}>
-            <InputLabel sx={formLabelSx(theme)}>{label}</InputLabel>
+    if (field.kind === FieldKind.AUTOCOMPLETE_FROM_TYPES) {
+        const options = resolveAutocompleteOptions(field, typesAll);
 
-            <Select
+        return (
+            <Autocomplete
+                freeSolo
+                disabled={disabled}
+                options={options}
                 value={value}
-                onChange={(e) => onChange(String(e.target.value))}
-                label={label}
-                sx={formSelectSx(theme)}
-                MenuProps={formMenuSx(theme)}
-                data-testid={field.testId}
-            >
-                <MenuItem value="" sx={{ fontSize: "0.78rem", color: c.textDim }}>
-                    {"— не выбрано —"}
-                </MenuItem>
+                onChange={(_, nextValue) => onChangeField(field.key, nextValue ?? "")}
+                onInputChange={(_, nextValue) => onChangeField(field.key, nextValue)}
+                size="small"
+                fullWidth
+                slotProps={{
+                    paper: {
+                        sx: {
+                            bgcolor: c.bgMenu,
+                            color: c.textBody,
+                            border: `1px solid ${c.borderMain}`,
+                        },
+                    },
+                    listbox: {
+                        sx: {
+                            py: 0,
+                            "& .MuiAutocomplete-option": {
+                                minHeight: 28,
+                                fontSize: "0.78rem",
+                                py: 0.25,
+                            },
+                        },
+                    },
+                }}
+                renderOption={(props, option) => {
+                    const { key, ...rest } = props as typeof props & { key?: string };
 
-                {(field.options ?? []).map((opt) => (
-                    <MenuItem
-                        key={opt.value}
-                        value={opt.value}
-                        sx={{ fontSize: "0.78rem" }}
-                    >
-                        {findTypeNameByCode(typesAll, opt.value)}
-                    </MenuItem>
-                ))}
-            </Select>
-        </FormControl>
-    );
-}
-
-type AutocompleteFieldProps = {
-    field: ExtraFieldConfig;
-    label: string;
-    value: string;
-    onChange: (value: string) => void;
-    typesAll: TypeResponseDto[];
-    theme: Theme;
-    disabled?: boolean;
-};
-
-function AutocompleteField({
-                               field,
-                               label,
-                               value,
-                               onChange,
-                               typesAll,
-                               theme,
-                               disabled = false,
-                           }: AutocompleteFieldProps) {
-    const c = theme.custom;
-
-    const options = useMemo(
-        () => getTypeNameOptionsByCategory(typesAll, field.typeCategory!),
-        [typesAll, field.typeCategory],
-    );
+                    return (
+                        <Tooltip key={key ?? option} title={option} placement="right">
+                            <li {...rest}>{option}</li>
+                        </Tooltip>
+                    );
+                }}
+                renderInput={(params) => (
+                    <TextField
+                        {...params}
+                        label={label}
+                        sx={formInputSx(theme)}
+                        data-testid={field.testId}
+                    />
+                )}
+            />
+        );
+    }
 
     return (
-        <Autocomplete
-            freeSolo
-            disabled={disabled}
-            options={options}
+        <TextField
             value={value}
-            onChange={(_, nextValue) => onChange(nextValue ?? "")}
-            onInputChange={(_, nextValue) => onChange(nextValue)}
-            size="small"
+            onChange={(event) => onChangeField(field.key, event.target.value)}
+            label={label}
             fullWidth
-            slotProps={{
-                paper: {
-                    sx: {
-                        bgcolor: c.bgMenu,
-                        color: c.textBody,
-                        border: `1px solid ${c.borderMain}`,
-                    },
-                },
-            }}
-            renderInput={(params) => (
-                <TextField
-                    {...params}
-                    label={label}
-                    sx={formInputSx(theme)}
-                    data-testid={field.testId}
-                />
-            )}
+            size="small"
+            disabled={disabled}
+            multiline={field.kind === FieldKind.TEXTAREA}
+            rows={field.kind === FieldKind.TEXTAREA ? 2 : undefined}
+            sx={formInputSx(theme)}
+            data-testid={field.testId}
         />
     );
-}
-
-function normalizeDictionaryValue(value: string | undefined | null): string {
-    return String(value ?? "").trim().toLocaleLowerCase("ru-RU");
-}
-
-function resolveTypeCodeValue(
-    value: string,
-    options: TypeResponseDto[],
-): string {
-    const normalized = normalizeDictionaryValue(value);
-
-    if (!normalized) return "";
-
-    const matched = options.find(
-        (option) =>
-            normalizeDictionaryValue(option.code) === normalized ||
-            normalizeDictionaryValue(option.name) === normalized,
-    );
-
-    return matched?.code ?? "";
 }

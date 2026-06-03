@@ -290,12 +290,6 @@ export class FtsFunctionService {
       return updated;
     });
   }
-  // Добавь этот метод внутрь класса FtsFunctionService в apps/api/src/module/fts-function/fts-function.service.ts
-// Также проверь, что в imports service.ts есть ftsFunctionDetailDetailedSelect.
-
-  // Добавь этот метод внутрь класса FtsFunctionService в apps/api/src/module/fts-function/fts-function.service.ts
-// Также проверь, что в imports service.ts есть ftsFunctionDetailDetailedSelect.
-
   async uploadDetailAlgorithmFile(
       detailId: number,
       fileName: string,
@@ -312,7 +306,6 @@ export class FtsFunctionService {
       select: ftsFunctionDetailDetailedSelect,
     });
   }
-
 
   async softDeleteDetail(
       detailId: number,

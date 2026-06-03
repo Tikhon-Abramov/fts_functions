@@ -62,7 +62,6 @@ type RowFormInput = Partial<Row> & {
   category: FtsFunctionCategory;
   detailText: string;
   actionLabel: FtsFunctionActionType | "";
-  algorithmFile?: File | null;
 };
 
 export type UseDetailActionsContext = {
@@ -75,7 +74,7 @@ export type UseDetailActionsContext = {
 };
 
 export type DetailActions = {
-  addRow: (item: RowFormInput & { step: FtsFunctionStep }) => Promise<string>;
+  addRow: (item: RowFormInput & { step: FtsFunctionStep }) => string;
   updateRow: (id: string, updates: Partial<Row>) => Promise<boolean>;
   uploadAlgorithmFile: (detailId: string, file: File) => Promise<string | null>;
   removeRow: (rowId: string) => void;
@@ -204,75 +203,38 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
     })();
   }, []);
 
-  const uploadAlgorithmFile = useCallback(
-    async (detailId: string, file: File): Promise<string | null> => {
-      try {
-        const updated = await uploadDetailAlgorithmFile({
-          detailId: Number(detailId),
-          file,
-        }).unwrap();
-
-        const uploadedName =
-          (updated as { algorithm?: string | null }).algorithm ?? file.name;
-
-        dispatch(showSnackbar({ message: "Файл прикреплён" }));
-
-        return uploadedName;
-      } catch {
-        dispatch(showSnackbar({ message: "Не удалось прикрепить файл" }));
-
-        return null;
-      }
-    },
-    [uploadDetailAlgorithmFile, dispatch],
-  );
-
   const addRow = useCallback(
-    async (item: RowFormInput & { step: FtsFunctionStep }): Promise<string> => {
+    (item: RowFormInput & { step: FtsFunctionStep }): string => {
       if (!modalFunctionId) return "";
 
-      const algorithmFile = item.algorithmFile ?? null;
-      const input = {
-        ...item,
-        algorithm: item.algorithm || algorithmFile?.name || "",
-      };
-
-      const dto = resolveDetailDto(input, typesAll);
+      const dto = resolveDetailDto(item, typesAll);
 
       if (!dto) {
         dispatch(
           showSnackbar({
-            message: "Не удалось сохранить: проверьте обязательные поля и выбранные значения справочников",
+            message: "Справочники ещё загружаются, повторите позже",
           }),
         );
 
         return "";
       }
 
-      try {
+      runMutation(async () => {
         const created = await createDetail({
           id: modalFunctionId,
           createFtsFunctionDetailDto: dto,
         }).unwrap();
-
-        if (algorithmFile) {
-          await uploadAlgorithmFile(String(created.id), algorithmFile);
-        }
 
         dispatch(
           showSnackbar({
             message: t(I18N.modal.snackbars.added, { id: created.id }),
           }),
         );
+      });
 
-        return String(created.id);
-      } catch {
-        dispatch(showSnackbar({ message: "Не удалось добавить строку" }));
-
-        return "";
-      }
+      return "";
     },
-    [modalFunctionId, typesAll, createDetail, dispatch, t, uploadAlgorithmFile],
+    [modalFunctionId, typesAll, createDetail, dispatch, t, runMutation],
   );
 
   const updateRow = useCallback(
@@ -289,7 +251,7 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
       if (!dto) {
         dispatch(
           showSnackbar({
-            message: "Не удалось сохранить: проверьте обязательные поля и выбранные значения справочников",
+            message: "Справочники ещё загружаются, повторите позже",
           }),
         );
 
@@ -312,6 +274,33 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
       }
     },
     [rowMap, typesAll, updateDetail, dispatch],
+  );
+
+  const uploadAlgorithmFile = useCallback(
+    async (detailId: string, file: File): Promise<string | null> => {
+      const formData = new FormData();
+
+      formData.append("file", file);
+
+      try {
+        const updated = await uploadDetailAlgorithmFile({
+          detailId: Number(detailId),
+          body: formData,
+        }).unwrap();
+
+        const uploadedName =
+          (updated as { algorithm?: string | null }).algorithm ?? file.name;
+
+        dispatch(showSnackbar({ message: "Файл прикреплён" }));
+
+        return uploadedName;
+      } catch {
+        dispatch(showSnackbar({ message: "Не удалось прикрепить файл" }));
+
+        return null;
+      }
+    },
+    [uploadDetailAlgorithmFile, dispatch],
   );
 
   const removeRow = useCallback(
@@ -389,25 +378,20 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
   );
 
   const saveDual = useCallback(
-    async (
+    (
       s1Data: Omit<RowFormInput, "step">,
       s2Data: Omit<RowFormInput, "step">,
     ) => {
       if (!modalFunctionId) return;
 
-      const s1Input = {
-        ...s1Data,
-        step: FtsFunctionStep.OBJECT_SELECTION,
-        algorithm: s1Data.algorithm || s1Data.algorithmFile?.name || "",
-      };
-      const s2Input = {
-        ...s2Data,
-        step: FtsFunctionStep.CLUSTERING_IMPACT,
-        algorithm: s2Data.algorithm || s2Data.algorithmFile?.name || "",
-      };
-
-      const dto1 = resolveDetailDto(s1Input, typesAll);
-      const dto2 = resolveDetailDto(s2Input, typesAll);
+      const dto1 = resolveDetailDto(
+        { ...s1Data, step: FtsFunctionStep.OBJECT_SELECTION },
+        typesAll,
+      );
+      const dto2 = resolveDetailDto(
+        { ...s2Data, step: FtsFunctionStep.CLUSTERING_IMPACT },
+        typesAll,
+      );
       const relationTypeId = findTypeIdByCode(
         typesAll,
         FtsFunctionRelationType.CONNECTED,
@@ -416,14 +400,14 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
       if (!dto1 || !dto2 || relationTypeId == null) {
         dispatch(
           showSnackbar({
-            message: "Не удалось сохранить: проверьте обязательные поля и выбранные значения справочников",
+            message: "Справочники ещё загружаются, повторите позже",
           }),
         );
 
         return;
       }
 
-      try {
+      runMutation(async () => {
         const s1 = await createDetail({
           id: modalFunctionId,
           createFtsFunctionDetailDto: dto1,
@@ -433,14 +417,6 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
           id: modalFunctionId,
           createFtsFunctionDetailDto: dto2,
         }).unwrap();
-
-        if (s1Data.algorithmFile) {
-          await uploadAlgorithmFile(String(s1.id), s1Data.algorithmFile);
-        }
-
-        if (s2Data.algorithmFile) {
-          await uploadAlgorithmFile(String(s2.id), s2Data.algorithmFile);
-        }
 
         await createTreeEdge({
           createFtsFunctionTreeDto: {
@@ -457,18 +433,9 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
             message: "Добавлены Шаг 1 + Шаг 2 со связью",
           }),
         );
-      } catch {
-        dispatch(showSnackbar({ message: "Не удалось добавить строки" }));
-      }
+      });
     },
-    [
-      modalFunctionId,
-      typesAll,
-      createDetail,
-      createTreeEdge,
-      dispatch,
-      uploadAlgorithmFile,
-    ],
+    [modalFunctionId, typesAll, createDetail, createTreeEdge, dispatch, runMutation],
   );
 
   const createFeedback = useCallback(
