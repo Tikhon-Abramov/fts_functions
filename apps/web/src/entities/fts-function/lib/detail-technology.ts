@@ -1,7 +1,6 @@
 import type {
   Feedback,
   FeedbackFormInput,
-  Row,
 } from "src/entities/fts-function/types";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 
@@ -25,6 +24,7 @@ export const DETAIL_TYPE_CATEGORY = {
   FEEDBACK_QUALITY_METRICS: "FEEDBACK_QUALITY_METRICS",
   RESPONSIBLE: "RESPONSIBLE",
   FTS_METHODOLOGY_STATUS: "FTS_METHODOLOGY_STATUS",
+  ACTION_STATUS: "ACTION_STATUS",
 } as const;
 
 export const TECHNOLOGY_DETAIL_LABELS = {
@@ -40,16 +40,19 @@ export const FEEDBACK_DETAIL_LABELS = {
   methodologyPosition: "Методология позиции ЦА ФНС России",
   methodologyStatus: "Методология позиции ЦА ФНС России",
   problemDescription:
-    "Описание проблемы с указанием источника, метрики, способа решения",
+      "Описание проблемы с указанием источника, метрики, способа решения",
   initiatorRequisites: "Реквизиты автора инициативы",
   deadline: "Срок реализации доработки",
   initiatorAcceptance: "Акцепт автора инициативы",
 } as const;
 
-export type TechnologyFieldsShape = Pick<
-  Row,
-  "technologicalSolution" | "number" | "responsible" | "algorithm"
->;
+export type TechnologyFieldsShape = {
+  technologicalSolution?: string | undefined;
+  number?: string | undefined;
+  responsible?: string | undefined;
+  algorithm?: string | undefined;
+  filePath?: string | undefined;
+};
 
 export type FeedbackStatus = "pending" | "accepted" | "rejected";
 
@@ -57,40 +60,44 @@ function normalizeDictionaryValue(value: string | undefined | null): string {
   return String(value ?? "").trim().toLocaleLowerCase("ru-RU");
 }
 
+function trim(value: string | undefined | null): string {
+  return value?.trim() ?? "";
+}
+
 export function isActualActionCategory(
-  category: string | undefined | null,
+    category: string | undefined | null,
 ): boolean {
   return category === FtsFunctionCategory.ACTUAL_ACTION;
 }
 
 export function getAlgorithmAttachmentLabel(
-  step: string | undefined | null,
+    step: string | undefined | null,
 ): string {
   return step === FtsFunctionStep.CLUSTERING_IMPACT
-    ? "Результат отработки"
-    : "Алгоритм срабатывания";
+      ? "Результат отработки"
+      : "Алгоритм срабатывания";
 }
 
 export function getTypeCodeOptionsByCategory(
-  typesAll: TypeResponseDto[] | undefined,
-  category: TypeCategory,
+    typesAll: TypeResponseDto[] | undefined,
+    category: TypeCategory,
 ): TypeResponseDto[] {
   return (typesAll ?? []).filter((item) => String(item.category) === category);
 }
 
 export function getTypeNameOptionsByCategory(
-  typesAll: TypeResponseDto[] | undefined,
-  category: TypeCategory,
+    typesAll: TypeResponseDto[] | undefined,
+    category: TypeCategory,
 ): string[] {
   return getTypeCodeOptionsByCategory(typesAll, category).map(
-    (item) => item.name,
+      (item) => item.name,
   );
 }
 
 export function findTypeByCodeOrName(
-  typesAll: TypeResponseDto[] | undefined,
-  category: TypeCategory,
-  value: string | undefined | null,
+    typesAll: TypeResponseDto[] | undefined,
+    category: TypeCategory,
+    value: string | undefined | null,
 ): TypeResponseDto | undefined {
   const normalized = normalizeDictionaryValue(value);
 
@@ -100,35 +107,41 @@ export function findTypeByCodeOrName(
     if (String(item.category) !== category) return false;
 
     return (
-      normalizeDictionaryValue(item.code) === normalized ||
-      normalizeDictionaryValue(item.name) === normalized
+        normalizeDictionaryValue(item.code) === normalized ||
+        normalizeDictionaryValue(item.name) === normalized
     );
   });
 }
 
 export function hasTechnologicalSolution(
-  fields: Partial<TechnologyFieldsShape>,
+    fields: TechnologyFieldsShape | null | undefined,
 ): boolean {
-  return Boolean(fields.technologicalSolution?.trim());
+  return Boolean(trim(fields?.technologicalSolution));
+}
+
+export function hasAlgorithmTextOrFile(
+    fields: TechnologyFieldsShape | null | undefined,
+): boolean {
+  return Boolean(trim(fields?.algorithm) || trim(fields?.filePath));
 }
 
 export function areTechnologyRequiredFieldsFilled(
-  fields: Partial<TechnologyFieldsShape>,
+    fields: TechnologyFieldsShape | null | undefined,
 ): boolean {
   if (!hasTechnologicalSolution(fields)) return true;
 
   return Boolean(
-    fields.number?.trim() &&
-      fields.responsible?.trim() &&
-      fields.algorithm?.trim(),
+      trim(fields?.number) &&
+      trim(fields?.responsible) &&
+      hasAlgorithmTextOrFile(fields),
   );
 }
 
 export function cleanupTechnologyFields<T extends TechnologyFieldsShape>(
-  fields: T,
-  enabled: boolean,
+    fields: T,
+    enabled: boolean,
 ): T {
-  if (enabled && fields.technologicalSolution?.trim()) return fields;
+  if (enabled && trim(fields.technologicalSolution)) return fields;
 
   return {
     ...fields,
@@ -136,16 +149,17 @@ export function cleanupTechnologyFields<T extends TechnologyFieldsShape>(
     number: "",
     responsible: "",
     algorithm: "",
+    filePath: "",
   };
 }
 
 export function hasFeedback(
-  feedback: Partial<Feedback | FeedbackFormInput> | null | undefined,
+    feedback: Partial<Feedback | FeedbackFormInput> | null | undefined,
 ): boolean {
   if (!feedback) return false;
 
   return Boolean(
-    feedback.feedbackSourceIds?.length ||
+      feedback.feedbackSourceIds?.length ||
       feedback.feedbackQualityMetricId ||
       feedback.ftsMethodologyStatusId ||
       feedback.problemDescription?.trim() ||
@@ -156,21 +170,21 @@ export function hasFeedback(
 }
 
 export function areFeedbackRequiredFieldsFilled(
-  fields: Partial<FeedbackFormInput>,
+    fields: Partial<FeedbackFormInput> | null | undefined,
 ): boolean {
   return Boolean(
-    fields.feedbackSourceIds?.length &&
-      fields.feedbackQualityMetricId?.trim() &&
-      fields.ftsMethodologyStatusId?.trim() &&
-      fields.problemDescription?.trim() &&
-      fields.initiatorRequisites?.trim() &&
-      fields.deadline?.trim() &&
-      fields.initiatorAcceptance?.trim(),
+      fields?.feedbackSourceIds?.length &&
+      fields?.feedbackQualityMetricId?.trim() &&
+      fields?.ftsMethodologyStatusId?.trim() &&
+      fields?.problemDescription?.trim() &&
+      fields?.initiatorRequisites?.trim() &&
+      fields?.deadline?.trim() &&
+      fields?.initiatorAcceptance?.trim(),
   );
 }
 
 export function getFeedbackStatus(
-  feedback: Partial<Feedback> | null | undefined,
+    feedback: Partial<Feedback> | null | undefined,
 ): FeedbackStatus | null {
   if (!hasFeedback(feedback)) return null;
 

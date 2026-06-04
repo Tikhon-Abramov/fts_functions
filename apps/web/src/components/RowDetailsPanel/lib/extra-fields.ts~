@@ -161,15 +161,9 @@ export const TECHNOLOGY_FIELDS: ExtraFieldConfig[] = [
   },
   {
     key: RowField.ALGORITHM,
-    label: "",
+    label: TECHNOLOGY_DETAIL_LABELS.algorithm,
     kind: FieldKind.TEXTAREA,
-    testId: "details-panel-algorithm-text",
-  },
-  {
-    key: RowField.ALGORITHM_FILE,
-    label: "",
-    kind: FieldKind.TEXT,
-    testId: "details-panel-algorithm-file",
+    testId: "details-panel-algorithm",
   },
 ];
 

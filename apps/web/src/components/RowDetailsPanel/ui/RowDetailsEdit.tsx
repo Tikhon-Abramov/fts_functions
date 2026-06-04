@@ -16,12 +16,9 @@ import {
     Typography,
     useTheme,
 } from "@mui/material";
-import {
-    findTypeNameByCode,
-} from "src/entities/fts-function/api/mappers";
+import { findTypeNameByCode } from "src/entities/fts-function/api/mappers";
 import {
     areTechnologyRequiredFieldsFilled,
-    findTypeByCodeOrName,
     getAlgorithmAttachmentLabel,
     getTypeNameOptionsByCategory,
     hasTechnologicalSolution,
@@ -84,6 +81,21 @@ function getCurrentValue(draft: RowDraft, field: ExtraFieldConfig): string {
     return value === undefined || value === null ? "" : String(value);
 }
 
+function getRowValue(draft: RowDraft, key: keyof Row): string {
+    const value = draft[key];
+
+    return value === undefined || value === null ? "" : String(value);
+}
+
+function isTechnologyDependentField(field: ExtraFieldConfig): boolean {
+    return (
+        field.key === RowField.NUMBER ||
+        field.key === RowField.RESPONSIBLE ||
+        field.key === RowField.ALGORITHM ||
+        field.key === RowField.ALGORITHM_FILE
+    );
+}
+
 export function RowDetailsEdit({
                                    draft,
                                    typesAll,
@@ -104,27 +116,56 @@ export function RowDetailsEdit({
     const technologySelected = hasTechnologicalSolution(draft);
     const algorithmLabel = getAlgorithmAttachmentLabel(draft.step);
 
-    const algorithmFilled = Boolean(
-        String(draft.algorithm ?? "").trim() || String(draft.filePath ?? "").trim() || algorithmFile,
-    );
+    const algorithmText = String(draft.algorithm ?? "").trim();
+    const savedFileName = String(draft.filePath ?? "").trim();
+    const selectedFileName = algorithmFile?.name ?? "";
+
+    const hasText = Boolean(algorithmText);
+    const hasFile = Boolean(savedFileName || selectedFileName);
 
     const technologyValid =
         !isActualAction ||
-        !technologySelected ||
-        Boolean(
-            String(draft.number ?? "").trim() &&
-            String(draft.responsible ?? "").trim() &&
-            algorithmFilled,
-        );
+        areTechnologyRequiredFieldsFilled({
+            technologicalSolution: draft.technologicalSolution ?? "",
+            number: draft.number ?? "",
+            responsible: draft.responsible ?? "",
+            algorithm: draft.algorithm ?? "",
+            filePath: selectedFileName || savedFileName,
+        });
+
+    const handleAlgorithmTextChange = (value: string) => {
+        onChangeField(RowField.ALGORITHM, value);
+
+        if (value.trim()) {
+            onChangeAlgorithmFile(null);
+            onChangeField(RowField.ALGORITHM_FILE, "");
+        }
+    };
+
+    const handleAlgorithmFileChange = (file: File | null) => {
+        onChangeAlgorithmFile(file);
+
+        if (file) {
+            onChangeField(RowField.ALGORITHM, "");
+            onChangeField(RowField.ALGORITHM_FILE, file.name);
+        } else {
+            onChangeField(RowField.ALGORITHM_FILE, "");
+        }
+    };
+
+    const handleClearFile = () => {
+        onChangeAlgorithmFile(null);
+        onChangeField(RowField.ALGORITHM_FILE, "");
+    };
 
     const handleDownloadAlgorithmFile = () => {
-        if (!draft.id || !draft.filePath?.trim() || algorithmFile || isDownloading) {
+        if (!draft.id || !savedFileName || algorithmFile || isDownloading) {
             return;
         }
 
         void downloadDetailAlgorithmFile({
             detailId: Number(draft.id),
-            fallbackFileName: draft.filePath,
+            fallbackFileName: savedFileName,
         });
     };
 
@@ -177,7 +218,7 @@ export function RowDetailsEdit({
                             }}
                         >
                             {
-                                "Если выбрано технологическое решение, заполните номер ПЗ / АЗ, ответственного и прикрепите файл"
+                                "Если выбрано технологическое решение, заполните номер ПЗ / АЗ, ответственного и выберите один вариант: текст или файл"
                             }
                         </Typography>
                     )}
@@ -234,6 +275,103 @@ export function RowDetailsEdit({
                     const isTechnologyBlockStart =
                         field.key === RowField.TECHNOLOGICAL_SOLUTION;
 
+                    const dependentDisabled =
+                        isTechnologyDependentField(field) && !technologySelected;
+
+                    if (field.key === RowField.ALGORITHM) {
+                        return (
+                            <Box key={field.key}>
+                                <TextField
+                                    label={`${algorithmLabel} — текст`}
+                                    value={getRowValue(draft, RowField.ALGORITHM)}
+                                    onChange={(event) =>
+                                        handleAlgorithmTextChange(event.target.value)
+                                    }
+                                    fullWidth
+                                    size="small"
+                                    multiline
+                                    rows={3}
+                                    disabled={!technologySelected || hasFile}
+                                    sx={formInputSx(theme)}
+                                    data-testid="details-panel-algorithm-text"
+                                />
+
+                                {hasFile && (
+                                    <Typography
+                                        sx={{
+                                            color: c.textMuted,
+                                            fontSize: "0.68rem",
+                                            mt: 0.5,
+                                        }}
+                                    >
+                                        {
+                                            "Текст недоступен, потому что выбран файл. Чтобы ввести текст, удалите файл."
+                                        }
+                                    </Typography>
+                                )}
+                            </Box>
+                        );
+                    }
+
+                    if (field.key === RowField.ALGORITHM_FILE) {
+                        return (
+                            <Box key={field.key}>
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        display: "block",
+                                        color: c.textMuted,
+                                        fontSize: "0.66rem",
+                                        mb: 0.5,
+                                    }}
+                                >
+                                    {`${algorithmLabel} — файл`}
+                                </Typography>
+
+                                <FileAttachmentInput
+                                    fileName={selectedFileName || savedFileName}
+                                    selectedFile={algorithmFile}
+                                    disabled={!technologySelected || hasText}
+                                    isDownloading={isDownloading}
+                                    testId="details-panel-algorithm-file"
+                                    onChangeFile={handleAlgorithmFileChange}
+                                    onDownloadFile={handleDownloadAlgorithmFile}
+                                />
+
+                                {hasText && (
+                                    <Typography
+                                        sx={{
+                                            color: c.textMuted,
+                                            fontSize: "0.68rem",
+                                            mt: 0.5,
+                                        }}
+                                    >
+                                        {
+                                            "Файл недоступен, потому что заполнен текст. Чтобы прикрепить файл, очистите текстовое поле."
+                                        }
+                                    </Typography>
+                                )}
+
+                                {hasFile && !hasText && (
+                                    <Button
+                                        size="small"
+                                        onClick={handleClearFile}
+                                        sx={{
+                                            mt: 0.5,
+                                            textTransform: "none",
+                                            fontSize: "0.7rem",
+                                            color: theme.palette.error.main,
+                                            px: 0,
+                                            minWidth: 0,
+                                        }}
+                                    >
+                                        {"Удалить файл из поля"}
+                                    </Button>
+                                )}
+                            </Box>
+                        );
+                    }
+
                     return (
                         <Box key={field.key}>
                             {index === PRIMARY_FIELDS.length && (
@@ -244,46 +382,19 @@ export function RowDetailsEdit({
                                 <>
                                     <Divider sx={{ borderColor: c.borderLight, mb: 1.25 }} />
 
-
+                                    <FieldLabel fontSize="0.58rem" bold>
+                                        {"Технологическое решение"}
+                                    </FieldLabel>
                                 </>
                             )}
 
-                            {field.key === RowField.ALGORITHM_FILE ? (
-                                <>
-                                    <Typography
-                                        variant="caption"
-                                        sx={{
-                                            display: "block",
-                                            color: c.textMuted,
-                                            fontSize: "0.66rem",
-                                            mb: 0.5,
-                                        }}
-                                    >
-                                        {`${algorithmLabel}${technologySelected ? " *" : ""}`}
-                                    </Typography>
-                                    <FileAttachmentInput
-                                        fileName={String(draft.filePath ?? "")}
-                                        selectedFile={algorithmFile}
-                                        disabled={!technologySelected ? true : !isActualAction}
-                                        isDownloading={isDownloading}
-                                        testId="details-panel-algorithm-file"
-                                        onChangeFile={onChangeAlgorithmFile}
-                                        onDownloadFile={handleDownloadAlgorithmFile}
-                                    />
-                                </>
-                            ) : (
-                                <DraftField
-                                    field={field}
-                                    draft={draft}
-                                    typesAll={typesAll}
-                                    disabled={
-                                        field.key !== RowField.TECHNOLOGICAL_SOLUTION &&
-                                        TECHNOLOGY_FIELDS.some((item) => item.key === field.key) &&
-                                        !technologySelected
-                                    }
-                                    onChangeField={onChangeField}
-                                />
-                            )}
+                            <DraftField
+                                field={field}
+                                draft={draft}
+                                typesAll={typesAll}
+                                disabled={dependentDisabled}
+                                onChangeField={onChangeField}
+                            />
                         </Box>
                     );
                 })}
@@ -307,7 +418,6 @@ function DraftField({
                         disabled,
                         onChangeField,
                     }: DraftFieldProps) {
-
     const { t } = useTranslation();
     const theme = useTheme();
     const c = theme.custom;
@@ -323,7 +433,9 @@ function DraftField({
                 <Select
                     value={value}
                     label={label}
-                    onChange={(event) => onChangeField(field.key, String(event.target.value))}
+                    onChange={(event) =>
+                        onChangeField(field.key, String(event.target.value))
+                    }
                     sx={formSelectSx(theme)}
                     MenuProps={formMenuSx(theme)}
                     data-testid={field.testId}
@@ -352,7 +464,9 @@ function DraftField({
                 <Select
                     value={value}
                     label={label}
-                    onChange={(event) => onChangeField(field.key, String(event.target.value))}
+                    onChange={(event) =>
+                        onChangeField(field.key, String(event.target.value))
+                    }
                     sx={formSelectSx(theme)}
                     MenuProps={formMenuSx(theme)}
                     data-testid={field.testId}

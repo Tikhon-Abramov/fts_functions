@@ -1,10 +1,12 @@
 export const RightTab = {
   LINKS: 0,
   DETAILS: 1,
+
   /**
    * Deprecated: форма добавления теперь открывается из header модалки.
    */
   ADD: 2,
+
   LINKER: 3,
   FEEDBACK: 4,
   ACTION: 5,

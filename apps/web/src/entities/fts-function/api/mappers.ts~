@@ -387,7 +387,6 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
     technologicalSolution: detail.technologicalSolution?.code ?? "",
     number: detail.number ?? "",
     responsible: detail.responsible?.name ?? "",
-    filePath: detail.filePath ?? "",
     algorithm: detail.algorithm ?? "",
     feedbackSource:
         extra.feedbackSources?.[0]?.feedbackSource?.code ??

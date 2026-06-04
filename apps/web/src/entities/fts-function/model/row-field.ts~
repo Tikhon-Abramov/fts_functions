@@ -22,7 +22,6 @@ export const RowField = {
   NUMBER: "number",
   RESPONSIBLE: "responsible",
   ALGORITHM: "algorithm",
-  ALGORITHM_FILE: "filePath",
   FEEDBACK_SOURCE: "feedbackSource",
   FEEDBACK_QUALITY_METRIC: "feedbackQualityMetric",
   PROBLEM_DESCRIPTION: "problemDescription",

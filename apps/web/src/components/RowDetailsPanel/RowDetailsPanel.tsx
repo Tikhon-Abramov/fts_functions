@@ -12,7 +12,10 @@ import { RowDetailsView } from "./ui/RowDetailsView";
 type RowDetailsPanelProps = {
     row: Row | null;
     typesAll: TypeResponseDto[] | undefined;
-    onUpdateRow: (id: string, updates: Partial<Row>) => void;
+    onUpdateRow: (
+        id: string,
+        updates: Partial<Row>,
+    ) => void | boolean | Promise<void | boolean>;
     onUploadAlgorithmFile: (
         detailId: string,
         file: File,
@@ -69,11 +72,15 @@ export default function RowDetailsPanel({
 
             nextDraft = {
                 ...nextDraft,
+                algorithm: "",
                 filePath: uploadedFileName,
             };
         }
 
-        onUpdateRow(row.id, nextDraft);
+        const result = await onUpdateRow(row.id, nextDraft);
+
+        if (result === false) return;
+
         setAlgorithmFile(null);
         finishEdit();
     }, [

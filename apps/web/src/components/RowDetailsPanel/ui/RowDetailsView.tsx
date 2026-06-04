@@ -204,25 +204,15 @@ export function RowDetailsView({
                 }}
             >
                 <ReadField
-                    label={"Категория"}
+                    label="Категория"
                     value={findTypeNameByCode(typesAll, row.category)}
                     t={t}
                     c={c}
                 />
 
-                <ReadField
-                    label={"Детализация"}
-                    value={row.detailText}
-                    t={t}
-                    c={c}
-                />
+                <ReadField label="Детализация" value={row.detailText} t={t} c={c} />
 
-                <ReadField
-                    label={"Кто делает"}
-                    value={row.who || undefined}
-                    t={t}
-                    c={c}
-                />
+                <ReadField label="Кто делает" value={row.who || undefined} t={t} c={c} />
 
                 <Divider sx={{ borderColor: c.borderLight, my: 0.25 }} />
 
@@ -244,17 +234,37 @@ export function RowDetailsView({
                     <>
                         <Divider sx={{ borderColor: c.borderLight, my: 0.25 }} />
 
-                        {TECHNOLOGY_FIELDS.map((field) =>
-                            field.key === RowField.ALGORITHM_FILE ? (
-                                <FileReadField
-                                    key={field.key}
-                                    label={algorithmLabel}
-                                    fileName={row.filePath}
-                                    c={c}
-                                    isDownloading={isDownloading}
-                                    onDownload={handleDownloadAlgorithmFile}
-                                />
-                            ) : (
+                        <FieldLabel fontSize="0.58rem" bold>
+                            {"Технологическое решение"}
+                        </FieldLabel>
+
+                        {TECHNOLOGY_FIELDS.map((field) => {
+                            if (field.key === RowField.ALGORITHM_FILE) {
+                                return (
+                                    <FileReadField
+                                        key={field.key}
+                                        label={`${algorithmLabel} — файл`}
+                                        fileName={row.filePath}
+                                        c={c}
+                                        isDownloading={isDownloading}
+                                        onDownload={handleDownloadAlgorithmFile}
+                                    />
+                                );
+                            }
+
+                            if (field.key === RowField.ALGORITHM) {
+                                return (
+                                    <ReadField
+                                        key={field.key}
+                                        label={`${algorithmLabel} — текст`}
+                                        value={row.algorithm || undefined}
+                                        t={t}
+                                        c={c}
+                                    />
+                                );
+                            }
+
+                            return (
                                 <ReadField
                                     key={field.key}
                                     label={getFieldLabel(field, t)}
@@ -262,8 +272,8 @@ export function RowDetailsView({
                                     t={t}
                                     c={c}
                                 />
-                            ),
-                        )}
+                            );
+                        })}
                     </>
                 )}
             </Box>

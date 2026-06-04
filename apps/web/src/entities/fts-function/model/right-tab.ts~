@@ -22,7 +22,6 @@ export const RowField = {
   NUMBER: "number",
   RESPONSIBLE: "responsible",
   ALGORITHM: "algorithm",
-  ALGORITHM_FILE: "filePath",
   FEEDBACK_SOURCE: "feedbackSource",
   FEEDBACK_QUALITY_METRIC: "feedbackQualityMetric",
   PROBLEM_DESCRIPTION: "problemDescription",
@@ -36,3 +35,10 @@ export const RowField = {
 
 export type RowFieldName = (typeof RowField)[keyof typeof RowField];
 export type RowField = RowFieldName;
+export const RIGHT_TAB_ORDER: readonly RightTab[] = [
+  RightTab.DETAILS,
+  RightTab.LINKS,
+  RightTab.FEEDBACK,
+  RightTab.LINKER,
+  RightTab.ACTION,
+];

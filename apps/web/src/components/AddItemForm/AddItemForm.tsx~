@@ -94,14 +94,13 @@ export default function AddItemForm({
     const theme = useTheme();
     const c = theme.custom;
 
-    const { control, reset, getValues, setValue } =
-        useForm<AddItemFormValues>({
-            defaultValues: {
-                s1: emptyStep(),
-                s2: emptyStep(),
-            },
-            shouldUnregister: false,
-        });
+    const { control, reset, getValues } = useForm<AddItemFormValues>({
+        defaultValues: {
+            s1: emptyStep(),
+            s2: emptyStep(),
+        },
+        shouldUnregister: false,
+    });
 
     const [activeStep, setActiveStep] = useState<FtsFunctionStep>(
         FtsFunctionStep.OBJECT_SELECTION,
@@ -173,10 +172,8 @@ export default function AddItemForm({
             const includeS1Technology = isActualActionCategory(v1.category);
             const includeS2Technology = isActualActionCategory(v2.category);
 
-            const canS1 =
-                isStepFilled(v1) && isStepTechnologyValid(v1, s1AlgorithmFile);
-            const canS2 =
-                isStepFilled(v2) && isStepTechnologyValid(v2, s2AlgorithmFile);
+            const canS1 = isStepFilled(v1) && isStepTechnologyValid(v1, s1AlgorithmFile);
+            const canS2 = isStepFilled(v2) && isStepTechnologyValid(v2, s2AlgorithmFile);
 
             if (!canS1 && !canS2) return;
 
@@ -272,7 +269,7 @@ export default function AddItemForm({
                             }}
                         >
                             {
-                                "Если выбрано технологическое решение, заполните номер ПЗ / АЗ, ответственного и выберите один вариант: текст или файл"
+                                "Если выбрано технологическое решение, заполните номер ПЗ / АЗ, ответственного и введите текст или прикрепите файл"
                             }
                         </Typography>
                     )}
@@ -370,7 +367,6 @@ export default function AddItemForm({
                 {isStep1 ? (
                     <StepTabBody
                         control={control}
-                        setValue={setValue}
                         step={StepKey.S1}
                         fields={s1}
                         filled={s1Filled}
@@ -382,7 +378,6 @@ export default function AddItemForm({
                 ) : (
                     <StepTabBody
                         control={control}
-                        setValue={setValue}
                         step={StepKey.S2}
                         fields={s2}
                         filled={s2Filled}

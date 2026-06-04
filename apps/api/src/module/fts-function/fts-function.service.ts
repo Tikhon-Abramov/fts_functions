@@ -23,7 +23,7 @@ import type {
   ActionDetailedEntity,
 } from './internal/fts-function.entity';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import {
   DuplicateTreeEdgeException,
@@ -528,37 +528,88 @@ export class FtsFunctionService {
       actionId: number,
       dto: UpdateActionDto,
   ): Promise<ActionDetailedEntity> {
-
-    if (dto.feedbackSourceIds?.length) {
-      await this.prisma.actionToFeedbackSource.deleteMany({
-        where: { actionId },
-      });
-    }
-
-    return this.prisma.action.update({
+    const existingAction = await this.prisma.action.findFirst({
       where: {
         id: actionId,
+        isDeleted: false,
       },
-      data: {
-        ...(dto.statusId !== undefined ? { statusId: dto.statusId } : {}),
-        ...(dto.description !== undefined
-            ? { description: dto.description.trim() }
-            : {}),
-        feedbackQualityMetricsId: dto.feedbackQualityMetricsId,
-        problemDescription: dto.problemDescription,
-        initiatorRequisites: dto.initiatorRequisites,
-        deadline: dto.deadline,
-        ...(dto.feedbackSourceIds?.length
-            ? {
-                feedbackSources: {
-                  create: dto.feedbackSourceIds.map((feedbackSourceId) => ({
-                    feedbackSourceId,
-                  })),
-                },
-              }
-            : {}),
+      select: {
+        id: true,
       },
-      select: actionSelect,
+    });
+
+    if (!existingAction) {
+      throw new NotFoundException(`Действие ${actionId} не найдено`);
+    }
+
+    const {
+      feedbackSourceIds,
+      feedbackQualityMetricsId,
+      problemDescription,
+      initiatorRequisites,
+      deadline,
+      ...actionFields
+    } = dto;
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.action.update({
+        where: {
+          id: actionId,
+        },
+        data: {
+          ...stripUndefined(actionFields as unknown as Record<string, unknown>),
+
+          ...(feedbackQualityMetricsId !== undefined
+              ? { feedbackQualityMetricsId }
+              : {}),
+
+          ...(problemDescription !== undefined
+              ? { problemDescription }
+              : {}),
+
+          ...(initiatorRequisites !== undefined
+              ? { initiatorRequisites }
+              : {}),
+
+          ...(deadline !== undefined
+              ? { deadline }
+              : {}),
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (feedbackSourceIds !== undefined) {
+        await tx.actionToFeedbackSource.deleteMany({
+          where: {
+            actionId,
+          },
+        });
+
+        if (feedbackSourceIds.length > 0) {
+          await tx.actionToFeedbackSource.createMany({
+            data: feedbackSourceIds.map((feedbackSourceId) => ({
+              actionId,
+              feedbackSourceId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      const updated = await tx.action.findUnique({
+        where: {
+          id: actionId,
+        },
+        select: actionSelect,
+      });
+
+      if (!updated) {
+        throw new NotFoundException(`Действие ${actionId} не найдено`);
+      }
+
+      return updated;
     });
   }
 

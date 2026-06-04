@@ -107,8 +107,6 @@ export function fieldsToData(
   const technologySelected =
       includeTechnologyFields && fields.technologicalSolution.trim().length > 0;
 
-  const filePath = algorithmFile?.name || fields.filePath;
-
   return {
     category: fields.category,
     detailText: fields.detailText.trim(),
@@ -128,7 +126,9 @@ export function fieldsToData(
     number: technologySelected ? emptyToUndefined(fields.number) : undefined,
     responsible: technologySelected ? emptyToUndefined(fields.responsible) : undefined,
     algorithm: technologySelected ? emptyToUndefined(fields.algorithm) : undefined,
-    filePath: technologySelected ? emptyToUndefined(filePath) : undefined,
+    filePath: technologySelected
+        ? emptyToUndefined(algorithmFile?.name || fields.filePath)
+        : undefined,
     algorithmFile: technologySelected ? algorithmFile ?? null : null,
   };
 }

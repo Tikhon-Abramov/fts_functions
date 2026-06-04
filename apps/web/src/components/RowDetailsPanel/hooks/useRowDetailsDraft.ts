@@ -1,7 +1,6 @@
 import type { Row } from "src/entities/fts-function/types";
 
 import { useCallback, useEffect, useState } from "react";
-
 import { RowField } from "src/entities/fts-function/model";
 
 export type RowDraft = Partial<Row>;
@@ -13,7 +12,7 @@ function buildDraft(row: Row): RowDraft {
   return {
     category: row.category,
     detailText: row.detailText ?? "",
-    // actionLabel: row.actionLabel,
+    actionLabel: row.actionLabel,
     who: row.who ?? "",
     periodicity: row.periodicity || DEFAULT_PERIODICITY,
     complexity: row.complexity || DEFAULT_COMPLEXITY,
@@ -21,6 +20,8 @@ function buildDraft(row: Row): RowDraft {
     basis: row.basis ?? "",
     artifactUsage: row.artifactUsage ?? "",
     purpose: row.purpose ?? "",
+    actionsCompleteness: row.actionsCompleteness ?? "",
+    actionsEffectiveness: row.actionsEffectiveness ?? "",
     technologicalSolution: row.technologicalSolution ?? "",
     number: row.number ?? "",
     responsible: row.responsible ?? "",
@@ -67,9 +68,19 @@ export function useRowDetailsDraft(row: Row | null) {
         };
       }
 
-      return { ...prev, [key]: value };
+      return {
+        ...prev,
+        [key]: value,
+      };
     });
   }, []);
 
-  return { editing, draft, startEdit, cancelEdit, finishEdit, setField };
+  return {
+    editing,
+    draft,
+    startEdit,
+    cancelEdit,
+    finishEdit,
+    setField,
+  };
 }

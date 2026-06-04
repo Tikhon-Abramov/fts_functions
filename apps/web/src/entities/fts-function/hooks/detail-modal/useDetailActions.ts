@@ -6,6 +6,7 @@ import type {
 } from "src/entities/fts-function/model";
 import type {
   DetailAction,
+  DetailActionFeedbackFormInput,
   DetailActionFormInput,
   Feedback,
   FeedbackFormInput,
@@ -45,6 +46,7 @@ import {
   useFtsFunctionControllerDeleteFeedbackV1Mutation,
   useFtsFunctionControllerDeleteTreeEdgeV1Mutation,
   useFtsFunctionControllerSoftDeleteDetailV1Mutation,
+  useFtsFunctionControllerUpdateActionV1Mutation,
   useFtsFunctionControllerUpdateDetailV1Mutation,
   useFtsFunctionControllerUpdateFeedbackV1Mutation,
 } from "src/shared/api/ftsFunctionsApi";
@@ -65,6 +67,10 @@ type RowFormInput = Partial<Row> & {
   algorithmFile?: File | null;
 };
 
+type ActionUpdateInput = Partial<
+    DetailActionFormInput & DetailActionFeedbackFormInput
+>;
+
 export type UseDetailActionsContext = {
   modalFunctionId: string | null;
   selectedId: string | null;
@@ -77,41 +83,48 @@ export type UseDetailActionsContext = {
 export type DetailActions = {
   addRow: (item: RowFormInput & { step: FtsFunctionStep }) => Promise<string>;
   updateRow: (id: string, updates: Partial<Row>) => Promise<boolean>;
-  uploadAlgorithmFile: (detailId: string, file: File) => Promise<string | null>;
+  uploadAlgorithmFile: (
+      detailId: string,
+      file: File,
+  ) => Promise<string | null>;
   removeRow: (rowId: string) => void;
   removeLink: (linkId: string) => void;
   createLinks: (targets: string[], kind: FtsFunctionRelationType) => void;
   quickLink: (id: string) => void;
   saveDual: (
-    s1Data: Omit<RowFormInput, "step">,
-    s2Data: Omit<RowFormInput, "step">,
+      s1Data: Omit<RowFormInput, "step">,
+      s2Data: Omit<RowFormInput, "step">,
   ) => void;
   createFeedback: (
-    detailId: string,
-    input: FeedbackFormInput,
+      detailId: string,
+      input: FeedbackFormInput,
   ) => Promise<Feedback | null>;
   updateFeedback: (
-    feedbackId: string,
-    input: FeedbackFormInput,
+      feedbackId: string,
+      input: FeedbackFormInput,
   ) => Promise<Feedback | null>;
   setFeedbackAcceptance: (
-    feedbackId: string,
-    isAccepted: boolean,
-    rejectComment?: string,
+      feedbackId: string,
+      isAccepted: boolean,
+      rejectComment?: string,
   ) => Promise<Feedback | null>;
   deleteFeedback: (feedbackId: string) => Promise<boolean>;
   createAction: (
-    detailId: string,
-    input: DetailActionFormInput,
+      detailId: string,
+      input: DetailActionFormInput,
+  ) => Promise<DetailAction | null>;
+  updateAction: (
+      actionId: string,
+      input: ActionUpdateInput,
   ) => Promise<DetailAction | null>;
   deleteAction: (actionId: string) => Promise<boolean>;
   addFeedback: (
-    detailId: string,
-    input: FeedbackFormInput,
+      detailId: string,
+      input: FeedbackFormInput,
   ) => Promise<Feedback | null>;
   editFeedback: (
-    feedbackId: string,
-    input: FeedbackFormInput,
+      feedbackId: string,
+      input: FeedbackFormInput,
   ) => Promise<Feedback | null>;
   removeFeedback: (feedbackId: string) => Promise<boolean>;
 };
@@ -134,23 +147,19 @@ function toIsoDeadline(value: string): string | null {
   if (!trimmed) return null;
 
   return /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
-    ? `${trimmed}T00:00:00.000Z`
-    : trimmed;
+      ? `${trimmed}T00:00:00.000Z`
+      : trimmed;
 }
 
 function buildFeedbackDto(
-  input: FeedbackFormInput,
+    input: FeedbackFormInput,
 ): CreateFeedbackDto & UpdateFeedbackDto {
   return {
     feedbackSourceIds: input.feedbackSourceIds
-      .map(toPositiveNumber)
-      .filter((id): id is number => id !== null),
-    feedbackQualityMetricsId: toPositiveNumber(
-      input.feedbackQualityMetricId,
-    ),
-    ftsMethodologyStatusId: toPositiveNumber(
-      input.ftsMethodologyStatusId,
-    ),
+        .map(toPositiveNumber)
+        .filter((id): id is number => id !== null),
+    feedbackQualityMetricsId: toPositiveNumber(input.feedbackQualityMetricId),
+    ftsMethodologyStatusId: toPositiveNumber(input.ftsMethodologyStatusId),
     problemDescription: toNullableText(input.problemDescription),
     initiatorRequisites: toNullableText(input.initiatorRequisites),
     initiatorAcceptance: toNullableText(input.initiatorAcceptance),
@@ -170,6 +179,44 @@ function buildActionDto(input: DetailActionFormInput): CreateActionDto | null {
   };
 }
 
+function buildUpdateActionDto(input: ActionUpdateInput): Record<string, unknown> {
+  const dto: Record<string, unknown> = {};
+
+  if (input.statusId !== undefined) {
+    dto["statusId"] = toPositiveNumber(input.statusId);
+  }
+
+  if (input.description !== undefined) {
+    dto["description"] = input.description.trim();
+  }
+
+  if (input.feedbackSourceIds !== undefined) {
+    dto["feedbackSourceIds"] = input.feedbackSourceIds
+        .map(toPositiveNumber)
+        .filter((id): id is number => id !== null);
+  }
+
+  if (input.feedbackQualityMetricId !== undefined) {
+    dto["feedbackQualityMetricsId"] = toPositiveNumber(
+        input.feedbackQualityMetricId,
+    );
+  }
+
+  if (input.problemDescription !== undefined) {
+    dto["problemDescription"] = toNullableText(input.problemDescription);
+  }
+
+  if (input.initiatorRequisites !== undefined) {
+    dto["initiatorRequisites"] = toNullableText(input.initiatorRequisites);
+  }
+
+  if (input.deadline !== undefined) {
+    dto["deadline"] = toIsoDeadline(input.deadline);
+  }
+
+  return dto;
+}
+
 export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
   const { modalFunctionId, selectedId, rowMap, links, typesAll, t } = ctx;
 
@@ -181,462 +228,520 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
   const [createTreeEdge] = useFtsFunctionControllerCreateTreeEdgeV1Mutation();
   const [deleteTreeEdge] = useFtsFunctionControllerDeleteTreeEdgeV1Mutation();
   const [createFeedbackMutation] =
-    useFtsFunctionControllerCreateFeedbackV1Mutation();
+      useFtsFunctionControllerCreateFeedbackV1Mutation();
   const [updateFeedbackMutation] =
-    useFtsFunctionControllerUpdateFeedbackV1Mutation();
+      useFtsFunctionControllerUpdateFeedbackV1Mutation();
   const [deleteFeedbackMutation] =
-    useFtsFunctionControllerDeleteFeedbackV1Mutation();
+      useFtsFunctionControllerDeleteFeedbackV1Mutation();
   const [acceptFeedbackMutation] =
-    useFtsFunctionControllerAcceptFeedbackV1Mutation();
+      useFtsFunctionControllerAcceptFeedbackV1Mutation();
   const [createActionMutation] =
-    useFtsFunctionControllerCreatActionV1Mutation();
+      useFtsFunctionControllerCreatActionV1Mutation();
+  const [updateActionMutation] =
+      useFtsFunctionControllerUpdateActionV1Mutation();
   const [deleteActionMutation] =
-    useFtsFunctionControllerDeleteActionV1Mutation();
-  const [uploadDetailAlgorithmFile] = useUploadDetailAlgorithmFileMutation();
+      useFtsFunctionControllerDeleteActionV1Mutation();
+  const [uploadDetailAlgorithmFile] =
+      useUploadDetailAlgorithmFileMutation();
 
   const runMutation = useCallback((work: () => Promise<void>): void => {
     void (async () => {
       try {
         await work();
       } catch {
-        /* RTK middleware reports failures globally */
+        /*
+         * RTK middleware reports failures globally.
+         */
       }
     })();
   }, []);
 
   const uploadAlgorithmFile = useCallback(
-    async (detailId: string, file: File): Promise<string | null> => {
-      try {
-        const updated = await uploadDetailAlgorithmFile({
-          detailId: Number(detailId),
-          file,
-        }).unwrap();
+      async (detailId: string, file: File): Promise<string | null> => {
+        try {
+          const updated = await uploadDetailAlgorithmFile({
+            detailId: Number(detailId),
+            file,
+          }).unwrap();
 
-        const uploadedName =
-          (updated as { algorithm?: string | null }).algorithm ?? file.name;
+          const uploadedName =
+              (updated as { filePath?: string | null }).filePath ?? file.name;
 
-        dispatch(showSnackbar({ message: "Файл прикреплён" }));
+          dispatch(showSnackbar({ message: "Файл прикреплён" }));
 
-        return uploadedName;
-      } catch {
-        dispatch(showSnackbar({ message: "Не удалось прикрепить файл" }));
+          return uploadedName;
+        } catch {
+          dispatch(showSnackbar({ message: "Не удалось прикрепить файл" }));
 
-        return null;
-      }
-    },
-    [uploadDetailAlgorithmFile, dispatch],
+          return null;
+        }
+      },
+      [uploadDetailAlgorithmFile, dispatch],
   );
 
   const addRow = useCallback(
-    async (item: RowFormInput & { step: FtsFunctionStep }): Promise<string> => {
-      if (!modalFunctionId) return "";
+      async (item: RowFormInput & { step: FtsFunctionStep }): Promise<string> => {
+        if (!modalFunctionId) return "";
 
-      const algorithmFile = item.algorithmFile ?? null;
-      const input = {
-        ...item,
-        algorithm: item.algorithm || algorithmFile?.name || "",
-      };
+        const algorithmFile = item.algorithmFile ?? null;
 
-      const dto = resolveDetailDto(input, typesAll);
+        const input: RowFormInput & { step: FtsFunctionStep } = {
+          ...item,
+          algorithm: item.algorithm?.trim() ?? "",
+          filePath: algorithmFile ? algorithmFile.name : item.filePath ?? "",
+        };
 
-      if (!dto) {
-        dispatch(
-          showSnackbar({
-            message: "Не удалось сохранить: проверьте обязательные поля и выбранные значения справочников",
-          }),
-        );
+        const dto = resolveDetailDto(input, typesAll);
 
-        return "";
-      }
+        if (!dto) {
+          dispatch(
+              showSnackbar({
+                message:
+                    "Не удалось сохранить: проверьте обязательные поля и выбранные значения справочников",
+              }),
+          );
 
-      try {
-        const created = await createDetail({
-          id: modalFunctionId,
-          createFtsFunctionDetailDto: dto,
-        }).unwrap();
-
-        if (algorithmFile) {
-          await uploadAlgorithmFile(String(created.id), algorithmFile);
+          return "";
         }
 
-        dispatch(
-          showSnackbar({
-            message: t(I18N.modal.snackbars.added, { id: created.id }),
-          }),
-        );
+        try {
+          const created = await createDetail({
+            id: modalFunctionId,
+            createFtsFunctionDetailDto: dto,
+          }).unwrap();
 
-        return String(created.id);
-      } catch {
-        dispatch(showSnackbar({ message: "Не удалось добавить строку" }));
+          if (algorithmFile) {
+            await uploadAlgorithmFile(String(created.id), algorithmFile);
+          }
 
-        return "";
-      }
-    },
-    [modalFunctionId, typesAll, createDetail, dispatch, t, uploadAlgorithmFile],
+          dispatch(
+              showSnackbar({
+                message: t(I18N.modal.snackbars.added, { id: created.id }),
+              }),
+          );
+
+          return String(created.id);
+        } catch {
+          dispatch(showSnackbar({ message: "Не удалось добавить строку" }));
+
+          return "";
+        }
+      },
+      [modalFunctionId, typesAll, createDetail, dispatch, t, uploadAlgorithmFile],
   );
 
   const updateRow = useCallback(
-    async (id: string, updates: Partial<Row>): Promise<boolean> => {
-      const existing = rowMap.get(id);
+      async (id: string, updates: Partial<Row>): Promise<boolean> => {
+        const existing = rowMap.get(id);
 
-      if (!existing) return false;
+        if (!existing) return false;
 
-      const dto = resolveDetailDto(
-        buildDetailInputFromRow(existing, updates),
-        typesAll,
-      );
-
-      if (!dto) {
-        dispatch(
-          showSnackbar({
-            message: "Не удалось сохранить: проверьте обязательные поля и выбранные значения справочников",
-          }),
+        const dto = resolveDetailDto(
+            buildDetailInputFromRow(existing, updates),
+            typesAll,
         );
 
-        return false;
-      }
+        if (!dto) {
+          dispatch(
+              showSnackbar({
+                message:
+                    "Не удалось сохранить: проверьте обязательные поля и выбранные значения справочников",
+              }),
+          );
 
-      
+          return false;
+        }
 
-      try {
-        await updateDetail({
-          detailId: Number(id),
-          updateFtsFunctionDetailDto: dto,
-        }).unwrap();
+        try {
+          await updateDetail({
+            detailId: Number(id),
+            updateFtsFunctionDetailDto: dto,
+          }).unwrap();
 
-        dispatch(showSnackbar({ message: "Сведения обновлены" }));
+          dispatch(showSnackbar({ message: "Сведения обновлены" }));
 
-        return true;
-      } catch {
-        dispatch(showSnackbar({ message: "Не удалось обновить сведения" }));
+          return true;
+        } catch {
+          dispatch(showSnackbar({ message: "Не удалось обновить сведения" }));
 
-        return false;
-      }
-    },
-    [rowMap, typesAll, updateDetail, dispatch],
+          return false;
+        }
+      },
+      [rowMap, typesAll, updateDetail, dispatch],
   );
 
   const removeRow = useCallback(
-    (rowId: string) => {
-      runMutation(async () => {
-        await deleteDetail({ detailId: Number(rowId) }).unwrap();
+      (rowId: string) => {
+        runMutation(async () => {
+          await deleteDetail({ detailId: Number(rowId) }).unwrap();
 
-        if (selectedId === rowId) dispatch(setSelectedRowId(null));
+          if (selectedId === rowId) dispatch(setSelectedRowId(null));
 
-        dispatch(showSnackbar({ message: "Строка удалена" }));
-      });
-    },
-    [deleteDetail, selectedId, dispatch, runMutation],
+          dispatch(showSnackbar({ message: "Строка удалена" }));
+        });
+      },
+      [deleteDetail, selectedId, dispatch, runMutation],
   );
 
   const removeLink = useCallback(
-    (linkId: string) => {
-      const target = links.find((link) => link.id === linkId);
+      (linkId: string) => {
+        const target = links.find((link) => link.id === linkId);
 
-      if (!target) return;
+        if (!target) return;
 
-      runMutation(async () => {
-        await deleteTreeEdge({
-          parentId: Number(target.fromId),
-          childId: Number(target.toId),
-        }).unwrap();
+        runMutation(async () => {
+          await deleteTreeEdge({
+            parentId: Number(target.fromId),
+            childId: Number(target.toId),
+          }).unwrap();
 
-        dispatch(showSnackbar({ message: "Связь удалена" }));
-      });
-    },
-    [links, deleteTreeEdge, dispatch, runMutation],
+          dispatch(showSnackbar({ message: "Связь удалена" }));
+        });
+      },
+      [links, deleteTreeEdge, dispatch, runMutation],
   );
 
   const createLinks = useCallback(
-    (targets: string[], kind: FtsFunctionRelationType) => {
-      if (!selectedId) return;
+      (targets: string[], kind: FtsFunctionRelationType) => {
+        if (!selectedId) return;
 
-      const relationTypeId = findTypeIdByCode(typesAll, kind);
+        const relationTypeId = findTypeIdByCode(typesAll, kind);
 
-      if (relationTypeId == null) {
-        dispatch(showSnackbar({ message: "Тип связи ещё не загружен" }));
+        if (relationTypeId == null) {
+          dispatch(showSnackbar({ message: "Тип связи ещё не загружен" }));
 
-        return;
-      }
-
-      runMutation(async () => {
-        for (const toId of targets) {
-          await createTreeEdge({
-            createFtsFunctionTreeDto: {
-              parentFtsFunctionId: Number(selectedId),
-              childFtsFunctionId: Number(toId),
-              relationTypeId,
-            },
-          }).unwrap();
+          return;
         }
 
-        dispatch(
-          showSnackbar({
-            message: t(I18N.modal.snackbars.linksAdded, {
-              count: targets.length,
-            }),
-          }),
-        );
-        dispatch(setRightTabAction(RightTab.LINKS));
-      });
-    },
-    [selectedId, typesAll, createTreeEdge, dispatch, t, runMutation],
+        runMutation(async () => {
+          for (const toId of targets) {
+            await createTreeEdge({
+              createFtsFunctionTreeDto: {
+                parentFtsFunctionId: Number(selectedId),
+                childFtsFunctionId: Number(toId),
+                relationTypeId,
+              },
+            }).unwrap();
+          }
+
+          dispatch(
+              showSnackbar({
+                message: t(I18N.modal.snackbars.linksAdded, {
+                  count: targets.length,
+                }),
+              }),
+          );
+          dispatch(setRightTabAction(RightTab.LINKS));
+        });
+      },
+      [selectedId, typesAll, createTreeEdge, dispatch, t, runMutation],
   );
 
   const quickLink = useCallback(
-    (id: string) => {
-      dispatch(selectRowAndOpenLinkPicker(id));
-    },
-    [dispatch],
+      (id: string) => {
+        dispatch(selectRowAndOpenLinkPicker(id));
+      },
+      [dispatch],
   );
 
   const saveDual = useCallback(
-    async (
-      s1Data: Omit<RowFormInput, "step">,
-      s2Data: Omit<RowFormInput, "step">,
-    ) => {
-      if (!modalFunctionId) return;
+      async (
+          s1Data: Omit<RowFormInput, "step">,
+          s2Data: Omit<RowFormInput, "step">,
+      ) => {
+        if (!modalFunctionId) return;
 
-      const s1Input = {
-        ...s1Data,
-        step: FtsFunctionStep.OBJECT_SELECTION,
-        algorithm: s1Data.algorithm || s1Data.algorithmFile?.name || "",
-      };
-      const s2Input = {
-        ...s2Data,
-        step: FtsFunctionStep.CLUSTERING_IMPACT,
-        algorithm: s2Data.algorithm || s2Data.algorithmFile?.name || "",
-      };
+        const s1Input = {
+          ...s1Data,
+          step: FtsFunctionStep.OBJECT_SELECTION,
+          algorithm: s1Data.algorithm?.trim() ?? "",
+          filePath: s1Data.algorithmFile
+              ? s1Data.algorithmFile.name
+              : s1Data.filePath ?? "",
+        };
 
-      const dto1 = resolveDetailDto(s1Input, typesAll);
-      const dto2 = resolveDetailDto(s2Input, typesAll);
-      const relationTypeId = findTypeIdByCode(
+        const s2Input = {
+          ...s2Data,
+          step: FtsFunctionStep.CLUSTERING_IMPACT,
+          algorithm: s2Data.algorithm?.trim() ?? "",
+          filePath: s2Data.algorithmFile
+              ? s2Data.algorithmFile.name
+              : s2Data.filePath ?? "",
+        };
+
+        const dto1 = resolveDetailDto(s1Input, typesAll);
+        const dto2 = resolveDetailDto(s2Input, typesAll);
+
+        const relationTypeId = findTypeIdByCode(
+            typesAll,
+            FtsFunctionRelationType.CONNECTED,
+        );
+
+        if (!dto1 || !dto2 || relationTypeId == null) {
+          dispatch(
+              showSnackbar({
+                message:
+                    "Не удалось сохранить: проверьте обязательные поля и выбранные значения справочников",
+              }),
+          );
+
+          return;
+        }
+
+        try {
+          const s1 = await createDetail({
+            id: modalFunctionId,
+            createFtsFunctionDetailDto: dto1,
+          }).unwrap();
+
+          const s2 = await createDetail({
+            id: modalFunctionId,
+            createFtsFunctionDetailDto: dto2,
+          }).unwrap();
+
+          if (s1Data.algorithmFile) {
+            await uploadAlgorithmFile(String(s1.id), s1Data.algorithmFile);
+          }
+
+          if (s2Data.algorithmFile) {
+            await uploadAlgorithmFile(String(s2.id), s2Data.algorithmFile);
+          }
+
+          await createTreeEdge({
+            createFtsFunctionTreeDto: {
+              parentFtsFunctionId: s1.id,
+              childFtsFunctionId: s2.id,
+              relationTypeId,
+            },
+          }).unwrap();
+
+          dispatch(setSelectedRowId(String(s1.id)));
+          dispatch(setRightTabAction(RightTab.LINKS));
+
+          dispatch(
+              showSnackbar({
+                message: "Добавлены Шаг 1 + Шаг 2 со связью",
+              }),
+          );
+        } catch {
+          dispatch(showSnackbar({ message: "Не удалось добавить строки" }));
+        }
+      },
+      [
+        modalFunctionId,
         typesAll,
-        FtsFunctionRelationType.CONNECTED,
-      );
-
-      if (!dto1 || !dto2 || relationTypeId == null) {
-        dispatch(
-          showSnackbar({
-            message: "Не удалось сохранить: проверьте обязательные поля и выбранные значения справочников",
-          }),
-        );
-
-        return;
-      }
-
-      try {
-        const s1 = await createDetail({
-          id: modalFunctionId,
-          createFtsFunctionDetailDto: dto1,
-        }).unwrap();
-
-        const s2 = await createDetail({
-          id: modalFunctionId,
-          createFtsFunctionDetailDto: dto2,
-        }).unwrap();
-
-        if (s1Data.algorithmFile) {
-          await uploadAlgorithmFile(String(s1.id), s1Data.algorithmFile);
-        }
-
-        if (s2Data.algorithmFile) {
-          await uploadAlgorithmFile(String(s2.id), s2Data.algorithmFile);
-        }
-
-        await createTreeEdge({
-          createFtsFunctionTreeDto: {
-            parentFtsFunctionId: s1.id,
-            childFtsFunctionId: s2.id,
-            relationTypeId,
-          },
-        }).unwrap();
-
-        dispatch(setSelectedRowId(String(s1.id)));
-        dispatch(setRightTabAction(RightTab.LINKS));
-        dispatch(
-          showSnackbar({
-            message: "Добавлены Шаг 1 + Шаг 2 со связью",
-          }),
-        );
-      } catch {
-        dispatch(showSnackbar({ message: "Не удалось добавить строки" }));
-      }
-    },
-    [
-      modalFunctionId,
-      typesAll,
-      createDetail,
-      createTreeEdge,
-      dispatch,
-      uploadAlgorithmFile,
-    ],
+        createDetail,
+        createTreeEdge,
+        dispatch,
+        uploadAlgorithmFile,
+      ],
   );
 
   const createFeedback = useCallback(
-    async (
-      detailId: string,
-      input: FeedbackFormInput,
-    ): Promise<Feedback | null> => {
-      try {
-        const created = await createFeedbackMutation({
-          detailId: Number(detailId),
-          createFeedbackDto: buildFeedbackDto(input),
-        }).unwrap();
+      async (
+          detailId: string,
+          input: FeedbackFormInput,
+      ): Promise<Feedback | null> => {
+        try {
+          const created = await createFeedbackMutation({
+            detailId: Number(detailId),
+            createFeedbackDto: buildFeedbackDto(input),
+          }).unwrap();
 
-        dispatch(showSnackbar({ message: "Обратная связь добавлена" }));
+          dispatch(showSnackbar({ message: "Обратная связь добавлена" }));
 
-        return mapFeedbackApiToFeedback(created);
-      } catch {
-        dispatch(showSnackbar({ message: "Не удалось добавить обратную связь" }));
+          return mapFeedbackApiToFeedback(created);
+        } catch {
+          dispatch(
+              showSnackbar({ message: "Не удалось добавить обратную связь" }),
+          );
 
-        return null;
-      }
-    },
-    [createFeedbackMutation, dispatch],
+          return null;
+        }
+      },
+      [createFeedbackMutation, dispatch],
   );
 
   const updateFeedback = useCallback(
-    async (
-      feedbackId: string,
-      input: FeedbackFormInput,
-    ): Promise<Feedback | null> => {
-      try {
-        const updated = await updateFeedbackMutation({
-          feedbackId: Number(feedbackId),
-          updateFeedbackDto: buildFeedbackDto(input),
-        }).unwrap();
+      async (
+          feedbackId: string,
+          input: FeedbackFormInput,
+      ): Promise<Feedback | null> => {
+        try {
+          const updated = await updateFeedbackMutation({
+            feedbackId: Number(feedbackId),
+            updateFeedbackDto: buildFeedbackDto(input),
+          }).unwrap();
 
-        dispatch(showSnackbar({ message: "Обратная связь обновлена" }));
+          dispatch(showSnackbar({ message: "Обратная связь обновлена" }));
 
-        return mapFeedbackApiToFeedback(updated);
-      } catch {
-        dispatch(showSnackbar({ message: "Не удалось обновить обратную связь" }));
+          return mapFeedbackApiToFeedback(updated);
+        } catch {
+          dispatch(
+              showSnackbar({ message: "Не удалось обновить обратную связь" }),
+          );
 
-        return null;
-      }
-    },
-    [updateFeedbackMutation, dispatch],
+          return null;
+        }
+      },
+      [updateFeedbackMutation, dispatch],
   );
 
   const deleteFeedback = useCallback(
-    async (feedbackId: string): Promise<boolean> => {
-      try {
-        await deleteFeedbackMutation({
-          feedbackId: Number(feedbackId),
-        }).unwrap();
+      async (feedbackId: string): Promise<boolean> => {
+        try {
+          await deleteFeedbackMutation({
+            feedbackId: Number(feedbackId),
+          }).unwrap();
 
-        dispatch(showSnackbar({ message: "Обратная связь удалена" }));
+          dispatch(showSnackbar({ message: "Обратная связь удалена" }));
 
-        return true;
-      } catch {
-        dispatch(showSnackbar({ message: "Не удалось удалить обратную связь" }));
+          return true;
+        } catch {
+          dispatch(
+              showSnackbar({ message: "Не удалось удалить обратную связь" }),
+          );
 
-        return false;
-      }
-    },
-    [deleteFeedbackMutation, dispatch],
+          return false;
+        }
+      },
+      [deleteFeedbackMutation, dispatch],
   );
 
   const setFeedbackAcceptance = useCallback(
-    async (
-      feedbackId: string,
-      isAccepted: boolean,
-      rejectComment?: string,
-    ): Promise<Feedback | null> => {
-      const trimmedRejectComment = rejectComment?.trim() ?? "";
+      async (
+          feedbackId: string,
+          isAccepted: boolean,
+          rejectComment?: string,
+      ): Promise<Feedback | null> => {
+        const trimmedRejectComment = rejectComment?.trim() ?? "";
 
-      if (!isAccepted && !trimmedRejectComment) {
-        dispatch(
-          showSnackbar({
-            message: "Укажите причину отказа в согласовании",
-          }),
-        );
+        if (!isAccepted && !trimmedRejectComment) {
+          dispatch(
+              showSnackbar({
+                message: "Укажите причину отказа в согласовании",
+              }),
+          );
 
-        return null;
-      }
+          return null;
+        }
 
-      const acceptFeedbackDto: AcceptFeedbackDto = {
-        isAccepted,
-        ...(isAccepted ? {} : { rejectComment: trimmedRejectComment }),
-      };
+        const acceptFeedbackDto: AcceptFeedbackDto = {
+          isAccepted,
+          ...(isAccepted ? {} : { rejectComment: trimmedRejectComment }),
+        };
 
-      try {
-        const updated = await acceptFeedbackMutation({
-          feedbackId: Number(feedbackId),
-          acceptFeedbackDto,
-        }).unwrap();
+        try {
+          const updated = await acceptFeedbackMutation({
+            feedbackId: Number(feedbackId),
+            acceptFeedbackDto,
+          }).unwrap();
 
-        dispatch(
-          showSnackbar({
-            message: isAccepted
-              ? "Обратная связь согласована"
-              : "Обратная связь не согласована",
-          }),
-        );
+          dispatch(
+              showSnackbar({
+                message: isAccepted
+                    ? "Обратная связь согласована"
+                    : "Обратная связь не согласована",
+              }),
+          );
 
-        return mapFeedbackApiToFeedback(updated);
-      } catch {
-        dispatch(
-          showSnackbar({
-            message: isAccepted
-              ? "Не удалось согласовать обратную связь"
-              : "Не удалось отказать в согласовании",
-          }),
-        );
+          return mapFeedbackApiToFeedback(updated);
+        } catch {
+          dispatch(
+              showSnackbar({
+                message: isAccepted
+                    ? "Не удалось согласовать обратную связь"
+                    : "Не удалось отказать в согласовании",
+              }),
+          );
 
-        return null;
-      }
-    },
-    [acceptFeedbackMutation, dispatch],
+          return null;
+        }
+      },
+      [acceptFeedbackMutation, dispatch],
   );
 
   const createAction = useCallback(
-    async (
-      detailId: string,
-      input: DetailActionFormInput,
-    ): Promise<DetailAction | null> => {
-      const createActionDto = buildActionDto(input);
+      async (
+          detailId: string,
+          input: DetailActionFormInput,
+      ): Promise<DetailAction | null> => {
+        const createActionDto = buildActionDto(input);
 
-      if (!createActionDto) {
-        dispatch(showSnackbar({ message: "Заполните описание и статус действия" }));
+        if (!createActionDto) {
+          dispatch(
+              showSnackbar({ message: "Заполните описание и статус действия" }),
+          );
 
-        return null;
-      }
+          return null;
+        }
 
-      try {
-        const created = await createActionMutation({
-          detailId: Number(detailId),
-          createActionDto,
-        }).unwrap();
+        try {
+          const created = await createActionMutation({
+            detailId: Number(detailId),
+            createActionDto,
+          }).unwrap();
 
-        dispatch(showSnackbar({ message: "Операция добавлена" }));
+          dispatch(showSnackbar({ message: "Операция добавлена" }));
 
-        return mapActionApiToDetailAction(created, detailId);
-      } catch {
-        dispatch(showSnackbar({ message: "Не удалось добавить операцию" }));
+          return mapActionApiToDetailAction(created, detailId);
+        } catch {
+          dispatch(showSnackbar({ message: "Не удалось добавить операцию" }));
 
-        return null;
-      }
-    },
-    [createActionMutation, dispatch],
+          return null;
+        }
+      },
+      [createActionMutation, dispatch],
+  );
+
+  const updateAction = useCallback(
+      async (
+          actionId: string,
+          input: ActionUpdateInput,
+      ): Promise<DetailAction | null> => {
+        const updateActionDto = buildUpdateActionDto(input);
+
+        if (Object.keys(updateActionDto).length === 0) {
+          dispatch(showSnackbar({ message: "Нет изменений для сохранения" }));
+
+          return null;
+        }
+
+        try {
+          const updated = await updateActionMutation({
+            actionId: Number(actionId),
+            updateActionDto: updateActionDto as never,
+          }).unwrap();
+
+          dispatch(showSnackbar({ message: "Действие обновлено" }));
+
+          return mapActionApiToDetailAction(updated);
+        } catch {
+          dispatch(showSnackbar({ message: "Не удалось обновить действие" }));
+
+          return null;
+        }
+      },
+      [updateActionMutation, dispatch],
   );
 
   const deleteAction = useCallback(
-    async (actionId: string): Promise<boolean> => {
-      try {
-        await deleteActionMutation({ actionId: Number(actionId) }).unwrap();
+      async (actionId: string): Promise<boolean> => {
+        try {
+          await deleteActionMutation({
+            actionId: Number(actionId),
+          }).unwrap();
 
-        dispatch(showSnackbar({ message: "Операция удалена" }));
+          dispatch(showSnackbar({ message: "Операция удалена" }));
 
-        return true;
-      } catch {
-        dispatch(showSnackbar({ message: "Не удалось удалить операцию" }));
+          return true;
+        } catch {
+          dispatch(showSnackbar({ message: "Не удалось удалить операцию" }));
 
-        return false;
-      }
-    },
-    [deleteActionMutation, dispatch],
+          return false;
+        }
+      },
+      [deleteActionMutation, dispatch],
   );
 
   return {
@@ -653,6 +758,7 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
     setFeedbackAcceptance,
     deleteFeedback,
     createAction,
+    updateAction,
     deleteAction,
     addFeedback: createFeedback,
     editFeedback: updateFeedback,

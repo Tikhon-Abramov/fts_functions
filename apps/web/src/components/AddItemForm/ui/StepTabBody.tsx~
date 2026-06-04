@@ -8,7 +8,6 @@ import { Controller } from "react-hook-form";
 import {
     Autocomplete,
     Box,
-    Button,
     Divider,
     FormControl,
     InputLabel,
@@ -145,15 +144,6 @@ export function StepTabBody({
                 shouldValidate: true,
             });
         }
-    };
-
-    const handleClearFile = () => {
-        onChangeAlgorithmFile(null);
-
-        setValue(toRHFName(step, "filePath"), "", {
-            shouldDirty: true,
-            shouldValidate: true,
-        });
     };
 
     return (
@@ -363,9 +353,7 @@ export function StepTabBody({
                                     mt: 0.5,
                                 }}
                             >
-                                {
-                                    "Текст недоступен, потому что выбран файл. Чтобы ввести текст, удалите файл."
-                                }
+                                {"Текст недоступен, потому что выбран файл. Чтобы ввести текст, удалите файл."}
                             </Typography>
                         )}
                     </Box>
@@ -399,27 +387,8 @@ export function StepTabBody({
                                     mt: 0.5,
                                 }}
                             >
-                                {
-                                    "Файл недоступен, потому что заполнен текст. Чтобы прикрепить файл, очистите текстовое поле."
-                                }
+                                {"Файл недоступен, потому что заполнен текст. Чтобы прикрепить файл, очистите текстовое поле."}
                             </Typography>
-                        )}
-
-                        {hasFile && !hasText && (
-                            <Button
-                                size="small"
-                                onClick={handleClearFile}
-                                sx={{
-                                    mt: 0.5,
-                                    textTransform: "none",
-                                    fontSize: "0.7rem",
-                                    color: theme.palette.error.main,
-                                    px: 0,
-                                    minWidth: 0,
-                                }}
-                            >
-                                {"Удалить файл из поля"}
-                            </Button>
                         )}
                     </Box>
 

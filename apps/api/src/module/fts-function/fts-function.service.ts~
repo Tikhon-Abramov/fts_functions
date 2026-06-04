@@ -23,7 +23,7 @@ import type {
   ActionDetailedEntity,
 } from './internal/fts-function.entity';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import {
   DuplicateTreeEdgeException,
@@ -280,6 +280,8 @@ export class FtsFunctionService {
         select: { id: true },
       });
 
+
+
       const updated = await tx.ftsFunctionDetail.findUnique({
         where: { id: detailId },
         select: ftsFunctionDetailDetailedSelect,
@@ -290,6 +292,12 @@ export class FtsFunctionService {
       return updated;
     });
   }
+  // Добавь этот метод внутрь класса FtsFunctionService в apps/api/src/module/fts-function/fts-function.service.ts
+// Также проверь, что в imports service.ts есть ftsFunctionDetailDetailedSelect.
+
+  // Добавь этот метод внутрь класса FtsFunctionService в apps/api/src/module/fts-function/fts-function.service.ts
+// Также проверь, что в imports service.ts есть ftsFunctionDetailDetailedSelect.
+
   async uploadDetailAlgorithmFile(
       detailId: number,
       fileName: string,
@@ -306,6 +314,7 @@ export class FtsFunctionService {
       select: ftsFunctionDetailDetailedSelect,
     });
   }
+
 
   async softDeleteDetail(
       detailId: number,
@@ -478,6 +487,14 @@ export class FtsFunctionService {
     });
   }
 
+
+
+
+
+
+
+
+
   async createAction(
       ftsFunctionDetailId: number,
       dto: CreateActionDto,
@@ -489,6 +506,19 @@ export class FtsFunctionService {
         ftsFunctionDetailId,
         statusId: dto.statusId,
         description: dto.description.trim(),
+        feedbackQualityMetricsId: dto.feedbackQualityMetricsId,
+        problemDescription: dto.problemDescription,
+        initiatorRequisites: dto.initiatorRequisites,
+        deadline: dto.deadline,
+        ...(dto.feedbackSourceIds.length > 0
+            ? {
+                feedbackSources: {
+                  create: dto.feedbackSourceIds.map((feedbackSourceId) => ({
+                    feedbackSourceId,
+                  })),
+                },
+              }
+            : {}),
       },
       select: actionSelect,
     });
@@ -498,17 +528,76 @@ export class FtsFunctionService {
       actionId: number,
       dto: UpdateActionDto,
   ): Promise<ActionDetailedEntity> {
-    return this.prisma.action.update({
-      where: {
-        id: actionId,
-      },
-      data: {
-        ...(dto.statusId !== undefined ? { statusId: dto.statusId } : {}),
-        ...(dto.description !== undefined
-            ? { description: dto.description.trim() }
-            : {}),
-      },
-      select: actionSelect,
+    await this.ensureActionAlive(actionId);
+
+    const {
+      feedbackSourceIds,
+      feedbackQualityMetricsId,
+      problemDescription,
+      initiatorRequisites,
+      deadline,
+      ...actionFields
+    } = dto;
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.action.update({
+        where: {
+          id: actionId,
+        },
+        data: {
+          ...stripUndefined(actionFields as unknown as Record<string, unknown>),
+
+          ...(feedbackQualityMetricsId !== undefined
+              ? { feedbackQualityMetricsId }
+              : {}),
+
+          ...(problemDescription !== undefined
+              ? { problemDescription }
+              : {}),
+
+          ...(initiatorRequisites !== undefined
+              ? { initiatorRequisites }
+              : {}),
+
+          ...(deadline !== undefined
+              ? { deadline }
+              : {}),
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (feedbackSourceIds !== undefined) {
+        await tx.actionToFeedbackSource.deleteMany({
+          where: {
+            actionId,
+          },
+        });
+
+        if (feedbackSourceIds.length > 0) {
+          await tx.actionToFeedbackSource.createMany({
+            data: feedbackSourceIds.map((feedbackSourceId) => ({
+              actionId,
+              feedbackSourceId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      const updated = await tx.action.findUnique({
+        where: {
+          id: actionId,
+        },
+        select: actionSelect,
+      });
+
+      if (!updated) {
+        throw new Error(`Action ${actionId} not found after update`);
+      }
+
+      return updated;
     });
   }
 
@@ -524,6 +613,16 @@ export class FtsFunctionService {
       select: actionSelect,
     });
   }
+
+
+
+
+
+
+
+
+
+
 
   async createTreeEdge(
       dto: CreateFtsFunctionTreeDto,

@@ -64,7 +64,7 @@ export function useRightTabConfig(args: UseRightTabConfigArgs): RightTabDef[] {
             },
             {
                 id: RightTab.ACTION,
-                label: "Действие",
+                label: "Операции",
                 testId: "tab-action",
                 disabled: !hasSelectedRow,
                 render: renderAction,
