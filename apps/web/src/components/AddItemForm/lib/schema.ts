@@ -20,22 +20,22 @@ import {
 import { z } from "zod";
 
 const categoryEnum = z.enum(
-    CATEGORIES as [FtsFunctionCategory, ...FtsFunctionCategory[]],
+  CATEGORIES as [FtsFunctionCategory, ...FtsFunctionCategory[]],
 );
 
 const actionEnum = z.enum(
-    ACTIONS as [FtsFunctionActionType, ...FtsFunctionActionType[]],
+  ACTIONS as [FtsFunctionActionType, ...FtsFunctionActionType[]],
 );
 
 const periodicityEnum = z.enum(
-    PERIODICITIES as [
-      FtsFunctionExecutionFrequency,
-      ...FtsFunctionExecutionFrequency[],
-    ],
+  PERIODICITIES as [
+    FtsFunctionExecutionFrequency,
+    ...FtsFunctionExecutionFrequency[],
+  ],
 );
 
 const complexityEnum = z.enum(
-    COMPLEXITIES as [FtsFunctionComplexity, ...FtsFunctionComplexity[]],
+  COMPLEXITIES as [FtsFunctionComplexity, ...FtsFunctionComplexity[]],
 );
 
 export const stepFieldsSchema = z.object({
@@ -100,12 +100,12 @@ function emptyToUndefined(value: string | undefined): string | undefined {
 }
 
 export function fieldsToData(
-    fields: StepFields,
-    includeTechnologyFields: boolean,
-    algorithmFile?: File | null,
+  fields: StepFields,
+  includeTechnologyFields: boolean,
+  algorithmFile?: File | null,
 ) {
   const technologySelected =
-      includeTechnologyFields && fields.technologicalSolution.trim().length > 0;
+    includeTechnologyFields && fields.technologicalSolution.trim().length > 0;
 
   const filePath = algorithmFile?.name || fields.filePath;
 
@@ -123,8 +123,8 @@ export function fieldsToData(
     actionsCompleteness: emptyToUndefined(fields.actionsCompleteness),
     actionsEffectiveness: emptyToUndefined(fields.actionsEffectiveness),
     technologicalSolution: technologySelected
-        ? emptyToUndefined(fields.technologicalSolution)
-        : undefined,
+      ? emptyToUndefined(fields.technologicalSolution)
+      : undefined,
     number: technologySelected ? emptyToUndefined(fields.number) : undefined,
     responsible: technologySelected ? emptyToUndefined(fields.responsible) : undefined,
     algorithm: technologySelected ? emptyToUndefined(fields.algorithm) : undefined,

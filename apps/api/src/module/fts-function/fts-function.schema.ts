@@ -82,17 +82,14 @@ export const FtsFunctionListQuerySchema = z.object({
     managerInterregionalInspectionIds: idArrayQuery.optional(),
     departmentHeadCentralOfficeIds: idArrayQuery.optional(),
     departmentHeadInterregionalInspectionIds: idArrayQuery.optional(),
-
     ids: idArrayQuery.optional(),
     idNot: positiveInt.optional(),
     idGt: positiveInt.optional(),
     idGte: positiveInt.optional(),
     idLt: positiveInt.optional(),
     idLte: positiveInt.optional(),
-
     includeDeleted: boolFromString.optional(),
     search: z.string().trim().min(1).max(256).optional(),
-
     sortBy: z.enum(['createdAt', 'updatedAt', 'id']).optional(),
     sortDir: z.enum(['asc', 'desc']).optional(),
 });

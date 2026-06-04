@@ -102,7 +102,6 @@ export const actionSelect = {
   problemDescription: true,
   initiatorRequisites: true,
   deadline: true,
-
   status: { select: typeMinimalSelect },
   feedbackQualityMetrics: { select: typeMinimalSelect },
   feedbackSources: {

@@ -217,9 +217,9 @@ export class FtsFunctionService {
       dto: CreateFtsFunctionDetailDto,
   ): Promise<FtsFunctionDetailDetailedEntity> {
     await this.ensureFtsFunctionAlive(ftsFunctionId);
-    await this.validateFtsFunctionDetailWrite(dto as unknown as Record<string, unknown>);
-
-    const detailDto = dto as DetailDtoWithFeedbackSourceId;
+    await this.validateFtsFunctionDetailWrite(
+        dto as unknown as Record<string, unknown>,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const created = await tx.ftsFunctionDetail.create({
@@ -242,6 +242,7 @@ export class FtsFunctionService {
           purpose: dto.purpose ?? null,
           number: dto.number ?? null,
           algorithm: dto.algorithm ?? null,
+          filePath: dto.filePath ?? null,
         },
         select: { id: true },
       });
@@ -309,7 +310,8 @@ export class FtsFunctionService {
         id: detailId,
       },
       data: {
-        algorithm: fileName,
+        algorithm: null,
+        filePath: fileName,
       },
       select: ftsFunctionDetailDetailedSelect,
     });

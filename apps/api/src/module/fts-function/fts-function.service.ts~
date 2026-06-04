@@ -217,9 +217,9 @@ export class FtsFunctionService {
       dto: CreateFtsFunctionDetailDto,
   ): Promise<FtsFunctionDetailDetailedEntity> {
     await this.ensureFtsFunctionAlive(ftsFunctionId);
-    await this.validateFtsFunctionDetailWrite(dto as unknown as Record<string, unknown>);
-
-    const detailDto = dto as DetailDtoWithFeedbackSourceId;
+    await this.validateFtsFunctionDetailWrite(
+        dto as unknown as Record<string, unknown>,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const created = await tx.ftsFunctionDetail.create({
@@ -242,6 +242,7 @@ export class FtsFunctionService {
           purpose: dto.purpose ?? null,
           number: dto.number ?? null,
           algorithm: dto.algorithm ?? null,
+          filePath: dto.filePath ?? null,
         },
         select: { id: true },
       });
@@ -528,7 +529,19 @@ export class FtsFunctionService {
       actionId: number,
       dto: UpdateActionDto,
   ): Promise<ActionDetailedEntity> {
-    await this.ensureActionAlive(actionId);
+    const existingAction = await this.prisma.action.findFirst({
+      where: {
+        id: actionId,
+        isDeleted: false,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!existingAction) {
+      throw new NotFoundException(`Действие ${actionId} не найдено`);
+    }
 
     const {
       feedbackSourceIds,
@@ -594,7 +607,7 @@ export class FtsFunctionService {
       });
 
       if (!updated) {
-        throw new Error(`Action ${actionId} not found after update`);
+        throw new NotFoundException(`Действие ${actionId} не найдено`);
       }
 
       return updated;
