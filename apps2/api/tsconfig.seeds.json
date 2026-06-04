@@ -1,0 +1,29 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./db/seeds-compiled",
+    "rootDir": "./db/seeds",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "declaration": false,
+    "sourceMap": false,
+    "incremental": false,
+    "composite": false,
+    "isolatedModules": false,
+    "skipLibCheck": true,
+    "noEmitOnError": false,
+    "strict": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "target": "ES2022",
+    "baseUrl": ".",
+    "paths": {
+      "src/*": ["src/*"]
+    }
+  },
+  "include": ["db/seeds/**/*"],
+  "exclude": ["node_modules", "dist", "test"]
+}
