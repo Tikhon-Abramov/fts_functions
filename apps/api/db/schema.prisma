@@ -291,8 +291,11 @@ model Type {
   /// Связи с функциями ФНС
   ftsFunctions FtsFunctionToDti[]
 
-  /// Связи с таблицей источников обратных связей
+  /// Связи с таблицей обратных связей
   feedbackSourcesToFeedback FeedbackToFeedbackSource[]
+
+  /// Связи с таблицей действий
+  feedbackSourcesToAction   ActionToFeedbackSource[]
 
   /// Связи с таблицей функций ФНС
   ftsCentralizationToFtsFunctions FtsFunction[] @relation("fts_function__fts_centralization")
@@ -312,9 +315,10 @@ model Type {
   responsibleToFtsFunctionDetails                   FtsFunctionDetail[] @relation("responsible__fts_function_action_type")
   ftsMethodologyStatusToFeedback                    Feedback[]          @relation("feedback__fts_methodology_status")
   feedbackQualityMetricsToFeedback                  Feedback[]          @relation("feedback__feedback_quality_metrics")
+  actions                                           Action[]            @relation("action__status")
+  feedbackQualityMetricsToAction                    Action[]            @relation("action__feedback_quality_metrics")
   ftsFunctionTree                                   FtsFunctionTree[]
-  actions                                           Action[]
-
+  
   @@index([code])
   @@index([category])
   @@index([supertypeId])
@@ -435,6 +439,10 @@ model FtsFunctionDetail {
   responsibleId                   Int?      @map("responsible_id")
   /// Детализация функции ФНС
   ftsFunctionDetails              String?   @map("fts_function_details") @db.Text
+  ///
+  actionsСompleteness             String?   @map("actions_completeness") @db.Text
+  ///
+  actionsEffectiveness            String?   @map("actions_effectiveness") @db.Text
   /// Нормативное основание
   basis                           String?   @map("basis") @db.Text
   /// Артефакт
@@ -447,6 +455,8 @@ model FtsFunctionDetail {
   number                          String?   @map("number") @db.VarChar(64)
   /// Алгоритм срабатывания
   algorithm                       String?   @map("algorithm") @db.Text
+  /// Путь к прикрепляемому файлу
+  filePath                        String?   @map("file_path") @db.VarChar(256)
   /// Дата создания
   createdAt                       DateTime  @default(now()) @map("created_at")
   /// Дата обновления
@@ -588,16 +598,50 @@ model Action {
   statusId            Int    @map("status_id")
   /// Описание действия
   description         String @db.Text @map("description")
+  /// Уникальный идентификатор метрики обратной связи
+  feedbackQualityMetricsId        Int?      @map("feedback_quality_metrics_id")
+  /// Описание проблемы с указанием источника, метрики, способа решения
+  problemDescription              String?   @map("problem_description") @db.Text
+  /// Реквизиты автора инициативы
+  initiatorRequisites             String?   @map("initiator_requisites") @db.Text
+  /// Срок реализации доработки
+  deadline                        DateTime? @map("deadline")
   /// Флаг мягкого удаления
   isDeleted           Boolean   @default(false) @map("is_deleted")
   /// Дата мягкого удаления (если удалена)
   deletedAt           DateTime? @map("deleted_at")
 
   /// Связи
-  ftsFunctionDetail FtsFunctionDetail @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
-  status            Type @relation(fields: [statusId], references: [id])
+  ftsFunctionDetail      FtsFunctionDetail @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
+  status                 Type  @relation("action__status", fields: [statusId], references: [id])
+  feedbackQualityMetrics Type? @relation("action__feedback_quality_metrics", fields: [feedbackQualityMetricsId], references: [id])
+
+  
+  /// Набор источников обратной связи
+  feedbackSources ActionToFeedbackSource[]
 
   @@map("actions")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Таблица связки действия с набором источников обратной связи
+model ActionToFeedbackSource {
+  /// Уникальный идентификатор действия
+  actionId            Int      @map("action_id")
+  /// Уникальный идентификатор источников обратной связи
+  feedbackSourceId    Int      @map("feedback_source_id")
+  /// Дата создания связи
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  /// Связь с таблицей действий
+  action          Action @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  /// Связь с таблицей типов
+  feedbackSource  Type   @relation(fields: [feedbackSourceId], references: [id])
+
+  @@id([actionId, feedbackSourceId])
+  @@index([feedbackSourceId])
+  @@map("action_to_action_sources")
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

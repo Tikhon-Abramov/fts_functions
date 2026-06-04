@@ -71,6 +71,7 @@ export type Row = {
   number?: string;
   responsible?: string;
   algorithm?: string;
+  filePath?: string;
   feedbacks: Feedback[];
   actions: DetailAction[];
 };

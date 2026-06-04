@@ -142,11 +142,14 @@ export const CreateFtsFunctionDetailSchema = z.object({
     responsibleId: positiveInt.nullable().optional(),
     ftsFunctionDetails: z.string().nullable().optional(),
     basis: z.string().nullable().optional(),
+    actionsСompleteness: z.string().nullable().optional(),
+    actionsEffectiveness: z.string().nullable().optional(),
     artifact: z.string().nullable().optional(),
     artifactUsage: z.string().nullable().optional(),
     purpose: z.string().nullable().optional(),
     number: z.string().nullable().optional(),
     algorithm: z.string().nullable().optional(),
+    filePath: z.string().nullable().optional(),
 });
 
 export const UpdateFtsFunctionDetailSchema =
@@ -192,6 +195,11 @@ export class AcceptFeedbackDto extends createZodDto(AcceptFeedbackSchema) {}
 export const CreateActionSchema = z.object({
     statusId: positiveInt,
     description: z.string().trim().min(1),
+    feedbackQualityMetricsId: positiveInt.nullable().optional(),
+    feedbackSourceIds: z.array(positiveInt).optional().default([]),
+    problemDescription: z.string().nullable().optional(),
+    initiatorRequisites: z.string().nullable().optional(),
+    deadline: dateFromJson.nullable().optional(),
 });
 
 export const UpdateActionSchema = CreateActionSchema.partial();
@@ -312,6 +320,16 @@ export const ActionSchema = z.object({
     statusId: z.number(),
     status: typeMinimalSchema,
     description: z.string(),
+    feedbackQualityMetricsId: positiveInt.nullable(),
+    feedbackQualityMetrics: typeMinimalSchema.nullable(),
+    feedbackSources: z.array(
+        z.object({
+            feedbackSource: typeMinimalSchema,
+        }),
+    ),
+    problemDescription: z.string().nullable(),
+    initiatorRequisites: z.string().nullable(),
+    deadline: dateFromJson.nullable(),
 });
 
 export class ActionResponseDto extends createZodDto(ActionSchema) {}
@@ -330,11 +348,14 @@ const FtsFunctionDetailBaseResponseSchema = z.object({
     responsibleId: positiveInt.nullable().optional(),
     ftsFunctionDetails: z.string().nullable(),
     basis: z.string().nullable(),
+    actionsСompleteness: z.string().nullable(),
+    actionsEffectiveness: z.string().nullable(),
     artifact: z.string().nullable(),
     artifactUsage: z.string().nullable(),
     purpose: z.string().nullable(),
     number: z.string().nullable().optional(),
     algorithm: z.string().nullable().optional(),
+    filePath: z.string().nullable().optional(),
     createdAt: z.date(),
     updatedAt: z.date(),
     isDeleted: z.boolean(),

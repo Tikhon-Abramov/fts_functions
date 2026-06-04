@@ -19,11 +19,9 @@ import {
 } from "@mui/material";
 
 export type FileAttachmentInputProps = {
-    label: string;
     fileName?: string;
     selectedFile?: File | null;
     disabled?: boolean;
-    required?: boolean;
     testId?: string;
     isDownloading?: boolean;
     onChangeFile: (file: File | null) => void;
@@ -31,11 +29,9 @@ export type FileAttachmentInputProps = {
 };
 
 export function FileAttachmentInput({
-                                        label,
                                         fileName,
                                         selectedFile,
                                         disabled = false,
-                                        required = false,
                                         testId,
                                         isDownloading = false,
                                         onChangeFile,
@@ -65,18 +61,6 @@ export function FileAttachmentInput({
 
     return (
         <Box data-testid={testId}>
-            <Typography
-                variant="caption"
-                sx={{
-                    display: "block",
-                    color: c.textMuted,
-                    fontSize: "0.66rem",
-                    mb: 0.5,
-                }}
-            >
-                {`${label}${required ? " *" : ""}`}
-            </Typography>
-
             <Paper
                 variant="outlined"
                 sx={{
@@ -224,6 +208,7 @@ export function FileAttachmentInput({
                         sx={{
                             textTransform: "none",
                             fontSize: "0.72rem",
+                            cursor: disabled ? 'no-drop' : undefined,
                             color: c.accentBlue,
                             flexShrink: 0,
                         }}
@@ -233,7 +218,7 @@ export function FileAttachmentInput({
                     >
                         {hasFile ? "Заменить" : "Прикрепить"}
 
-                        <input hidden type="file" onChange={handleChange} />
+                        <input hidden type="file" disabled={disabled} onChange={handleChange} />
                     </Button>
                 </Box>
             </Paper>

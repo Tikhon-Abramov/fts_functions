@@ -143,6 +143,13 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["FtsFunction"],
       }),
+      ftsFunctionControllerGetDownloadV1: build.query<
+        FtsFunctionControllerGetDownloadV1ApiResponse,
+        FtsFunctionControllerGetDownloadV1ApiArg
+      >({
+        query: () => ({ url: `/v1/fts-functions/download` }),
+        providesTags: ["FtsFunction"],
+      }),
       ftsFunctionControllerGetByIdV1: build.query<
         FtsFunctionControllerGetByIdV1ApiResponse,
         FtsFunctionControllerGetByIdV1ApiArg
@@ -202,6 +209,26 @@ const injectedRtkApi = api
           method: "DELETE",
         }),
         invalidatesTags: ["FtsFunction"],
+      }),
+      ftsFunctionControllerUploadDetailAlgorithmFileV1: build.mutation<
+        FtsFunctionControllerUploadDetailAlgorithmFileV1ApiResponse,
+        FtsFunctionControllerUploadDetailAlgorithmFileV1ApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/v1/fts-functions/details/${queryArg.detailId}/algorithm-file`,
+          method: "POST",
+          body: queryArg.body,
+        }),
+        invalidatesTags: ["FtsFunction"],
+      }),
+      ftsFunctionControllerDownloadDetailAlgorithmFileV1: build.query<
+        FtsFunctionControllerDownloadDetailAlgorithmFileV1ApiResponse,
+        FtsFunctionControllerDownloadDetailAlgorithmFileV1ApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/v1/fts-functions/details/${queryArg.detailId}/algorithm-file`,
+        }),
+        providesTags: ["FtsFunction"],
       }),
       ftsFunctionControllerCreateFeedbackV1: build.mutation<
         FtsFunctionControllerCreateFeedbackV1ApiResponse,
@@ -330,13 +357,6 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["FtsFunction"],
       }),
-      ftsFunctionControllerGetDownloadV1: build.query<
-        FtsFunctionControllerGetDownloadV1ApiResponse,
-        FtsFunctionControllerGetDownloadV1ApiArg
-      >({
-        query: () => ({ url: `/v1/fts-functions/download` }),
-        providesTags: ["FtsFunction"],
-      }),
       healthControllerCheckV1: build.query<
         HealthControllerCheckV1ApiResponse,
         HealthControllerCheckV1ApiArg
@@ -444,6 +464,9 @@ export type FtsFunctionControllerCreateV1ApiResponse =
 export type FtsFunctionControllerCreateV1ApiArg = {
   createFtsFunctionDto: CreateFtsFunctionDto;
 };
+export type FtsFunctionControllerGetDownloadV1ApiResponse =
+  /** status 200 Файл успешно выгружен */ Blob;
+export type FtsFunctionControllerGetDownloadV1ApiArg = void;
 export type FtsFunctionControllerGetByIdV1ApiResponse =
   /** status 200 Ресурс успешно найден */ FtsFunctionDetailedResponseDto;
 export type FtsFunctionControllerGetByIdV1ApiArg = {
@@ -475,6 +498,19 @@ export type FtsFunctionControllerUpdateDetailV1ApiArg = {
 export type FtsFunctionControllerSoftDeleteDetailV1ApiResponse =
   /** status 200 Ресурс успешно удален */ FtsFunctionDetailDetailedResponseDto;
 export type FtsFunctionControllerSoftDeleteDetailV1ApiArg = {
+  detailId: string | number;
+};
+export type FtsFunctionControllerUploadDetailAlgorithmFileV1ApiResponse =
+  /** status 200 Ресурс успешно обновлен */ FtsFunctionDetailDetailedResponseDto;
+export type FtsFunctionControllerUploadDetailAlgorithmFileV1ApiArg = {
+  detailId: string | number;
+  body: {
+    file: Blob;
+  };
+};
+export type FtsFunctionControllerDownloadDetailAlgorithmFileV1ApiResponse =
+  /** status 200 Файл успешно выгружен */ Blob;
+export type FtsFunctionControllerDownloadDetailAlgorithmFileV1ApiArg = {
   detailId: string | number;
 };
 export type FtsFunctionControllerCreateFeedbackV1ApiResponse =
@@ -546,9 +582,6 @@ export type FtsFunctionControllerDetachDtiV1ApiArg = {
   id: string | number;
   dtiId: string | number;
 };
-export type FtsFunctionControllerGetDownloadV1ApiResponse =
-  /** status 200 Файл успешно выгружен */ Blob;
-export type FtsFunctionControllerGetDownloadV1ApiArg = void;
 export type HealthControllerCheckV1ApiResponse = unknown;
 export type HealthControllerCheckV1ApiArg = void;
 export type TypeResponseDto = {
@@ -913,11 +946,14 @@ export type FtsFunctionDetailedResponseDto = {
     responsibleId?: ((string | null) | (number | null)) | null;
     ftsFunctionDetails: string | null;
     basis: string | null;
+    actionsСompleteness: string | null;
+    actionsEffectiveness: string | null;
     artifact: string | null;
     artifactUsage: string | null;
     purpose: string | null;
     number?: string | null;
     algorithm?: string | null;
+    filePath?: string | null;
     createdAt: string;
     updatedAt: string;
     isDeleted: boolean;
@@ -1048,6 +1084,62 @@ export type FtsFunctionDetailedResponseDto = {
           | "ACTION_STATUS";
       };
       description: string;
+      feedbackQualityMetricsId: ((string | null) | (number | null)) | null;
+      feedbackQualityMetrics: {
+        id: number;
+        code: string;
+        name: string;
+        category:
+          | "FTS_CENTRALIZATION"
+          | "FTS_FUNCTION_NAME"
+          | "FTS_FUNCTION_STEP"
+          | "FTS_FUNCTION_CATEGORY"
+          | "FTS_FUNCTION_MARKER"
+          | "FTS_FUNCTION_COMPLEXITY"
+          | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+          | "WHO_PERFORMS_ACTION"
+          | "FTS_FUNCTION_ACTION_TYPE"
+          | "FTS_FUNCTION_EFFECTIVENESS"
+          | "FTS_COMPETENCY_CENTER"
+          | "FTS_DTI"
+          | "FTS_FUNCTION_RELATION_TYPE"
+          | "TECHNOLOGICAL_SOLUTION"
+          | "FEEDBACK_SOURCE"
+          | "FEEDBACK_QUALITY_METRICS"
+          | "RESPONSIBLE"
+          | "FTS_METHODOLOGY_STATUS"
+          | "ACTION_STATUS";
+      } | null;
+      feedbackSources: {
+        feedbackSource: {
+          id: number;
+          code: string;
+          name: string;
+          category:
+            | "FTS_CENTRALIZATION"
+            | "FTS_FUNCTION_NAME"
+            | "FTS_FUNCTION_STEP"
+            | "FTS_FUNCTION_CATEGORY"
+            | "FTS_FUNCTION_MARKER"
+            | "FTS_FUNCTION_COMPLEXITY"
+            | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+            | "WHO_PERFORMS_ACTION"
+            | "FTS_FUNCTION_ACTION_TYPE"
+            | "FTS_FUNCTION_EFFECTIVENESS"
+            | "FTS_COMPETENCY_CENTER"
+            | "FTS_DTI"
+            | "FTS_FUNCTION_RELATION_TYPE"
+            | "TECHNOLOGICAL_SOLUTION"
+            | "FEEDBACK_SOURCE"
+            | "FEEDBACK_QUALITY_METRICS"
+            | "RESPONSIBLE"
+            | "FTS_METHODOLOGY_STATUS"
+            | "ACTION_STATUS";
+        };
+      }[];
+      problemDescription: string | null;
+      initiatorRequisites: string | null;
+      deadline: ((string | null) | (string | null)) | null;
     }[];
     ftsFunctionStep: {
       id: number;
@@ -1362,11 +1454,14 @@ export type FtsFunctionDetailDetailedResponseDto = {
   responsibleId?: ((string | null) | (number | null)) | null;
   ftsFunctionDetails: string | null;
   basis: string | null;
+  actionsСompleteness: string | null;
+  actionsEffectiveness: string | null;
   artifact: string | null;
   artifactUsage: string | null;
   purpose: string | null;
   number?: string | null;
   algorithm?: string | null;
+  filePath?: string | null;
   createdAt: string;
   updatedAt: string;
   isDeleted: boolean;
@@ -1497,6 +1592,62 @@ export type FtsFunctionDetailDetailedResponseDto = {
         | "ACTION_STATUS";
     };
     description: string;
+    feedbackQualityMetricsId: ((string | null) | (number | null)) | null;
+    feedbackQualityMetrics: {
+      id: number;
+      code: string;
+      name: string;
+      category:
+        | "FTS_CENTRALIZATION"
+        | "FTS_FUNCTION_NAME"
+        | "FTS_FUNCTION_STEP"
+        | "FTS_FUNCTION_CATEGORY"
+        | "FTS_FUNCTION_MARKER"
+        | "FTS_FUNCTION_COMPLEXITY"
+        | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+        | "WHO_PERFORMS_ACTION"
+        | "FTS_FUNCTION_ACTION_TYPE"
+        | "FTS_FUNCTION_EFFECTIVENESS"
+        | "FTS_COMPETENCY_CENTER"
+        | "FTS_DTI"
+        | "FTS_FUNCTION_RELATION_TYPE"
+        | "TECHNOLOGICAL_SOLUTION"
+        | "FEEDBACK_SOURCE"
+        | "FEEDBACK_QUALITY_METRICS"
+        | "RESPONSIBLE"
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
+    } | null;
+    feedbackSources: {
+      feedbackSource: {
+        id: number;
+        code: string;
+        name: string;
+        category:
+          | "FTS_CENTRALIZATION"
+          | "FTS_FUNCTION_NAME"
+          | "FTS_FUNCTION_STEP"
+          | "FTS_FUNCTION_CATEGORY"
+          | "FTS_FUNCTION_MARKER"
+          | "FTS_FUNCTION_COMPLEXITY"
+          | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+          | "WHO_PERFORMS_ACTION"
+          | "FTS_FUNCTION_ACTION_TYPE"
+          | "FTS_FUNCTION_EFFECTIVENESS"
+          | "FTS_COMPETENCY_CENTER"
+          | "FTS_DTI"
+          | "FTS_FUNCTION_RELATION_TYPE"
+          | "TECHNOLOGICAL_SOLUTION"
+          | "FEEDBACK_SOURCE"
+          | "FEEDBACK_QUALITY_METRICS"
+          | "RESPONSIBLE"
+          | "FTS_METHODOLOGY_STATUS"
+          | "ACTION_STATUS";
+      };
+    }[];
+    problemDescription: string | null;
+    initiatorRequisites: string | null;
+    deadline: ((string | null) | (string | null)) | null;
   }[];
   ftsFunctionStep: {
     id: number;
@@ -1736,11 +1887,14 @@ export type CreateFtsFunctionDetailDto = {
   responsibleId?: ((string | null) | (number | null)) | null;
   ftsFunctionDetails?: string | null;
   basis?: string | null;
+  actionsСompleteness?: string | null;
+  actionsEffectiveness?: string | null;
   artifact?: string | null;
   artifactUsage?: string | null;
   purpose?: string | null;
   number?: string | null;
   algorithm?: string | null;
+  filePath?: string | null;
 };
 export type UpdateFtsFunctionDetailDto = {
   ftsFunctionStepId?: string | number;
@@ -1754,11 +1908,14 @@ export type UpdateFtsFunctionDetailDto = {
   responsibleId?: ((string | null) | (number | null)) | null;
   ftsFunctionDetails?: string | null;
   basis?: string | null;
+  actionsСompleteness?: string | null;
+  actionsEffectiveness?: string | null;
   artifact?: string | null;
   artifactUsage?: string | null;
   purpose?: string | null;
   number?: string | null;
   algorithm?: string | null;
+  filePath?: string | null;
 };
 export type FeedbackResponseDto = {
   id: number;
@@ -1908,14 +2065,80 @@ export type ActionResponseDto = {
       | "ACTION_STATUS";
   };
   description: string;
+  feedbackQualityMetricsId: ((string | null) | (number | null)) | null;
+  feedbackQualityMetrics: {
+    id: number;
+    code: string;
+    name: string;
+    category:
+      | "FTS_CENTRALIZATION"
+      | "FTS_FUNCTION_NAME"
+      | "FTS_FUNCTION_STEP"
+      | "FTS_FUNCTION_CATEGORY"
+      | "FTS_FUNCTION_MARKER"
+      | "FTS_FUNCTION_COMPLEXITY"
+      | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+      | "WHO_PERFORMS_ACTION"
+      | "FTS_FUNCTION_ACTION_TYPE"
+      | "FTS_FUNCTION_EFFECTIVENESS"
+      | "FTS_COMPETENCY_CENTER"
+      | "FTS_DTI"
+      | "FTS_FUNCTION_RELATION_TYPE"
+      | "TECHNOLOGICAL_SOLUTION"
+      | "FEEDBACK_SOURCE"
+      | "FEEDBACK_QUALITY_METRICS"
+      | "RESPONSIBLE"
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
+  } | null;
+  feedbackSources: {
+    feedbackSource: {
+      id: number;
+      code: string;
+      name: string;
+      category:
+        | "FTS_CENTRALIZATION"
+        | "FTS_FUNCTION_NAME"
+        | "FTS_FUNCTION_STEP"
+        | "FTS_FUNCTION_CATEGORY"
+        | "FTS_FUNCTION_MARKER"
+        | "FTS_FUNCTION_COMPLEXITY"
+        | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+        | "WHO_PERFORMS_ACTION"
+        | "FTS_FUNCTION_ACTION_TYPE"
+        | "FTS_FUNCTION_EFFECTIVENESS"
+        | "FTS_COMPETENCY_CENTER"
+        | "FTS_DTI"
+        | "FTS_FUNCTION_RELATION_TYPE"
+        | "TECHNOLOGICAL_SOLUTION"
+        | "FEEDBACK_SOURCE"
+        | "FEEDBACK_QUALITY_METRICS"
+        | "RESPONSIBLE"
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
+    };
+  }[];
+  problemDescription: string | null;
+  initiatorRequisites: string | null;
+  deadline: ((string | null) | (string | null)) | null;
 };
 export type CreateActionDto = {
   statusId: string | number;
   description: string;
+  feedbackQualityMetricsId?: ((string | null) | (number | null)) | null;
+  feedbackSourceIds?: (string | number)[];
+  problemDescription?: string | null;
+  initiatorRequisites?: string | null;
+  deadline?: ((string | null) | (string | null)) | null;
 };
 export type UpdateActionDto = {
   statusId?: string | number;
   description?: string;
+  feedbackQualityMetricsId?: ((string | null) | (number | null)) | null;
+  feedbackSourceIds?: (string | number)[];
+  problemDescription?: string | null;
+  initiatorRequisites?: string | null;
+  deadline?: ((string | null) | (string | null)) | null;
 };
 export type FtsFunctionTreeResponseDto = {
   parentFtsFunctionId: number;
@@ -1947,12 +2170,15 @@ export const {
   useConstantControllerDeleteUserV1Mutation,
   useFtsFunctionControllerListV1Query,
   useFtsFunctionControllerCreateV1Mutation,
+  useFtsFunctionControllerGetDownloadV1Query,
   useFtsFunctionControllerGetByIdV1Query,
   useFtsFunctionControllerUpdateV1Mutation,
   useFtsFunctionControllerSoftDeleteV1Mutation,
   useFtsFunctionControllerCreateDetailV1Mutation,
   useFtsFunctionControllerUpdateDetailV1Mutation,
   useFtsFunctionControllerSoftDeleteDetailV1Mutation,
+  useFtsFunctionControllerUploadDetailAlgorithmFileV1Mutation,
+  useFtsFunctionControllerDownloadDetailAlgorithmFileV1Query,
   useFtsFunctionControllerCreateFeedbackV1Mutation,
   useFtsFunctionControllerUpdateFeedbackV1Mutation,
   useFtsFunctionControllerDeleteFeedbackV1Mutation,
@@ -1965,6 +2191,5 @@ export const {
   useFtsFunctionControllerBatchAttachDtisV1V1Mutation,
   useFtsFunctionControllerAttachDtiV1Mutation,
   useFtsFunctionControllerDetachDtiV1Mutation,
-  useFtsFunctionControllerGetDownloadV1Query,
   useHealthControllerCheckV1Query,
 } = injectedRtkApi;

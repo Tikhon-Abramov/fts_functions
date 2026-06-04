@@ -16,6 +16,7 @@ import {
   Select,
   TextField,
   Tooltip,
+  Typography,
 } from "@mui/material";
 import { findTypeNameByCode } from "src/entities/fts-function/api/mappers";
 import {
@@ -246,12 +247,21 @@ export function StepTabBody({
             theme={theme}
           />
 
+          <Typography
+              variant="caption"
+              sx={{
+                  display: "block",
+                  color: c.textMuted,
+                  fontSize: "0.66rem",
+                  mb: 0.5,
+              }}
+          >
+              {`${algorithmLabel}${technologySelected ? " *" : ""}`}
+          </Typography>
           <FileAttachmentInput
-            label={algorithmLabel}
-            fileName={fields.algorithm}
+            fileName={fields.filePath}
             selectedFile={algorithmFile}
             disabled={!technologySelected}
-            required={technologySelected}
             testId={`add-detail-algorithm-file-${step}`}
             onChangeFile={onChangeAlgorithmFile}
           />

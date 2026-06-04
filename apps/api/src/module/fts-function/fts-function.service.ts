@@ -280,6 +280,8 @@ export class FtsFunctionService {
         select: { id: true },
       });
 
+
+
       const updated = await tx.ftsFunctionDetail.findUnique({
         where: { id: detailId },
         select: ftsFunctionDetailDetailedSelect,
@@ -485,6 +487,14 @@ export class FtsFunctionService {
     });
   }
 
+
+
+
+
+
+
+
+
   async createAction(
       ftsFunctionDetailId: number,
       dto: CreateActionDto,
@@ -496,6 +506,19 @@ export class FtsFunctionService {
         ftsFunctionDetailId,
         statusId: dto.statusId,
         description: dto.description.trim(),
+        feedbackQualityMetricsId: dto.feedbackQualityMetricsId,
+        problemDescription: dto.problemDescription,
+        initiatorRequisites: dto.initiatorRequisites,
+        deadline: dto.deadline,
+        ...(dto.feedbackSourceIds.length > 0
+            ? {
+                feedbackSources: {
+                  create: dto.feedbackSourceIds.map((feedbackSourceId) => ({
+                    feedbackSourceId,
+                  })),
+                },
+              }
+            : {}),
       },
       select: actionSelect,
     });
@@ -505,6 +528,13 @@ export class FtsFunctionService {
       actionId: number,
       dto: UpdateActionDto,
   ): Promise<ActionDetailedEntity> {
+
+    if (dto.feedbackSourceIds?.length) {
+      await this.prisma.actionToFeedbackSource.deleteMany({
+        where: { actionId },
+      });
+    }
+
     return this.prisma.action.update({
       where: {
         id: actionId,
@@ -513,6 +543,19 @@ export class FtsFunctionService {
         ...(dto.statusId !== undefined ? { statusId: dto.statusId } : {}),
         ...(dto.description !== undefined
             ? { description: dto.description.trim() }
+            : {}),
+        feedbackQualityMetricsId: dto.feedbackQualityMetricsId,
+        problemDescription: dto.problemDescription,
+        initiatorRequisites: dto.initiatorRequisites,
+        deadline: dto.deadline,
+        ...(dto.feedbackSourceIds?.length
+            ? {
+                feedbackSources: {
+                  create: dto.feedbackSourceIds.map((feedbackSourceId) => ({
+                    feedbackSourceId,
+                  })),
+                },
+              }
             : {}),
       },
       select: actionSelect,
@@ -531,6 +574,16 @@ export class FtsFunctionService {
       select: actionSelect,
     });
   }
+
+
+
+
+
+
+
+
+
+
 
   async createTreeEdge(
       dto: CreateFtsFunctionTreeDto,

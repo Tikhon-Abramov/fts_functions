@@ -105,7 +105,7 @@ export function RowDetailsEdit({
     const algorithmLabel = getAlgorithmAttachmentLabel(draft.step);
 
     const algorithmFilled = Boolean(
-        String(draft.algorithm ?? "").trim() || algorithmFile,
+        String(draft.algorithm ?? "").trim() || String(draft.filePath ?? "").trim() || algorithmFile,
     );
 
     const technologyValid =
@@ -118,13 +118,13 @@ export function RowDetailsEdit({
         );
 
     const handleDownloadAlgorithmFile = () => {
-        if (!draft.id || !draft.algorithm?.trim() || algorithmFile || isDownloading) {
+        if (!draft.id || !draft.filePath?.trim() || algorithmFile || isDownloading) {
             return;
         }
 
         void downloadDetailAlgorithmFile({
             detailId: Number(draft.id),
-            fallbackFileName: draft.algorithm,
+            fallbackFileName: draft.filePath,
         });
     };
 
@@ -248,18 +248,29 @@ export function RowDetailsEdit({
                                 </>
                             )}
 
-                            {field.key === RowField.ALGORITHM ? (
-                                <FileAttachmentInput
-                                    label={algorithmLabel}
-                                    fileName={String(draft.algorithm ?? "")}
-                                    selectedFile={algorithmFile}
-                                    disabled={technologySelected ? false : !isActualAction}
-                                    required={technologySelected}
-                                    isDownloading={isDownloading}
-                                    testId="details-panel-algorithm-file"
-                                    onChangeFile={onChangeAlgorithmFile}
-                                    onDownloadFile={handleDownloadAlgorithmFile}
-                                />
+                            {field.key === RowField.ALGORITHM_FILE ? (
+                                <>
+                                    <Typography
+                                        variant="caption"
+                                        sx={{
+                                            display: "block",
+                                            color: c.textMuted,
+                                            fontSize: "0.66rem",
+                                            mb: 0.5,
+                                        }}
+                                    >
+                                        {`${algorithmLabel}${technologySelected ? " *" : ""}`}
+                                    </Typography>
+                                    <FileAttachmentInput
+                                        fileName={String(draft.filePath ?? "")}
+                                        selectedFile={algorithmFile}
+                                        disabled={!technologySelected ? true : !isActualAction}
+                                        isDownloading={isDownloading}
+                                        testId="details-panel-algorithm-file"
+                                        onChangeFile={onChangeAlgorithmFile}
+                                        onDownloadFile={handleDownloadAlgorithmFile}
+                                    />
+                                </>
                             ) : (
                                 <DraftField
                                     field={field}
@@ -296,6 +307,7 @@ function DraftField({
                         disabled,
                         onChangeField,
                     }: DraftFieldProps) {
+
     const { t } = useTranslation();
     const theme = useTheme();
     const c = theme.custom;

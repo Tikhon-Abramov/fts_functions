@@ -44,6 +44,7 @@ export const stepFieldsSchema = z.object({
   purpose: z.string(),
   technologicalSolution: z.string(),
   number: z.string(),
+  filePath: z.string(),
   responsible: z.string(),
   algorithm: z.string(),
 });
@@ -73,6 +74,7 @@ export function emptyStep(): StepFields {
     number: "",
     responsible: "",
     algorithm: "",
+    filePath: "",
   };
 }
 

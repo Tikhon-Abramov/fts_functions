@@ -340,11 +340,11 @@ export class FtsFunctionController {
         isDeleted: false,
       },
       select: {
-        algorithm: true,
+        filePath: true,
       },
     });
 
-    const storedFileName = detail?.algorithm?.trim();
+    const storedFileName = detail?.filePath?.trim();
 
     if (!storedFileName) {
       throw new NotFoundException('Файл не прикреплён');

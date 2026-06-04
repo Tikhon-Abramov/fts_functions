@@ -296,6 +296,8 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
         return false;
       }
 
+      
+
       try {
         await updateDetail({
           detailId: Number(id),

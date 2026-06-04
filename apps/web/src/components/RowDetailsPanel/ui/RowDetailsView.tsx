@@ -100,11 +100,11 @@ export function RowDetailsView({
     const algorithmLabel = getAlgorithmAttachmentLabel(row.step);
 
     const handleDownloadAlgorithmFile = () => {
-        if (!row.algorithm?.trim() || isDownloading) return;
+        if (!row.filePath?.trim() || isDownloading) return;
 
         void downloadDetailAlgorithmFile({
             detailId: Number(row.id),
-            fallbackFileName: row.algorithm,
+            fallbackFileName: row.filePath,
         });
     };
 
@@ -244,14 +244,12 @@ export function RowDetailsView({
                     <>
                         <Divider sx={{ borderColor: c.borderLight, my: 0.25 }} />
 
-
-
                         {TECHNOLOGY_FIELDS.map((field) =>
-                            field.key === RowField.ALGORITHM ? (
+                            field.key === RowField.ALGORITHM_FILE ? (
                                 <FileReadField
                                     key={field.key}
                                     label={algorithmLabel}
-                                    fileName={row.algorithm}
+                                    fileName={row.filePath}
                                     c={c}
                                     isDownloading={isDownloading}
                                     onDownload={handleDownloadAlgorithmFile}

@@ -13,7 +13,7 @@ function buildDraft(row: Row): RowDraft {
   return {
     category: row.category,
     detailText: row.detailText ?? "",
-    actionLabel: row.actionLabel,
+    // actionLabel: row.actionLabel,
     who: row.who ?? "",
     periodicity: row.periodicity || DEFAULT_PERIODICITY,
     complexity: row.complexity || DEFAULT_COMPLEXITY,
@@ -25,6 +25,7 @@ function buildDraft(row: Row): RowDraft {
     number: row.number ?? "",
     responsible: row.responsible ?? "",
     algorithm: row.algorithm ?? "",
+    filePath: row.filePath ?? "",
   };
 }
 
@@ -62,6 +63,7 @@ export function useRowDetailsDraft(row: Row | null) {
           number: "",
           responsible: "",
           algorithm: "",
+          filePath: "",
         };
       }
 

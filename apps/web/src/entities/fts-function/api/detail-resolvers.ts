@@ -39,6 +39,7 @@ export type DetailInput = {
   number?: string | undefined;
   responsible?: string | undefined;
   algorithm?: string | undefined;
+  filePath?: string | undefined;
   feedbackSource?: string | undefined;
   feedbackQualityMetric?: string | undefined;
   problemDescription?: string | undefined;
@@ -99,8 +100,9 @@ function hasRequiredTechnologyFields(input: {
   number: string;
   responsible: string;
   algorithm: string;
+  filePath: string;
 }): boolean {
-  return Boolean(input.number && input.responsible && input.algorithm);
+  return Boolean(input.number && input.responsible && (input.algorithm || input.filePath));
 }
 
 function buildFeedbackFields(item: DetailInput): DetailFeedbackFields {
@@ -209,6 +211,7 @@ export function resolveDetailDto(
   const number = trimValue(item.number);
   const responsibleValue = trimValue(item.responsible);
   const algorithm = trimValue(item.algorithm);
+  const filePath = trimValue(item.filePath);
 
   let responsibleId: string | number | null = null;
 
@@ -217,6 +220,7 @@ export function resolveDetailDto(
       number,
       responsible: responsibleValue,
       algorithm,
+      filePath,
     };
 
     if (!hasRequiredTechnologyFields(technologyFields)) {
@@ -286,6 +290,7 @@ export function resolveDetailDto(
     responsibleId,
     number: technologicalSolutionId !== null ? number : null,
     algorithm: technologicalSolutionId !== null ? algorithm : null,
+    filePath: technologicalSolutionId !== null ? filePath : null,
     ftsFunctionEffectivenessId:
         includeFeedbackFields && ftsFunctionEffectivenessId !== null
             ? ftsFunctionEffectivenessId
@@ -347,6 +352,7 @@ export function buildDetailInputFromRow(
     number: merged.number,
     responsible: merged.responsible,
     algorithm: merged.algorithm,
+    filePath: merged.filePath,
     feedbackSource: merged.feedbackSource,
     feedbackQualityMetric: merged.feedbackQualityMetric,
     problemDescription: merged.problemDescription,

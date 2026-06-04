@@ -97,10 +97,21 @@ export const actionSelect = {
   id: true,
   ftsFunctionDetailId: true,
   statusId: true,
-  status: {
-    select: typeMinimalSelect,
-  },
   description: true,
+  feedbackQualityMetricsId: true,
+  problemDescription: true,
+  initiatorRequisites: true,
+  deadline: true,
+
+  status: { select: typeMinimalSelect },
+  feedbackQualityMetrics: { select: typeMinimalSelect },
+  feedbackSources: {
+    select: {
+      feedbackSource: {
+        select: typeMinimalSelect,
+      },
+    },
+  },
 } as const satisfies Prisma.ActionSelect;
 
 export const ftsFunctionDetailDetailedSelect = {
@@ -117,11 +128,14 @@ export const ftsFunctionDetailDetailedSelect = {
   responsibleId: true,
   ftsFunctionDetails: true,
   basis: true,
+  actionsСompleteness: true,
+  actionsEffectiveness: true,
   artifact: true,
   artifactUsage: true,
   purpose: true,
   number: true,
   algorithm: true,
+  filePath: true,
   createdAt: true,
   updatedAt: true,
   isDeleted: true,
@@ -397,8 +411,17 @@ export const downloadActionSelect = {
       ftsFunctionDetails: true,
     },
   },
-  status: {
-    select: typeMinimalSelect,
-  },
   description: true,
+  problemDescription: true,
+  initiatorRequisites: true,
+  deadline: true,
+  status: { select: typeMinimalSelect },
+  feedbackQualityMetrics: { select: typeMinimalSelect },
+  feedbackSources: {
+    select: {
+      feedbackSource: {
+        select: typeMinimalSelect,
+      },
+    },
+  },
 } as const satisfies Prisma.ActionSelect;

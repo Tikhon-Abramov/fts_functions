@@ -69,7 +69,7 @@ export default function RowDetailsPanel({
 
             nextDraft = {
                 ...nextDraft,
-                algorithm: uploadedFileName,
+                filePath: uploadedFileName,
             };
         }
 

@@ -19,6 +19,7 @@ export const RowField = {
   NUMBER: "number",
   RESPONSIBLE: "responsible",
   ALGORITHM: "algorithm",
+  ALGORITHM_FILE: "filePath",
 } as const;
 
 export type RowFieldName = (typeof RowField)[keyof typeof RowField];
