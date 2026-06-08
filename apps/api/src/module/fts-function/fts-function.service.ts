@@ -47,6 +47,7 @@ import {
   ftsFunctionBaseSelect,
   ftsFunctionDetailDetailedSelect,
   ftsFunctionDetailedSelect,
+  ftsFunctionDetailedWithoutActionsSelect,
   ftsFunctionListSelect,
   ftsFunctionToDtiSelect,
   ftsFunctionTreeSelect,
@@ -130,12 +131,40 @@ export class FtsFunctionService {
     const entity = await this.prisma.ftsFunction.findUnique({
       relationLoadStrategy: 'query',
       where: { id },
-      select: ftsFunctionDetailedSelect,
+      select: ftsFunctionDetailedWithoutActionsSelect,
     });
 
     if (!entity) throw new FtsFunctionNotFoundException(id);
 
-    return entity;
+    const detailIds = entity.ftsFunctionDetails.map((detail) => detail.id);
+
+    const actions = detailIds.length
+      ? await this.prisma.action.findMany({
+          where: {
+            isDeleted: false,
+            ftsFunctionDetailId: { in: detailIds },
+          },
+          select: actionSelect,
+          orderBy: { id: 'desc' },
+        })
+      : [];
+
+    const actionsByDetailId = new Map<number, typeof actions>();
+
+    for (const action of actions) {
+      const current = actionsByDetailId.get(action.ftsFunctionDetailId) ?? [];
+
+      current.push(action);
+      actionsByDetailId.set(action.ftsFunctionDetailId, current);
+    }
+
+    return {
+      ...entity,
+      ftsFunctionDetails: entity.ftsFunctionDetails.map((detail) => ({
+        ...detail,
+        actions: actionsByDetailId.get(detail.id) ?? [],
+      })),
+    } as FtsFunctionDetailedEntity;
   }
 
   async create(dto: CreateFtsFunctionDto): Promise<FtsFunctionBaseEntity> {

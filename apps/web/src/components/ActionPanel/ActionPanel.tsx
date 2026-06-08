@@ -6,7 +6,14 @@ import type {
 } from "src/entities/fts-function/types";
 import type { TypeResponseDto } from "src/shared/api/ftsFunctionsApi";
 
-import { Add, Close, DeleteOutline, Edit, Save } from "@mui/icons-material";
+import {
+  Add,
+  Close,
+  DeleteOutline,
+  Edit,
+  FeedbackOutlined,
+  Save,
+} from "@mui/icons-material";
 import {
   Box,
   Button,
@@ -14,7 +21,6 @@ import {
   Dialog,
   DialogActions,
   DialogTitle,
-  Divider,
   FormControl,
   IconButton,
   InputLabel,
@@ -28,11 +34,12 @@ import {
   useTheme,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import {
-  useConstantControllerGetTypesV1Query,
-  useFtsFunctionControllerUpdateActionV1Mutation,
-} from "src/shared/api/ftsFunctionsApi";
+import { useConstantControllerGetTypesV1Query } from "src/shared/api/ftsFunctionsApi";
 import { DICTIONARY_QUERY_OPTIONS } from "src/shared/api/query-options";
+import {
+  DETAIL_TYPE_CATEGORY,
+  FEEDBACK_DETAIL_LABELS,
+} from "src/entities/fts-function/lib/detail-technology";
 import {
   formInputSx,
   formLabelSx,
@@ -45,17 +52,14 @@ type ActionPanelProps = {
   typesAll: TypeResponseDto[];
   onCreateAction: (
     detailId: string,
-    input: DetailActionFormInput & Partial<DetailActionFeedbackFormInput>,
+    input: DetailActionFormInput,
+  ) => Promise<DetailAction | null>;
+  onUpdateAction: (
+    actionId: string,
+    input: Partial<DetailActionFormInput & DetailActionFeedbackFormInput>,
   ) => Promise<DetailAction | null>;
   onDeleteAction: (actionId: string) => Promise<boolean>;
 };
-
-const TYPE_CATEGORY = {
-  ACTION_STATUS: "ACTION_STATUS",
-  FEEDBACK_SOURCE: "FEEDBACK_SOURCE",
-  FEEDBACK_QUALITY_METRICS: "FEEDBACK_QUALITY_METRICS",
-  FTS_METHODOLOGY_STATUS: "FTS_METHODOLOGY_STATUS",
-} as const;
 
 const EMPTY_FORM: DetailActionFormInput = {
   description: "",
@@ -72,25 +76,19 @@ const EMPTY_FEEDBACK_FORM: DetailActionFeedbackFormInput = {
   initiatorAcceptance: "",
 };
 
-type ActionUpdateDto = Record<string, unknown>;
-
-function mergeOptionsByCategory(
+function mergeOptions(
+  category: string,
   baseTypes: TypeResponseDto[],
   loadedTypes: TypeResponseDto[],
-  category: string,
 ): TypeResponseDto[] {
   const map = new Map<number, TypeResponseDto>();
 
   for (const item of baseTypes) {
-    if (item.category === category) {
-      map.set(item.id, item);
-    }
+    if (item.category === category) map.set(item.id, item);
   }
 
   for (const item of loadedTypes) {
-    if (item.category === category) {
-      map.set(item.id, item);
-    }
+    if (item.category === category) map.set(item.id, item);
   }
 
   return Array.from(map.values());
@@ -119,20 +117,34 @@ function isFormValid(form: DetailActionFormInput): boolean {
   return form.description.trim().length > 0 && form.statusId.trim().length > 0;
 }
 
-function sortActions(actions: DetailAction[]): DetailAction[] {
-  return [...actions].sort((a, b) => Number(b.id) - Number(a.id));
+function hasActionFeedback(action: DetailAction | null): boolean {
+  if (!action) return false;
+
+  return Boolean(
+    action.feedbackSourceIds.length ||
+      action.feedbackQualityMetricId ||
+      action.ftsMethodologyStatusId ||
+      action.problemDescription?.trim() ||
+      action.initiatorRequisites?.trim() ||
+      action.deadline?.trim() ||
+      action.initiatorAcceptance?.trim(),
+  );
 }
 
-function hasActionFeedback(input: DetailActionFeedbackFormInput): boolean {
+function isFeedbackFormFilled(form: DetailActionFeedbackFormInput): boolean {
   return Boolean(
-    input.feedbackSourceIds.length ||
-      input.feedbackQualityMetricId ||
-      input.ftsMethodologyStatusId ||
-      input.problemDescription.trim() ||
-      input.initiatorRequisites.trim() ||
-      input.deadline.trim() ||
-      input.initiatorAcceptance.trim(),
+    form.feedbackSourceIds.length &&
+      form.feedbackQualityMetricId.trim() &&
+      form.ftsMethodologyStatusId.trim() &&
+      form.problemDescription.trim() &&
+      form.initiatorRequisites.trim() &&
+      form.deadline.trim() &&
+      form.initiatorAcceptance.trim(),
   );
+}
+
+function sortActions(actions: DetailAction[]): DetailAction[] {
+  return [...actions].sort((a, b) => Number(b.id) - Number(a.id));
 }
 
 function normalizeDateForInput(value: string | undefined): string {
@@ -141,16 +153,17 @@ function normalizeDateForInput(value: string | undefined): string {
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) return "";
-
-  return date.toISOString().slice(0, 10);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
 }
 
-function actionToFeedbackForm(
-  action: DetailAction | null,
-): DetailActionFeedbackFormInput {
-  if (!action) return EMPTY_FEEDBACK_FORM;
+function toActionForm(action: DetailAction): DetailActionFormInput {
+  return {
+    description: action.description,
+    statusId: action.statusId ?? "",
+  };
+}
 
+function toFeedbackForm(action: DetailAction): DetailActionFeedbackFormInput {
   return {
     feedbackSourceIds: action.feedbackSourceIds ?? [],
     feedbackQualityMetricId: action.feedbackQualityMetricId ?? "",
@@ -162,116 +175,25 @@ function actionToFeedbackForm(
   };
 }
 
-function normalizeActionFromApi(
-  raw: unknown,
+function normalizeAction(
+  action: DetailAction,
   fallback?: Partial<DetailAction>,
 ): DetailAction {
-  const action = raw as {
-    id?: number | string;
-    ftsFunctionDetailId?: number | string;
-    statusId?: number | string | null;
-    status?: TypeResponseDto | null;
-    description?: string | null;
-    feedbackSources?: Array<{ feedbackSource?: TypeResponseDto | null }>;
-    feedbackQualityMetricsId?: number | string | null;
-    feedbackQualityMetrics?: TypeResponseDto | null;
-    ftsMethodologyStatusId?: number | string | null;
-    ftsMethodologyStatus?: TypeResponseDto | null;
-    problemDescription?: string | null;
-    initiatorRequisites?: string | null;
-    deadline?: string | Date | null;
-    initiatorAcceptance?: string | null;
-  };
-
   return {
-    id: String(action.id ?? fallback?.id ?? ""),
-    ftsFunctionDetailId:
-      action.ftsFunctionDetailId === undefined
-        ? fallback?.ftsFunctionDetailId
-        : String(action.ftsFunctionDetailId),
-    statusId:
-      action.statusId === undefined || action.statusId === null
-        ? fallback?.statusId ?? null
-        : String(action.statusId),
-    statusCode: action.status?.code ?? fallback?.statusCode ?? "",
-    statusName: action.status?.name ?? fallback?.statusName ?? "",
-    description: action.description ?? fallback?.description ?? "",
+    ...action,
     feedbackSourceIds:
-      action.feedbackSources
-        ?.map((item) => String(item.feedbackSource?.id ?? ""))
-        .filter(Boolean) ??
-      fallback?.feedbackSourceIds ??
-      [],
+      action.feedbackSourceIds ?? fallback?.feedbackSourceIds ?? [],
     feedbackQualityMetricId:
-      action.feedbackQualityMetricsId === undefined ||
-      action.feedbackQualityMetricsId === null
-        ? fallback?.feedbackQualityMetricId ?? null
-        : String(action.feedbackQualityMetricsId),
-    feedbackQualityMetricName:
-      action.feedbackQualityMetrics?.name ??
-      fallback?.feedbackQualityMetricName ??
-      "",
+      action.feedbackQualityMetricId ?? fallback?.feedbackQualityMetricId ?? "",
     ftsMethodologyStatusId:
-      action.ftsMethodologyStatusId === undefined ||
-      action.ftsMethodologyStatusId === null
-        ? fallback?.ftsMethodologyStatusId ?? null
-        : String(action.ftsMethodologyStatusId),
-    ftsMethodologyStatusName:
-      action.ftsMethodologyStatus?.name ??
-      fallback?.ftsMethodologyStatusName ??
-      "",
+      action.ftsMethodologyStatusId ?? fallback?.ftsMethodologyStatusId ?? "",
     problemDescription:
       action.problemDescription ?? fallback?.problemDescription ?? "",
     initiatorRequisites:
       action.initiatorRequisites ?? fallback?.initiatorRequisites ?? "",
-    deadline:
-      action.deadline === undefined || action.deadline === null
-        ? fallback?.deadline ?? ""
-        : String(action.deadline),
+    deadline: action.deadline ?? fallback?.deadline ?? "",
     initiatorAcceptance:
       action.initiatorAcceptance ?? fallback?.initiatorAcceptance ?? "",
-  };
-}
-
-function toPositiveNumber(value: string): number | null {
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
-function toNullableText(value: string): string | null {
-  const trimmed = value.trim();
-
-  return trimmed ? trimmed : null;
-}
-
-function toIsoDeadline(value: string): string | null {
-  const trimmed = value.trim();
-
-  if (!trimmed) return null;
-
-  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
-    ? `${trimmed}T00:00:00.000Z`
-    : trimmed;
-}
-
-function buildActionFeedbackDto(
-  feedback: DetailActionFeedbackFormInput,
-): ActionUpdateDto {
-  return {
-    feedbackSourceIds: feedback.feedbackSourceIds
-      .map(toPositiveNumber)
-      .filter((id): id is number => id !== null),
-    feedbackQualityMetricsId: toPositiveNumber(
-      feedback.feedbackQualityMetricId,
-    ),
-    ftsMethodologyStatusId: toPositiveNumber(
-      feedback.ftsMethodologyStatusId,
-    ),
-    problemDescription: toNullableText(feedback.problemDescription),
-    initiatorRequisites: toNullableText(feedback.initiatorRequisites),
-    deadline: toIsoDeadline(feedback.deadline),
-    initiatorAcceptance: toNullableText(feedback.initiatorAcceptance),
   };
 }
 
@@ -279,75 +201,62 @@ export function ActionPanel({
   row,
   typesAll,
   onCreateAction,
+  onUpdateAction,
   onDeleteAction,
 }: ActionPanelProps) {
   const theme = useTheme();
   const c = theme.custom;
 
-  const { data: actionStatusTypes = [] } = useConstantControllerGetTypesV1Query(
-    { categories: [TYPE_CATEGORY.ACTION_STATUS] },
+  const { data: dictionaryTypes = [] } = useConstantControllerGetTypesV1Query(
+    {
+      categories: [
+        DETAIL_TYPE_CATEGORY.ACTION_STATUS,
+        DETAIL_TYPE_CATEGORY.FEEDBACK_SOURCE,
+        DETAIL_TYPE_CATEGORY.FEEDBACK_QUALITY_METRICS,
+        DETAIL_TYPE_CATEGORY.FTS_METHODOLOGY_STATUS,
+      ],
+    },
     DICTIONARY_QUERY_OPTIONS,
   );
 
-  const { data: feedbackSourceTypes = [] } =
-    useConstantControllerGetTypesV1Query(
-      { categories: [TYPE_CATEGORY.FEEDBACK_SOURCE] },
-      DICTIONARY_QUERY_OPTIONS,
-    );
-
-  const { data: feedbackQualityMetricTypes = [] } =
-    useConstantControllerGetTypesV1Query(
-      { categories: [TYPE_CATEGORY.FEEDBACK_QUALITY_METRICS] },
-      DICTIONARY_QUERY_OPTIONS,
-    );
-
-  const { data: methodologyStatusTypes = [] } =
-    useConstantControllerGetTypesV1Query(
-      { categories: [TYPE_CATEGORY.FTS_METHODOLOGY_STATUS] },
-      DICTIONARY_QUERY_OPTIONS,
-    );
-
-  const [updateActionMutation] =
-    useFtsFunctionControllerUpdateActionV1Mutation();
-
   const statusOptions = useMemo(
     () =>
-      mergeOptionsByCategory(
+      mergeOptions(
+        DETAIL_TYPE_CATEGORY.ACTION_STATUS,
         typesAll,
-        actionStatusTypes,
-        TYPE_CATEGORY.ACTION_STATUS,
+        dictionaryTypes,
       ),
-    [typesAll, actionStatusTypes],
+    [typesAll, dictionaryTypes],
   );
 
   const feedbackSourceOptions = useMemo(
     () =>
-      mergeOptionsByCategory(
+      mergeOptions(
+        DETAIL_TYPE_CATEGORY.FEEDBACK_SOURCE,
         typesAll,
-        feedbackSourceTypes,
-        TYPE_CATEGORY.FEEDBACK_SOURCE,
+        dictionaryTypes,
       ),
-    [typesAll, feedbackSourceTypes],
+    [typesAll, dictionaryTypes],
   );
 
-  const feedbackQualityMetricOptions = useMemo(
+  const feedbackMetricOptions = useMemo(
     () =>
-      mergeOptionsByCategory(
+      mergeOptions(
+        DETAIL_TYPE_CATEGORY.FEEDBACK_QUALITY_METRICS,
         typesAll,
-        feedbackQualityMetricTypes,
-        TYPE_CATEGORY.FEEDBACK_QUALITY_METRICS,
+        dictionaryTypes,
       ),
-    [typesAll, feedbackQualityMetricTypes],
+    [typesAll, dictionaryTypes],
   );
 
   const methodologyStatusOptions = useMemo(
     () =>
-      mergeOptionsByCategory(
+      mergeOptions(
+        DETAIL_TYPE_CATEGORY.FTS_METHODOLOGY_STATUS,
         typesAll,
-        methodologyStatusTypes,
-        TYPE_CATEGORY.FTS_METHODOLOGY_STATUS,
+        dictionaryTypes,
       ),
-    [typesAll, methodologyStatusTypes],
+    [typesAll, dictionaryTypes],
   );
 
   const [actions, setActions] = useState<DetailAction[]>([]);
@@ -359,8 +268,9 @@ export function ActionPanel({
   const [form, setForm] = useState<DetailActionFormInput>(EMPTY_FORM);
   const [feedbackForm, setFeedbackForm] =
     useState<DetailActionFeedbackFormInput>(EMPTY_FEEDBACK_FORM);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [editingExisting, setEditingExisting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [savingFeedback, setSavingFeedback] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -370,53 +280,65 @@ export function ActionPanel({
     setDeleteTarget(null);
     setForm(EMPTY_FORM);
     setFeedbackForm(EMPTY_FEEDBACK_FORM);
+    setFeedbackVisible(false);
+    setEditingExisting(false);
     setSaving(false);
-    setSavingFeedback(false);
     setDeleting(false);
   }, [row?.id, row?.actions]);
 
   const sortedActions = useMemo(() => sortActions(actions), [actions]);
 
-  const isViewMode = selectedAction !== null;
-  const canSave = isFormValid(form) && !saving;
-  const canSaveFeedback =
-    selectedAction !== null && !savingFeedback && selectedAction.id.length > 0;
+  const isCreateMode = selectedAction === null;
+  const isEditable = isCreateMode || editingExisting;
+  const canSaveAction = isFormValid(form) && !saving;
+  const canSaveFeedback = selectedAction && isFeedbackFormFilled(feedbackForm);
 
   const handleOpenCreate = () => {
     setSelectedAction(null);
     setForm(EMPTY_FORM);
     setFeedbackForm(EMPTY_FEEDBACK_FORM);
+    setFeedbackVisible(false);
+    setEditingExisting(false);
     setDialogOpen(true);
   };
 
   const handleOpenView = (action: DetailAction) => {
     setSelectedAction(action);
-    setForm({
-      description: action.description,
-      statusId: action.statusId ?? "",
-    });
-    setFeedbackForm(actionToFeedbackForm(action));
+    setForm(toActionForm(action));
+    setFeedbackForm(toFeedbackForm(action));
+    setFeedbackVisible(hasActionFeedback(action));
+    setEditingExisting(false);
     setDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
-    if (saving || savingFeedback) return;
+    if (saving) return;
 
     setDialogOpen(false);
     setSelectedAction(null);
     setForm(EMPTY_FORM);
     setFeedbackForm(EMPTY_FEEDBACK_FORM);
+    setFeedbackVisible(false);
+    setEditingExisting(false);
+  };
+
+  const patchActionInList = (updated: DetailAction) => {
+    setActions((prev) =>
+      prev.map((action) => (action.id === updated.id ? updated : action)),
+    );
+    setSelectedAction(updated);
+    setForm(toActionForm(updated));
+    setFeedbackForm(toFeedbackForm(updated));
   };
 
   const handleCreate = async () => {
-    if (!row || !canSave) return;
+    if (!row || !canSaveAction) return;
 
     setSaving(true);
 
     const created = await onCreateAction(row.id, {
       description: form.description.trim(),
       statusId: form.statusId,
-      ...feedbackForm,
     });
 
     setSaving(false);
@@ -427,75 +349,97 @@ export function ActionPanel({
       (status) => String(status.id) === String(form.statusId),
     );
 
-    const normalizedCreated: DetailAction = {
+    const normalizedCreated: DetailAction = normalizeAction({
       ...created,
       statusId: created.statusId ?? form.statusId,
       statusCode: created.statusCode ?? selectedStatus?.code ?? "",
       statusName: created.statusName ?? selectedStatus?.name ?? "",
-    };
+    });
 
     setActions((prev) => [normalizedCreated, ...prev]);
-    setDialogOpen(false);
-    setSelectedAction(null);
-    setForm(EMPTY_FORM);
+    setSelectedAction(normalizedCreated);
+    setForm(toActionForm(normalizedCreated));
     setFeedbackForm(EMPTY_FEEDBACK_FORM);
+    setFeedbackVisible(false);
+    setEditingExisting(false);
+  };
+
+  const handleUpdateAction = async () => {
+    if (!selectedAction || !canSaveAction) return;
+
+    setSaving(true);
+
+    const updated = await onUpdateAction(selectedAction.id, {
+      description: form.description.trim(),
+      statusId: form.statusId,
+    });
+
+    setSaving(false);
+
+    if (!updated) return;
+
+    patchActionInList(normalizeAction(updated, selectedAction));
+    setEditingExisting(false);
   };
 
   const handleSaveFeedback = async () => {
-    if (!selectedAction?.id || !canSaveFeedback) return;
+    if (!selectedAction || !canSaveFeedback) return;
 
-    setSavingFeedback(true);
+    setSaving(true);
 
-    try {
-      const updated = await updateActionMutation({
-        actionId: Number(selectedAction.id),
-        updateActionDto: buildActionFeedbackDto(feedbackForm) as never,
-      }).unwrap();
+    const updated = await onUpdateAction(selectedAction.id, {
+      feedbackSourceIds: feedbackForm.feedbackSourceIds,
+      feedbackQualityMetricId: feedbackForm.feedbackQualityMetricId,
+      ftsMethodologyStatusId: feedbackForm.ftsMethodologyStatusId,
+      problemDescription: feedbackForm.problemDescription.trim(),
+      initiatorRequisites: feedbackForm.initiatorRequisites.trim(),
+      deadline: feedbackForm.deadline,
+      initiatorAcceptance: feedbackForm.initiatorAcceptance.trim(),
+    });
 
-      const normalized = normalizeActionFromApi(updated, {
-        ...selectedAction,
-        ...feedbackForm,
-      });
+    setSaving(false);
 
-      setSelectedAction(normalized);
-      setActions((prev) =>
-        prev.map((action) =>
-          action.id === selectedAction.id ? normalized : action,
-        ),
-      );
-    } finally {
-      setSavingFeedback(false);
-    }
+    if (!updated) return;
+
+    patchActionInList(normalizeAction(updated, feedbackForm));
+    setFeedbackVisible(true);
   };
 
   const handleDeleteFeedback = async () => {
-    if (!selectedAction?.id || savingFeedback) return;
+    if (!selectedAction) return;
 
-    setSavingFeedback(true);
+    setSaving(true);
 
-    try {
-      const cleared = EMPTY_FEEDBACK_FORM;
+    const updated = await onUpdateAction(selectedAction.id, {
+      feedbackSourceIds: [],
+      feedbackQualityMetricId: "",
+      ftsMethodologyStatusId: "",
+      problemDescription: "",
+      initiatorRequisites: "",
+      deadline: "",
+      initiatorAcceptance: "",
+    });
 
-      const updated = await updateActionMutation({
-        actionId: Number(selectedAction.id),
-        updateActionDto: buildActionFeedbackDto(cleared) as never,
-      }).unwrap();
+    setSaving(false);
 
-      const normalized = normalizeActionFromApi(updated, {
-        ...selectedAction,
-        ...cleared,
-      });
+    if (!updated) return;
 
-      setFeedbackForm(cleared);
-      setSelectedAction(normalized);
-      setActions((prev) =>
-        prev.map((action) =>
-          action.id === selectedAction.id ? normalized : action,
-        ),
-      );
-    } finally {
-      setSavingFeedback(false);
-    }
+    const normalized: DetailAction = {
+      ...updated,
+      feedbackSourceIds: [],
+      feedbackQualityMetricId: "",
+      feedbackQualityMetricName: "",
+      ftsMethodologyStatusId: "",
+      ftsMethodologyStatusName: "",
+      problemDescription: "",
+      initiatorRequisites: "",
+      deadline: "",
+      initiatorAcceptance: "",
+    };
+
+    patchActionInList(normalized);
+    setFeedbackForm(EMPTY_FEEDBACK_FORM);
+    setFeedbackVisible(false);
   };
 
   const handleDelete = async () => {
@@ -514,6 +458,44 @@ export function ActionPanel({
     );
     setDeleteTarget(null);
   };
+
+  const renderSelectedFeedbackSources = (selected: string[]) => (
+    <Box
+      component="span"
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        gap: 0.25,
+        py: 0.25,
+        minWidth: 0,
+      }}
+    >
+      {selected.map((id) => {
+        const label =
+          feedbackSourceOptions.find(
+            (option) => String(option.id) === String(id),
+          )?.name ?? id;
+
+        return (
+          <Typography
+            key={id}
+            component="span"
+            sx={{
+              display: "block",
+              color: c.textBody,
+              fontSize: "0.76rem",
+              lineHeight: 1.25,
+              whiteSpace: "normal",
+              wordBreak: "break-word",
+            }}
+          >
+            {label}
+          </Typography>
+        );
+      })}
+    </Box>
+  );
 
   if (!row) {
     return (
@@ -564,30 +546,15 @@ export function ActionPanel({
           flexShrink: 0,
         }}
       >
-        <Box sx={{ minWidth: 0 }}>
-          <Typography
-            variant="caption"
-            sx={{
-              color: c.textSecondary,
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              fontSize: "0.65rem",
-            }}
-          >
-            {"Операции"}
-          </Typography>
-
-          <Typography
-            sx={{
-              color: c.textMuted,
-              fontSize: "0.68rem",
-              mt: 0.35,
-            }}
-          >
-            {`Операций: ${actions.length}`}
-          </Typography>
-        </Box>
+        <Typography
+          sx={{
+            color: c.textMuted,
+            fontSize: "0.72rem",
+            fontWeight: 600,
+          }}
+        >
+          {`Операций: ${actions.length}`}
+        </Typography>
 
         <Button
           size="small"
@@ -671,16 +638,31 @@ export function ActionPanel({
             fontWeight: 700,
           }}
         >
-          {isViewMode ? "Операция" : "Новая операция"}
+          {isCreateMode ? "Новая операция" : "Операция"}
 
-          <IconButton
-            onClick={handleCloseDialog}
-            size="small"
-            disabled={saving || savingFeedback}
-            sx={{ color: c.textMuted }}
-          >
-            <Close sx={{ fontSize: 18 }} />
-          </IconButton>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            {!isCreateMode && !editingExisting && (
+              <Tooltip title="Редактировать операцию">
+                <IconButton
+                  size="small"
+                  onClick={() => setEditingExisting(true)}
+                  sx={{ color: c.textMuted }}
+                  data-testid="button-edit-action"
+                >
+                  <Edit sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            <IconButton
+              onClick={handleCloseDialog}
+              size="small"
+              disabled={saving}
+              sx={{ color: c.textMuted }}
+            >
+              <Close sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Box>
         </DialogTitle>
 
         <Box
@@ -701,7 +683,7 @@ export function ActionPanel({
                 description: event.target.value,
               }))
             }
-            disabled={isViewMode || saving}
+            disabled={!isEditable || saving}
             multiline
             rows={4}
             fullWidth
@@ -709,6 +691,7 @@ export function ActionPanel({
             InputLabelProps={{ shrink: true }}
             sx={{
               ...formInputSx(theme),
+              mt: 0.75,
               "& .MuiInputLabel-root": {
                 color: c.textMuted,
                 fontSize: "0.72rem",
@@ -722,7 +705,7 @@ export function ActionPanel({
             data-testid="action-description"
           />
 
-          <FormControl size="small" fullWidth disabled={isViewMode || saving}>
+          <FormControl size="small" fullWidth disabled={!isEditable || saving}>
             <InputLabel sx={formLabelSx(theme)}>
               {"Статус операции *"}
             </InputLabel>
@@ -752,235 +735,260 @@ export function ActionPanel({
             </Select>
           </FormControl>
 
-          <Divider sx={{ borderColor: c.borderLight, my: 0.5 }} />
-
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 1,
-            }}
-          >
-            <Typography
+          {!isCreateMode && feedbackVisible && (
+            <Box
               sx={{
-                color: c.textPrimary,
-                fontSize: "0.85rem",
-                fontWeight: 700,
+                mt: 0.75,
+                pt: 1.25,
+                borderTop: `1px solid ${c.borderLight}`,
+                display: "flex",
+                flexDirection: "column",
+                gap: 1.2,
               }}
             >
-              {"Обратная связь операции"}
-            </Typography>
+              <Typography
+                sx={{
+                  color: c.textPrimary,
+                  fontSize: "0.84rem",
+                  fontWeight: 700,
+                }}
+              >
+                {"Обратная связь операции"}
+              </Typography>
 
-            {isViewMode && hasActionFeedback(feedbackForm) && (
-              <Button
+              <FormControl size="small" fullWidth>
+                <InputLabel sx={formLabelSx(theme)}>
+                  {FEEDBACK_DETAIL_LABELS.feedbackSource}
+                </InputLabel>
+
+                <Select
+                  multiple
+                  value={feedbackForm.feedbackSourceIds}
+                  input={
+                    <OutlinedInput label={FEEDBACK_DETAIL_LABELS.feedbackSource} />
+                  }
+                  onChange={(event) =>
+                    setFeedbackForm((prev) => ({
+                      ...prev,
+                      feedbackSourceIds:
+                        typeof event.target.value === "string"
+                          ? event.target.value.split(",")
+                          : event.target.value.map(String),
+                    }))
+                  }
+                  renderValue={(selected) =>
+                    renderSelectedFeedbackSources(selected)
+                  }
+                  sx={{
+                    ...formSelectSx(theme),
+                    "& .MuiSelect-select": {
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      py: 1,
+                      minHeight: "32px",
+                      whiteSpace: "normal",
+                    },
+                  }}
+                  MenuProps={formMenuSx(theme)}
+                  data-testid="action-feedback-sources"
+                >
+                  {feedbackSourceOptions.map((source) => (
+                    <MenuItem
+                      key={source.id}
+                      value={String(source.id)}
+                      sx={{ fontSize: "0.78rem" }}
+                    >
+                      {source.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" fullWidth>
+                <InputLabel sx={formLabelSx(theme)}>
+                  {FEEDBACK_DETAIL_LABELS.feedbackQualityMetric}
+                </InputLabel>
+
+                <Select
+                  value={feedbackForm.feedbackQualityMetricId}
+                  label={FEEDBACK_DETAIL_LABELS.feedbackQualityMetric}
+                  onChange={(event) =>
+                    setFeedbackForm((prev) => ({
+                      ...prev,
+                      feedbackQualityMetricId: String(event.target.value),
+                    }))
+                  }
+                  sx={formSelectSx(theme)}
+                  MenuProps={formMenuSx(theme)}
+                  data-testid="action-feedback-quality-metric"
+                >
+                  {feedbackMetricOptions.map((metric) => (
+                    <MenuItem
+                      key={metric.id}
+                      value={String(metric.id)}
+                      sx={{ fontSize: "0.78rem" }}
+                    >
+                      {metric.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" fullWidth>
+                <InputLabel sx={formLabelSx(theme)}>
+                  {FEEDBACK_DETAIL_LABELS.methodologyStatus}
+                </InputLabel>
+
+                <Select
+                  value={feedbackForm.ftsMethodologyStatusId}
+                  label={FEEDBACK_DETAIL_LABELS.methodologyStatus}
+                  onChange={(event) =>
+                    setFeedbackForm((prev) => ({
+                      ...prev,
+                      ftsMethodologyStatusId: String(event.target.value),
+                    }))
+                  }
+                  sx={formSelectSx(theme)}
+                  MenuProps={formMenuSx(theme)}
+                  data-testid="action-feedback-methodology-status"
+                >
+                  {methodologyStatusOptions.map((status) => (
+                    <MenuItem
+                      key={status.id}
+                      value={String(status.id)}
+                      sx={{ fontSize: "0.78rem" }}
+                    >
+                      {status.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <TextField
+                label={FEEDBACK_DETAIL_LABELS.problemDescription}
+                value={feedbackForm.problemDescription}
+                onChange={(event) =>
+                  setFeedbackForm((prev) => ({
+                    ...prev,
+                    problemDescription: event.target.value,
+                  }))
+                }
+                multiline
+                rows={3}
+                fullWidth
                 size="small"
-                onClick={handleDeleteFeedback}
-                disabled={savingFeedback}
+                sx={formInputSx(theme)}
+                data-testid="action-feedback-problem"
+              />
+
+              <TextField
+                label={FEEDBACK_DETAIL_LABELS.initiatorRequisites}
+                value={feedbackForm.initiatorRequisites}
+                onChange={(event) =>
+                  setFeedbackForm((prev) => ({
+                    ...prev,
+                    initiatorRequisites: event.target.value,
+                  }))
+                }
+                multiline
+                rows={2}
+                fullWidth
+                size="small"
+                sx={formInputSx(theme)}
+                data-testid="action-feedback-initiator"
+              />
+
+              <TextField
+                label={FEEDBACK_DETAIL_LABELS.deadline}
+                type="date"
+                value={feedbackForm.deadline}
+                onChange={(event) =>
+                  setFeedbackForm((prev) => ({
+                    ...prev,
+                    deadline: event.target.value,
+                  }))
+                }
+                fullWidth
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                sx={formInputSx(theme)}
+                data-testid="action-feedback-deadline"
+              />
+
+              <TextField
+                label={FEEDBACK_DETAIL_LABELS.initiatorAcceptance}
+                value={feedbackForm.initiatorAcceptance}
+                onChange={(event) =>
+                  setFeedbackForm((prev) => ({
+                    ...prev,
+                    initiatorAcceptance: event.target.value,
+                  }))
+                }
+                multiline
+                rows={2}
+                fullWidth
+                size="small"
+                sx={formInputSx(theme)}
+                data-testid="action-feedback-acceptance"
+              />
+
+              <Box
                 sx={{
-                  textTransform: "none",
-                  fontSize: "0.7rem",
-                  color: theme.palette.error.main,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 1,
                 }}
               >
-                {"Удалить обратную связь"}
-              </Button>
-            )}
-          </Box>
+                <Button
+                  size="small"
+                  onClick={handleDeleteFeedback}
+                  disabled={saving}
+                  sx={{
+                    textTransform: "none",
+                    fontSize: "0.72rem",
+                    color: theme.palette.error.main,
+                  }}
+                >
+                  {"Удалить обратную связь"}
+                </Button>
 
-          <FormControl size="small" fullWidth>
-            <InputLabel sx={formLabelSx(theme)}>
-              {"Источник обратной связи"}
-            </InputLabel>
+                <Button
+                  variant="contained"
+                  onClick={handleSaveFeedback}
+                  disabled={!canSaveFeedback || saving}
+                  startIcon={<Save sx={{ fontSize: 15 }} />}
+                  sx={{
+                    textTransform: "none",
+                    fontSize: "0.74rem",
+                    bgcolor: c.saveBtn,
+                    "&:hover": { bgcolor: c.saveBtnHover },
+                    "&.Mui-disabled": {
+                      bgcolor: c.borderMain,
+                      color: c.textDim,
+                    },
+                  }}
+                >
+                  {"Сохранить обратную связь"}
+                </Button>
+              </Box>
+            </Box>
+          )}
 
-            <Select
-              multiple
-              value={feedbackForm.feedbackSourceIds}
-              input={<OutlinedInput label="Источник обратной связи" />}
-              onChange={(event) => {
-                const value = event.target.value;
-
-                setFeedbackForm((prev) => ({
-                  ...prev,
-                  feedbackSourceIds:
-                    typeof value === "string" ? value.split(",") : value,
-                }));
+          {!isCreateMode && !feedbackVisible && (
+            <Button
+              startIcon={<FeedbackOutlined sx={{ fontSize: 16 }} />}
+              onClick={() => setFeedbackVisible(true)}
+              sx={{
+                alignSelf: "flex-start",
+                textTransform: "none",
+                fontSize: "0.76rem",
+                color: c.accentBlue,
               }}
-              sx={formSelectSx(theme)}
-              MenuProps={formMenuSx(theme)}
-              data-testid="action-feedback-source"
-              renderValue={(selected) =>
-                selected
-                  .map(
-                    (id) =>
-                      feedbackSourceOptions.find(
-                        (option) => String(option.id) === String(id),
-                      )?.name ?? id,
-                  )
-                  .join(", ")
-              }
             >
-              {feedbackSourceOptions.map((source) => (
-                <MenuItem
-                  key={source.id}
-                  value={String(source.id)}
-                  sx={{ fontSize: "0.78rem" }}
-                >
-                  {source.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" fullWidth>
-            <InputLabel sx={formLabelSx(theme)}>
-              {"Метрики качества процесса в рамках обратной связи"}
-            </InputLabel>
-
-            <Select
-              value={feedbackForm.feedbackQualityMetricId}
-              label="Метрики качества процесса в рамках обратной связи"
-              onChange={(event) =>
-                setFeedbackForm((prev) => ({
-                  ...prev,
-                  feedbackQualityMetricId: String(event.target.value),
-                }))
-              }
-              sx={formSelectSx(theme)}
-              MenuProps={formMenuSx(theme)}
-              data-testid="action-feedback-quality-metric"
-            >
-              <MenuItem
-                value=""
-                sx={{
-                  fontSize: "0.78rem",
-                  fontStyle: "italic",
-                  color: c.textDim,
-                }}
-              >
-                {"— не выбрано —"}
-              </MenuItem>
-
-              {feedbackQualityMetricOptions.map((metric) => (
-                <MenuItem
-                  key={metric.id}
-                  value={String(metric.id)}
-                  sx={{ fontSize: "0.78rem" }}
-                >
-                  {metric.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" fullWidth>
-            <InputLabel sx={formLabelSx(theme)}>
-              {"Методология позиции ЦА ФНС России"}
-            </InputLabel>
-
-            <Select
-              value={feedbackForm.ftsMethodologyStatusId}
-              label="Методология позиции ЦА ФНС России"
-              onChange={(event) =>
-                setFeedbackForm((prev) => ({
-                  ...prev,
-                  ftsMethodologyStatusId: String(event.target.value),
-                }))
-              }
-              sx={formSelectSx(theme)}
-              MenuProps={formMenuSx(theme)}
-              data-testid="action-feedback-methodology-status"
-            >
-              <MenuItem
-                value=""
-                sx={{
-                  fontSize: "0.78rem",
-                  fontStyle: "italic",
-                  color: c.textDim,
-                }}
-              >
-                {"— не выбрано —"}
-              </MenuItem>
-
-              {methodologyStatusOptions.map((status) => (
-                <MenuItem
-                  key={status.id}
-                  value={String(status.id)}
-                  sx={{ fontSize: "0.78rem" }}
-                >
-                  {status.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <TextField
-            label="Описание проблем с указанием источника, метрики способа решения"
-            value={feedbackForm.problemDescription}
-            onChange={(event) =>
-              setFeedbackForm((prev) => ({
-                ...prev,
-                problemDescription: event.target.value,
-              }))
-            }
-            fullWidth
-            size="small"
-            multiline
-            rows={3}
-            sx={formInputSx(theme)}
-            data-testid="action-feedback-problem-description"
-          />
-
-          <TextField
-            label="Реквизиты автора инициативы"
-            value={feedbackForm.initiatorRequisites}
-            onChange={(event) =>
-              setFeedbackForm((prev) => ({
-                ...prev,
-                initiatorRequisites: event.target.value,
-              }))
-            }
-            fullWidth
-            size="small"
-            multiline
-            rows={2}
-            sx={formInputSx(theme)}
-            data-testid="action-feedback-initiator-requisites"
-          />
-
-          <TextField
-            label="Срок реализации доработки"
-            type="date"
-            value={feedbackForm.deadline}
-            onChange={(event) =>
-              setFeedbackForm((prev) => ({
-                ...prev,
-                deadline: event.target.value,
-              }))
-            }
-            fullWidth
-            size="small"
-            InputLabelProps={{ shrink: true }}
-            sx={formInputSx(theme)}
-            data-testid="action-feedback-deadline"
-          />
-
-          <TextField
-            label="Акцепт автора инициативы"
-            value={feedbackForm.initiatorAcceptance}
-            onChange={(event) =>
-              setFeedbackForm((prev) => ({
-                ...prev,
-                initiatorAcceptance: event.target.value,
-              }))
-            }
-            fullWidth
-            size="small"
-            multiline
-            rows={2}
-            sx={formInputSx(theme)}
-            data-testid="action-feedback-initiator-acceptance"
-          />
+              {"Обратная связь"}
+            </Button>
+          )}
         </Box>
 
         <DialogActions
@@ -993,37 +1001,21 @@ export function ActionPanel({
         >
           <Button
             onClick={handleCloseDialog}
-            disabled={saving || savingFeedback}
+            disabled={saving}
             sx={{
               textTransform: "none",
               fontSize: "0.78rem",
               color: c.textSecondary,
             }}
           >
-            {isViewMode ? "Закрыть" : "Отмена"}
+            {isCreateMode ? "Отмена" : "Закрыть"}
           </Button>
 
-          {isViewMode ? (
-            <Button
-              variant="contained"
-              onClick={handleSaveFeedback}
-              disabled={!canSaveFeedback}
-              startIcon={<Save sx={{ fontSize: 16 }} />}
-              sx={{
-                textTransform: "none",
-                fontSize: "0.78rem",
-                bgcolor: c.saveBtn,
-                "&:hover": { bgcolor: c.saveBtnHover },
-              }}
-              data-testid="button-save-action-feedback"
-            >
-              {savingFeedback ? "Сохранение..." : "Сохранить обратную связь"}
-            </Button>
-          ) : (
+          {isCreateMode && (
             <Button
               variant="contained"
               onClick={handleCreate}
-              disabled={!canSave}
+              disabled={!canSaveAction}
               sx={{
                 textTransform: "none",
                 fontSize: "0.78rem",
@@ -1033,6 +1025,24 @@ export function ActionPanel({
               data-testid="button-create-action"
             >
               {saving ? "Сохранение..." : "Создать"}
+            </Button>
+          )}
+
+          {!isCreateMode && editingExisting && (
+            <Button
+              variant="contained"
+              onClick={handleUpdateAction}
+              disabled={!canSaveAction}
+              startIcon={<Save sx={{ fontSize: 16 }} />}
+              sx={{
+                textTransform: "none",
+                fontSize: "0.78rem",
+                bgcolor: c.saveBtn,
+                "&:hover": { bgcolor: c.saveBtnHover },
+              }}
+              data-testid="button-update-action"
+            >
+              {saving ? "Сохранение..." : "Сохранить"}
             </Button>
           )}
         </DialogActions>
@@ -1065,7 +1075,7 @@ export function ActionPanel({
 
         <Box sx={{ px: 3, pb: 1 }}>
           <Typography sx={{ color: c.textMuted, fontSize: "0.8rem" }}>
-            {"Операция будет удалена из карточки операции."}
+            {"Операция будет удалена из списка операций."}
           </Typography>
         </Box>
 
@@ -1118,16 +1128,7 @@ function ActionCard({
   const theme = useTheme();
   const c = theme.custom;
   const canDelete = Boolean(action.id);
-
-  const hasFeedback = Boolean(
-    action.feedbackSourceIds?.length ||
-      action.feedbackQualityMetricId ||
-      action.ftsMethodologyStatusId ||
-      action.problemDescription ||
-      action.initiatorRequisites ||
-      action.deadline ||
-      action.initiatorAcceptance,
-  );
+  const hasFeedback = hasActionFeedback(action);
 
   return (
     <Paper
@@ -1184,7 +1185,7 @@ function ActionCard({
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
           {hasFeedback && (
             <Tooltip title="Есть обратная связь">
-              <Edit
+              <FeedbackOutlined
                 sx={{
                   fontSize: 16,
                   color: c.accentBlue,

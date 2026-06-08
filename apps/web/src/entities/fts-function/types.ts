@@ -53,10 +53,8 @@ export type DetailAction = {
   feedbackSourceIds: string[];
   feedbackQualityMetricId?: string | null;
   feedbackQualityMetricName?: string;
-
   ftsMethodologyStatusId?: string | null;
   ftsMethodologyStatusName?: string;
-
   problemDescription?: string;
   initiatorRequisites?: string;
   deadline?: string;
@@ -97,9 +95,17 @@ export type Row = {
   technologicalSolution?: string;
   number?: string;
   responsible?: string;
+  /**
+   * Текстовое значение поля:
+   * - Шаг 1: "Алгоритм срабатывания"
+   * - Шаг 2: "Результат отработки"
+   */
   algorithm?: string;
+  /**
+   * Имя прикрепленного файла для того же поля.
+   * Сам файл хранится на бэке, здесь только имя/путь из API.
+   */
   filePath?: string;
-
   feedbackSource?: string;
   feedbackQualityMetric?: string;
   problemDescription?: string;

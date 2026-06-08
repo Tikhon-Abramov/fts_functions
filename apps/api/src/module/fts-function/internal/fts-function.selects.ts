@@ -182,6 +182,76 @@ export const ftsFunctionDetailDetailedSelect = {
   },
 } as const satisfies Prisma.FtsFunctionDetailSelect;
 
+const { actions: _actionsForSeparateLoading, ...ftsFunctionDetailDetailedWithoutActionsFields } =
+  ftsFunctionDetailDetailedSelect;
+
+export const ftsFunctionDetailedWithoutActionsSelect = {
+  ...ftsFunctionBaseSelect,
+  ftsCentralization: {
+    select: typeMinimalSelect,
+  },
+  ftsFunctionName: {
+    select: typeMinimalSelect,
+  },
+  competencyCenter: {
+    select: typeMinimalSelect,
+  },
+  ftsFunctionMarker: {
+    select: typeMinimalSelect,
+  },
+  curatorCentralOffice: {
+    select: userMinimalSelect,
+  },
+  managerInterregionalInspection: {
+    select: userMinimalSelect,
+  },
+  departmentHeadCentralOffice: {
+    select: userMinimalSelect,
+  },
+  departmentHeadInterregionalInspection: {
+    select: userMinimalSelect,
+  },
+  dtis: {
+    select: {
+      dtiId: true,
+      createdAt: true,
+      dti: {
+        select: typeMinimalSelect,
+      },
+    },
+  },
+  ftsFunctionDetails: {
+    where: {
+      isDeleted: false,
+    },
+    select: {
+      ...ftsFunctionDetailDetailedWithoutActionsFields,
+      parents: {
+        select: {
+          parentFtsFunctionId: true,
+          childFtsFunctionId: true,
+          relationTypeId: true,
+          createdAt: true,
+          relationType: {
+            select: typeMinimalSelect,
+          },
+        },
+      },
+      children: {
+        select: {
+          parentFtsFunctionId: true,
+          childFtsFunctionId: true,
+          relationTypeId: true,
+          createdAt: true,
+          relationType: {
+            select: typeMinimalSelect,
+          },
+        },
+      },
+    },
+  },
+} as const satisfies Prisma.FtsFunctionSelect;
+
 export const ftsFunctionDetailedSelect = {
   ...ftsFunctionBaseSelect,
   ftsCentralization: {

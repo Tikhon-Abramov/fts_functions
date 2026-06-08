@@ -24,17 +24,17 @@ import { FtsFunctionStep } from "src/entities/fts-function/model/fts-function-st
 export type ConstantsLookup = {
   typesById: Map<number, TypeResponseDto>;
   typesByCode: Map<string, TypeResponseDto>;
-  colorByCode: Map<string, string | null | undefined>;
+  colorByCode: Map<string, string | undefined>;
   usersById: Map<number, UserResponseDto>;
 };
 
 export function buildConstantsLookup(
-    types: TypeResponseDto[] | undefined,
-    users: UserResponseDto[] | undefined,
+  types: TypeResponseDto[] | undefined,
+  users: UserResponseDto[] | undefined,
 ): ConstantsLookup {
   const typesById = new Map<number, TypeResponseDto>();
   const typesByCode = new Map<string, TypeResponseDto>();
-  const colorByCode = new Map<string, string | null | undefined>();
+  const colorByCode = new Map<string, string | undefined>();
 
   types?.forEach((type) => {
     typesById.set(type.id, type);
@@ -52,15 +52,15 @@ export function buildConstantsLookup(
 }
 
 export function findTypeIdByCode(
-    types: TypeResponseDto[] | undefined,
-    code: string,
+  types: TypeResponseDto[] | undefined,
+  code: string,
 ): number | undefined {
   return types?.find((type) => type.code === code)?.id;
 }
 
 export function findTypeNameByCode(
-    types: TypeResponseDto[] | undefined,
-    code: string,
+  types: TypeResponseDto[] | undefined,
+  code: string,
 ): string {
   return types?.find((type) => type.code === code)?.name ?? code;
 }
@@ -70,47 +70,47 @@ function asStep(code: string | undefined | null): FtsFunctionStep | null {
 }
 
 function asCategory(
-    code: string | undefined | null,
+  code: string | undefined | null,
 ): FtsFunctionCategory | null {
   return code && code in FtsFunctionCategory
-      ? (code as FtsFunctionCategory)
-      : null;
+    ? (code as FtsFunctionCategory)
+    : null;
 }
 
 function asAction(
-    code: string | undefined | null,
+  code: string | undefined | null,
 ): FtsFunctionActionType | null {
   return code && code in FtsFunctionActionType
-      ? (code as FtsFunctionActionType)
-      : null;
+    ? (code as FtsFunctionActionType)
+    : null;
 }
 
 function asComplexity(
-    code: string | undefined | null,
+  code: string | undefined | null,
 ): FtsFunctionComplexity | null {
   return code && code in FtsFunctionComplexity
-      ? (code as FtsFunctionComplexity)
-      : null;
+    ? (code as FtsFunctionComplexity)
+    : null;
 }
 
 function asFrequency(
-    code: string | undefined | null,
+  code: string | undefined | null,
 ): FtsFunctionExecutionFrequency | null {
   return code && code in FtsFunctionExecutionFrequency
-      ? (code as FtsFunctionExecutionFrequency)
-      : null;
+    ? (code as FtsFunctionExecutionFrequency)
+    : null;
 }
 
 function asRelation(
-    code: string | undefined | null,
+  code: string | undefined | null,
 ): FtsFunctionRelationType | null {
   return code && code in FtsFunctionRelationType
-      ? (code as FtsFunctionRelationType)
-      : null;
+    ? (code as FtsFunctionRelationType)
+    : null;
 }
 
 function asFeedbackAgreementStatus(
-    status: string | undefined | null,
+  status: string | undefined | null,
 ): FeedbackAgreementStatus | null {
   if (status === "PENDING") return "PENDING";
   if (status === "ACCEPTED") return "ACCEPTED";
@@ -120,8 +120,8 @@ function asFeedbackAgreementStatus(
 }
 
 function typeName(
-    lookup: ConstantsLookup,
-    id: number | null | undefined,
+  lookup: ConstantsLookup,
+  id: number | null | undefined,
 ): string {
   if (id == null) return "";
 
@@ -129,8 +129,8 @@ function typeName(
 }
 
 function userName(
-    lookup: ConstantsLookup,
-    id: number | null | undefined,
+  lookup: ConstantsLookup,
+  id: number | null | undefined,
 ): string {
   if (id == null) return "";
 
@@ -146,7 +146,7 @@ function toIsoString(value: string | Date | undefined | null): string {
 }
 
 function optionalString(
-    value: number | string | null | undefined,
+  value: number | string | null | undefined,
 ): string | undefined {
   if (value === null || value === undefined) return undefined;
 
@@ -160,9 +160,7 @@ function stringId(value: number | string | null | undefined): string | null {
 }
 
 type DetailItem = FtsFunctionDetailedResponseDto["ftsFunctionDetails"][number];
-
 type DetailFeedbackApi = NonNullable<DetailItem["feedbacks"]>[number];
-
 type FeedbackApi = FeedbackResponseDto | DetailFeedbackApi;
 
 type ApiFeedbackSource = {
@@ -207,9 +205,16 @@ type ApiActionLike = {
     code?: string | null;
     name?: string | null;
   } | null;
+  ftsMethodologyStatusId?: number | string | null;
+  ftsMethodologyStatus?: {
+    id?: number | string | null;
+    code?: string | null;
+    name?: string | null;
+  } | null;
   problemDescription?: string | null;
   initiatorRequisites?: string | null;
   deadline?: string | Date | null;
+  initiatorAcceptance?: string | null;
 };
 
 type DetailItemExtra = DetailItem & {
@@ -220,6 +225,7 @@ type DetailItemExtra = DetailItem & {
   } | null;
   actionsEffectiveness?: string | null;
   actionsСompleteness?: string | null;
+  actionsCompleteness?: string | null;
   actions?: unknown[] | null;
   feedbackSources?: Array<{
     feedbackSource?: {
@@ -249,61 +255,67 @@ type DetailItemExtra = DetailItem & {
 };
 
 export function mapActionApiToDetailAction(
-    apiAction: unknown,
-    fallbackDetailId?: string,
+  apiAction: unknown,
+  fallbackDetailId?: string,
 ): DetailAction {
   const action = apiAction as ApiActionLike;
-
   const statusId = action.statusId ?? action.status?.id ?? null;
   const detailId = optionalString(action.ftsFunctionDetailId) ?? fallbackDetailId;
-
   const feedbackQualityMetricId =
-      action.feedbackQualityMetricsId ??
-      action.feedbackQualityMetricId ??
-      action.feedbackQualityMetrics?.id ??
-      null;
-
+    action.feedbackQualityMetricsId ??
+    action.feedbackQualityMetricId ??
+    action.feedbackQualityMetrics?.id ??
+    null;
+  const ftsMethodologyStatusId =
+    action.ftsMethodologyStatusId ??
+    action.ftsMethodologyStatus?.id ??
+    null;
   const feedbackSources = Array.isArray(action.feedbackSources)
-      ? action.feedbackSources
-      : [];
+    ? action.feedbackSources
+    : [];
 
   return {
     id: String(action.id ?? ""),
     ...(detailId !== undefined ? { ftsFunctionDetailId: detailId } : {}),
     statusId:
-        statusId === null || statusId === undefined ? null : String(statusId),
+      statusId === null || statusId === undefined ? null : String(statusId),
     statusCode: action.status?.code ?? "",
     statusName: action.status?.name ?? "",
     description: action.description ?? "",
     feedbackSourceIds: feedbackSources
-        .map((item) => item.feedbackSource?.id ?? item.feedbackSourceId)
-        .filter((id): id is number | string => id !== null && id !== undefined)
-        .map(String),
+      .map((item) => item.feedbackSource?.id ?? item.feedbackSourceId)
+      .filter((id): id is number | string => id !== null && id !== undefined)
+      .map(String),
     feedbackQualityMetricId:
-        feedbackQualityMetricId === null || feedbackQualityMetricId === undefined
-            ? null
-            : String(feedbackQualityMetricId),
+      feedbackQualityMetricId === null || feedbackQualityMetricId === undefined
+        ? null
+        : String(feedbackQualityMetricId),
     feedbackQualityMetricName: action.feedbackQualityMetrics?.name ?? "",
+    ftsMethodologyStatusId:
+      ftsMethodologyStatusId === null || ftsMethodologyStatusId === undefined
+        ? null
+        : String(ftsMethodologyStatusId),
+    ftsMethodologyStatusName: action.ftsMethodologyStatus?.name ?? "",
     problemDescription: action.problemDescription ?? "",
     initiatorRequisites: action.initiatorRequisites ?? "",
     deadline: toIsoString(action.deadline).slice(0, 10),
+    initiatorAcceptance: action.initiatorAcceptance ?? "",
   };
 }
 
 export function mapFeedbackApiToFeedback(apiFeedback: FeedbackApi): Feedback {
   const feedbackSources = Array.isArray(apiFeedback.feedbackSources)
-      ? (apiFeedback.feedbackSources as ApiFeedbackSource[])
-      : [];
-
+    ? (apiFeedback.feedbackSources as ApiFeedbackSource[])
+    : [];
   const historyItems = Array.isArray(apiFeedback.feedbackAgreementHistory)
-      ? (apiFeedback.feedbackAgreementHistory as ApiFeedbackHistoryItem[])
-      : [];
+    ? (apiFeedback.feedbackAgreementHistory as ApiFeedbackHistoryItem[])
+    : [];
 
   return {
     id: String(apiFeedback.id),
     ftsFunctionDetailId: String(apiFeedback.ftsFunctionDetailId),
     feedbackSourceIds: feedbackSources.map((item) =>
-        String(item.feedbackSource.id),
+      String(item.feedbackSource.id),
     ),
     feedbackQualityMetricId: stringId(apiFeedback.feedbackQualityMetricsId),
     ftsMethodologyStatusId: stringId(apiFeedback.ftsMethodologyStatusId),
@@ -329,8 +341,8 @@ export function mapFeedbackApiToFeedback(apiFeedback: FeedbackApi): Feedback {
 }
 
 export function mapFtsFunctionApiToFunctionRecord(
-    apiFunction: FtsFunctionControllerListV1ApiResponse["items"][number],
-    lookup: ConstantsLookup,
+  apiFunction: FtsFunctionControllerListV1ApiResponse["items"][number],
+  lookup: ConstantsLookup,
 ): FunctionRecord {
   return {
     id: apiFunction.id,
@@ -341,17 +353,19 @@ export function mapFtsFunctionApiToFunctionRecord(
     strategyProjects: apiFunction.dtis?.map((dti) => dti.dti.name) ?? [],
     curatorCA: userName(lookup, apiFunction.curatorCentralOfficeId),
     nuZnu: userName(lookup, apiFunction.departmentHeadCentralOfficeId),
-    managerMiudol: userName(lookup, apiFunction.managerInterregionalInspectionId),
+    managerMiudol: userName(
+      lookup,
+      apiFunction.managerInterregionalInspectionId,
+    ),
     niZni: userName(
-        lookup,
-        apiFunction.departmentHeadInterregionalInspectionId,
+      lookup,
+      apiFunction.departmentHeadInterregionalInspectionId,
     ),
   };
 }
 
 export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
   const extra = detail as DetailItemExtra;
-
   const step = asStep(detail.ftsFunctionStep?.code);
   const category = asCategory(detail.ftsFunctionCategory?.code);
   const action = asAction(extra.ftsFunctionActionType?.code);
@@ -360,11 +374,9 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
 
   const frequency = asFrequency(detail.ftsFunctionExecutionFrequency?.code);
   const complexity = asComplexity(detail.ftsFunctionComplexity?.code);
-
   const actions = (extra.actions ?? [])
-      .filter((item) => item !== null && item !== undefined)
-      .map((item) => mapActionApiToDetailAction(item, String(detail.id)));
-
+    .filter((item) => item !== null && item !== undefined)
+    .map((item) => mapActionApiToDetailAction(item, String(detail.id)));
   const firstFeedback = detail.feedbacks?.[0];
 
   return {
@@ -381,7 +393,9 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
     artifactUsage: detail.artifactUsage ?? "",
     purpose: detail.purpose ?? "",
     actionsСompleteness:
-        extra.actionsСompleteness ?? "",
+      extra.actionsCompleteness ?? extra.actionsСompleteness ?? "",
+    actionsCompleteness:
+      extra.actionsCompleteness ?? extra.actionsСompleteness ?? "",
     actionsEffectiveness: extra.actionsEffectiveness ?? "",
     technologicalSolution: detail.technologicalSolution?.code ?? "",
     number: detail.number ?? "",
@@ -389,42 +403,42 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
     filePath: detail.filePath ?? "",
     algorithm: detail.algorithm ?? "",
     feedbackSource:
-        extra.feedbackSources?.[0]?.feedbackSource?.code ??
-        firstFeedback?.feedbackSources?.[0]?.feedbackSource?.code ??
-        "",
+      extra.feedbackSources?.[0]?.feedbackSource?.code ??
+      firstFeedback?.feedbackSources?.[0]?.feedbackSource?.code ??
+      "",
     feedbackQualityMetric:
-        extra.feedbackQualityMetrics?.code ??
-        firstFeedback?.feedbackQualityMetrics?.code ??
-        "",
+      extra.feedbackQualityMetrics?.code ??
+      firstFeedback?.feedbackQualityMetrics?.code ??
+      "",
     problemDescription:
-        extra.problemDescription ?? firstFeedback?.problemDescription ?? "",
+      extra.problemDescription ?? firstFeedback?.problemDescription ?? "",
     initiatorRequisites:
-        extra.initiatorRequisites ?? firstFeedback?.initiatorRequisites ?? "",
+      extra.initiatorRequisites ?? firstFeedback?.initiatorRequisites ?? "",
     methodologyPosition:
-        extra.methodologyPosition ?? extra.ftsMethodologyStatus?.name ?? "",
+      extra.methodologyPosition ?? extra.ftsMethodologyStatus?.name ?? "",
     deadline:
-        toIsoString(extra.deadline).slice(0, 10) ||
-        toIsoString(firstFeedback?.deadline).slice(0, 10),
+      toIsoString(extra.deadline).slice(0, 10) ||
+      toIsoString(firstFeedback?.deadline).slice(0, 10),
     initiatorAcceptance:
-        extra.initiatorAcceptance ?? firstFeedback?.initiatorAcceptance ?? "",
+      extra.initiatorAcceptance ?? firstFeedback?.initiatorAcceptance ?? "",
     isAccepted: extra.isAccepted ?? firstFeedback?.isAccepted ?? null,
     rejectComment: extra.rejectComment ?? "",
     feedbackAgreementHistory:
-        extra.feedbackAgreementHistory?.map((item) => ({
-          id: String(item.id),
-          feedbackId: String(item.feedbackId ?? ""),
-          fromStatus: asFeedbackAgreementStatus(item.fromStatus),
-          toStatus: asFeedbackAgreementStatus(item.toStatus) ?? "PENDING",
-          ...(item.comment ? { comment: item.comment } : {}),
-          createdAt: toIsoString(item.createdAt),
-        })) ?? [],
+      extra.feedbackAgreementHistory?.map((item) => ({
+        id: String(item.id),
+        feedbackId: String(item.feedbackId ?? ""),
+        fromStatus: asFeedbackAgreementStatus(item.fromStatus),
+        toStatus: asFeedbackAgreementStatus(item.toStatus) ?? "PENDING",
+        ...(item.comment ? { comment: item.comment } : {}),
+        createdAt: toIsoString(item.createdAt),
+      })) ?? [],
     feedbacks: detail.feedbacks?.map(mapFeedbackApiToFeedback) ?? [],
     actions,
   };
 }
 
 export function mapFtsFunctionDetailsToLinks(
-    details: FtsFunctionDetailedResponseDto["ftsFunctionDetails"],
+  details: FtsFunctionDetailedResponseDto["ftsFunctionDetails"],
 ): Link[] {
   const links: Link[] = [];
   const seen = new Set<string>();
