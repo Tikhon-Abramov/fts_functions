@@ -218,7 +218,6 @@ type DetailItemExtra = DetailItem & {
     code?: string | null;
     name?: string | null;
   } | null;
-  actionsCompleteness?: string | null;
   actionsEffectiveness?: string | null;
   actionsСompleteness?: string | null;
   actions?: unknown[] | null;
@@ -381,8 +380,8 @@ export function mapFtsFunctionDetailApiToRow(detail: DetailItem): Row | null {
     basis: detail.basis ?? "",
     artifactUsage: detail.artifactUsage ?? "",
     purpose: detail.purpose ?? "",
-    actionsCompleteness:
-        extra.actionsCompleteness ?? extra.actionsСompleteness ?? "",
+    actionsСompleteness:
+        extra.actionsСompleteness ?? "",
     actionsEffectiveness: extra.actionsEffectiveness ?? "",
     technologicalSolution: detail.technologicalSolution?.code ?? "",
     number: detail.number ?? "",

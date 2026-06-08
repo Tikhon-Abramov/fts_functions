@@ -68,7 +68,7 @@ type AddRowPayload = Partial<Row> & {
 };
 
 type NewRowDataExtended = NewRowData &
-    Partial<Pick<Row, "actionsCompleteness" | "actionsEffectiveness">>;
+    Partial<Pick<Row, "actionsСompleteness" | "actionsEffectiveness">>;
 
 function toAddRowPayload(data: NewRowData): AddRowPayload {
     const extended = data as NewRowDataExtended;
@@ -92,8 +92,8 @@ function toAddRowPayload(data: NewRowData): AddRowPayload {
 
     if (data.purpose !== undefined) payload.purpose = data.purpose;
 
-    if (extended.actionsCompleteness !== undefined) {
-        payload.actionsCompleteness = extended.actionsCompleteness;
+    if (extended.actionsСompleteness !== undefined) {
+        payload.actionsСompleteness = extended.actionsСompleteness;
     }
 
     if (extended.actionsEffectiveness !== undefined) {

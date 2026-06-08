@@ -260,9 +260,9 @@ export function StepTabBody({
             <Box sx={{ gridColumn: "1 / -1" }}>
                 <RHFTextInput
                     control={control}
-                    name={toRHFName(step, "actionsCompleteness")}
+                    name={toRHFName(step, "actionsСompleteness")}
                     label="Полнота действий"
-                    testId={`${step}-actionsCompleteness`}
+                    testId={`${step}-actionsСompleteness`}
                     multiline
                     theme={theme}
                 />

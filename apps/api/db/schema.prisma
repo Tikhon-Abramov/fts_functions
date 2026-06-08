@@ -437,11 +437,14 @@ model FtsFunctionDetail {
   technologicalSolutionId         Int?      @map("technological_solution_id")
   /// Уникальный идентификатор ответственного в технологическом решении
   responsibleId                   Int?      @map("responsible_id")
+
+
+  
   /// Детализация функции ФНС
   ftsFunctionDetails              String?   @map("fts_function_details") @db.Text
-  ///
+  /// Полнота действий
   actionsСompleteness             String?   @map("actions_completeness") @db.Text
-  ///
+  /// Эффективность действий
   actionsEffectiveness            String?   @map("actions_effectiveness") @db.Text
   /// Нормативное основание
   basis                           String?   @map("basis") @db.Text

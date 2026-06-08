@@ -16,7 +16,7 @@ export const RowField = {
   BASIS: "basis",
   ARTIFACT_USAGE: "artifactUsage",
   PURPOSE: "purpose",
-  ACTIONS_COMPLETENESS: "actionsCompleteness",
+  ACTIONS_COMPLETENESS: "actionsСompleteness",
   ACTIONS_EFFECTIVENESS: "actionsEffectiveness",
   TECHNOLOGICAL_SOLUTION: "technologicalSolution",
   NUMBER: "number",

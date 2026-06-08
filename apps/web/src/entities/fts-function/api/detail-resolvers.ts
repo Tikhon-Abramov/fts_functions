@@ -35,7 +35,7 @@ export type DetailInput = {
   basis?: string | undefined;
   artifactUsage?: string | undefined;
   purpose?: string | undefined;
-  actionsCompleteness?: string | undefined;
+  actionsСompleteness?: string | undefined;
   actionsEffectiveness?: string | undefined;
   technologicalSolution?: string | undefined;
   number?: string | undefined;
@@ -131,7 +131,7 @@ export function resolveDetailDto(
       item.actionLabel,
   );
 
-  if (stepId === null || categoryId === null || actionId === null) return null;
+  if (stepId === null || categoryId === null) return null;
 
   let complexityId: number | null = null;
 
@@ -282,7 +282,7 @@ export function resolveDetailDto(
     basis: trimValue(item.basis) || null,
     artifactUsage: trimValue(item.artifactUsage) || null,
     purpose: trimValue(item.purpose) || null,
-    actionsCompleteness: trimValue(item.actionsCompleteness) || null,
+    actionsСompleteness: trimValue(item.actionsСompleteness) || null,
     actionsEffectiveness: trimValue(item.actionsEffectiveness) || null,
     technologicalSolutionId,
     responsibleId,
@@ -311,7 +311,7 @@ export function buildDetailInputFromRow(
     basis: merged.basis,
     artifactUsage: merged.artifactUsage,
     purpose: merged.purpose,
-    actionsCompleteness: merged.actionsCompleteness,
+    actionsСompleteness: merged.actionsСompleteness,
     actionsEffectiveness: merged.actionsEffectiveness,
     technologicalSolution: merged.technologicalSolution,
     number: merged.number,

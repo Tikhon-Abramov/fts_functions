@@ -49,7 +49,7 @@ export const stepFieldsSchema = z.object({
   basis: z.string(),
   artifactUsage: z.string(),
   purpose: z.string(),
-  actionsCompleteness: z.string(),
+  actionsСompleteness: z.string(),
   actionsEffectiveness: z.string(),
   technologicalSolution: z.string(),
   number: z.string(),
@@ -79,7 +79,7 @@ export function emptyStep(): StepFields {
     basis: "",
     artifactUsage: "",
     purpose: "",
-    actionsCompleteness: "",
+    actionsСompleteness: "",
     actionsEffectiveness: "",
     technologicalSolution: "",
     number: "",
@@ -120,7 +120,7 @@ export function fieldsToData(
     basis: emptyToUndefined(fields.basis),
     artifactUsage: emptyToUndefined(fields.artifactUsage),
     purpose: emptyToUndefined(fields.purpose),
-    actionsCompleteness: emptyToUndefined(fields.actionsCompleteness),
+    actionsСompleteness: emptyToUndefined(fields.actionsСompleteness),
     actionsEffectiveness: emptyToUndefined(fields.actionsEffectiveness),
     technologicalSolution: technologySelected
       ? emptyToUndefined(fields.technologicalSolution)

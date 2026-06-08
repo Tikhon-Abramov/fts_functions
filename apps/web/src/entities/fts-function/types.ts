@@ -84,7 +84,7 @@ export type Row = {
   basis?: string;
   artifactUsage?: string;
   purpose?: string;
-  actionsCompleteness?: string;
+  actionsСompleteness?: string;
   actionsEffectiveness?: string;
   technologicalSolution?: string;
   number?: string;

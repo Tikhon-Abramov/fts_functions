@@ -45,7 +45,7 @@ export type NewRowData = {
     basis?: string | undefined;
     artifactUsage?: string | undefined;
     purpose?: string | undefined;
-    actionsCompleteness?: string | undefined;
+    actionsСompleteness?: string | undefined;
     actionsEffectiveness?: string | undefined;
     technologicalSolution?: string | undefined;
     number?: string | undefined;
