@@ -1,5 +1,4 @@
 import type {
-  FtsFunctionActionType,
   FtsFunctionCategory,
   FtsFunctionComplexity,
   FtsFunctionExecutionFrequency,
@@ -12,30 +11,33 @@ import type {
   UpdateFtsFunctionDetailDto,
 } from "src/shared/api/ftsFunctionsApi";
 
+import { findTypeIdByCode } from "src/entities/fts-function/api/mappers";
 import {
   DETAIL_TYPE_CATEGORY,
   findTypeByCodeOrName,
   isActualActionCategory,
+  isTechnologyTaskSolution,
+  shouldShowTechnologyResultFields,
   type TypeCategory,
 } from "src/entities/fts-function/lib/detail-technology";
 
 export type ResolvedDetailDto = CreateFtsFunctionDetailDto &
-    UpdateFtsFunctionDetailDto &
-    Record<string, unknown>;
+  UpdateFtsFunctionDetailDto &
+  Record<string, unknown>;
 
 export type DetailInput = {
   step: FtsFunctionStep;
   category: FtsFunctionCategory;
-  actionLabel: FtsFunctionActionType | "";
   periodicity?: FtsFunctionExecutionFrequency | "" | undefined;
   complexity?: FtsFunctionComplexity | "" | undefined;
   detailText?: string | undefined;
   who?: string | undefined;
+  actionLabel?: string | "" | undefined;
   artifact?: string | undefined;
   basis?: string | undefined;
   artifactUsage?: string | undefined;
   purpose?: string | undefined;
-  actionsСompleteness?: string | undefined;
+  actionsCompleteness?: string | undefined;
   actionsEffectiveness?: string | undefined;
   technologicalSolution?: string | undefined;
   number?: string | undefined;
@@ -67,29 +69,52 @@ function trimValue(value: string | null | undefined): string {
   return value?.trim() ?? "";
 }
 
+function findTypeIdByCodeOrNull(
+  types: TypeResponseDto[] | undefined,
+  code: string,
+): number | null {
+  return findTypeIdByCode(types, code) ?? null;
+}
+
+function findTypeIdByCategoryAndName(
+  types: TypeResponseDto[] | undefined,
+  category: TypeCategory,
+  name: string,
+): number | null {
+  const trimmed = name.trim();
+
+  if (!trimmed) return null;
+
+  return (
+    (types ?? []).find(
+      (type) => type.category === category && type.name === trimmed,
+    )?.id ?? null
+  );
+}
+
 function findTypeIdByCategoryAndCodeOrName(
-    types: TypeResponseDto[] | undefined,
-    category: TypeCategory,
-    value: string | undefined | null,
+  types: TypeResponseDto[] | undefined,
+  category: TypeCategory,
+  value: string,
 ): number | null {
   return findTypeByCodeOrName(types, category, value)?.id ?? null;
 }
 
-function resolveRequiredTypeId(
-    types: TypeResponseDto[] | undefined,
-    category: TypeCategory,
-    value: string | undefined | null,
-): number | null {
-  const trimmed = trimValue(value);
-
-  if (!trimmed) return null;
-
-  return findTypeIdByCategoryAndCodeOrName(types, category, trimmed);
+function buildFeedbackFields(item: DetailInput): DetailFeedbackFields {
+  return {
+    feedbackSource: trimValue(item.feedbackSource),
+    feedbackQualityMetric: trimValue(item.feedbackQualityMetric),
+    methodologyPosition: trimValue(item.methodologyPosition),
+    problemDescription: trimValue(item.problemDescription),
+    initiatorRequisites: trimValue(item.initiatorRequisites),
+    deadline: trimValue(item.deadline),
+    initiatorAcceptance: trimValue(item.initiatorAcceptance),
+  };
 }
 
 function hasFeedbackFields(fields: DetailFeedbackFields): boolean {
   return Boolean(
-      fields.feedbackSource ||
+    fields.feedbackSource ||
       fields.feedbackQualityMetric ||
       fields.methodologyPosition ||
       fields.problemDescription ||
@@ -101,179 +126,154 @@ function hasFeedbackFields(fields: DetailFeedbackFields): boolean {
 
 function hasRequiredFeedbackFields(fields: DetailFeedbackFields): boolean {
   return Boolean(
-      fields.feedbackSource &&
+    fields.feedbackSource &&
       fields.feedbackQualityMetric &&
+      fields.methodologyPosition &&
       fields.problemDescription &&
       fields.initiatorRequisites &&
-      fields.deadline,
+      fields.deadline &&
+      fields.initiatorAcceptance,
   );
 }
 
 export function resolveDetailDto(
-    item: DetailInput,
-    types: TypeResponseDto[] | undefined,
+  item: DetailInput,
+  types: TypeResponseDto[] | undefined,
 ): ResolvedDetailDto | null {
-  const stepId = resolveRequiredTypeId(
-      types,
-      DETAIL_TYPE_CATEGORY.FTS_FUNCTION_STEP,
-      item.step,
-  );
+  const stepId = findTypeIdByCode(types, item.step);
+  const categoryId = findTypeIdByCode(types, item.category);
 
-  const categoryId = resolveRequiredTypeId(
-      types,
-      DETAIL_TYPE_CATEGORY.FTS_FUNCTION_CATEGORY,
-      item.category,
-  );
-
-  const actionId = resolveRequiredTypeId(
-      types,
-      DETAIL_TYPE_CATEGORY.FTS_FUNCTION_ACTION_TYPE,
-      item.actionLabel,
-  );
-
-  if (stepId === null || categoryId === null) return null;
+  if (stepId == null || categoryId == null) return null;
 
   let complexityId: number | null = null;
 
   if (item.complexity) {
-    complexityId = resolveRequiredTypeId(
-        types,
-        DETAIL_TYPE_CATEGORY.FTS_FUNCTION_COMPLEXITY,
-        item.complexity,
-    );
+    const id = findTypeIdByCode(types, item.complexity);
 
-    if (complexityId === null) return null;
+    if (id == null) return null;
+
+    complexityId = id;
   }
 
   let frequencyId: number | null = null;
 
   if (item.periodicity) {
-    frequencyId = resolveRequiredTypeId(
-        types,
-        DETAIL_TYPE_CATEGORY.FTS_FUNCTION_EXECUTION_FREQUENCY,
-        item.periodicity,
-    );
+    const id = findTypeIdByCode(types, item.periodicity);
 
-    if (frequencyId === null) return null;
+    if (id == null) return null;
+
+    frequencyId = id;
   }
 
   let whoPerformsActionId: number | null = null;
 
-  if (trimValue(item.who)) {
-    whoPerformsActionId = resolveRequiredTypeId(
-        types,
-        DETAIL_TYPE_CATEGORY.WHO_PERFORMS_ACTION,
-        item.who,
+  if (item.who && item.who.trim().length > 0) {
+    whoPerformsActionId = findTypeIdByCategoryAndName(
+      types,
+      DETAIL_TYPE_CATEGORY.WHO_PERFORMS_ACTION,
+      item.who,
     );
+  }
+
+  const actionLabel = trimValue(item.actionLabel);
+
+  const ftsFunctionActionTypeId = actionLabel
+    ? findTypeIdByCategoryAndCodeOrName(
+        types,
+        DETAIL_TYPE_CATEGORY.FTS_FUNCTION_ACTION_TYPE,
+        actionLabel,
+      )
+    : null;
+
+  if (actionLabel && ftsFunctionActionTypeId === null) {
+    return null;
   }
 
   const includeActualActionFields = isActualActionCategory(item.category);
 
   const technologicalSolutionCode = includeActualActionFields
-      ? trimValue(item.technologicalSolution)
-      : "";
+    ? trimValue(item.technologicalSolution)
+    : "";
 
-  const technologicalSolutionId =
-      technologicalSolutionCode.length > 0
-          ? resolveRequiredTypeId(
-              types,
-              DETAIL_TYPE_CATEGORY.TECHNOLOGICAL_SOLUTION,
-              technologicalSolutionCode,
-          )
-          : null;
+  const technologicalSolutionId: string | number | null =
+    technologicalSolutionCode.length > 0
+      ? findTypeIdByCodeOrNull(types, technologicalSolutionCode)
+      : null;
 
   if (technologicalSolutionCode && technologicalSolutionId === null) {
     return null;
   }
 
+  const taskFieldsRequired = isTechnologyTaskSolution(
+    technologicalSolutionCode,
+    types,
+  );
+  const resultFieldsRequired = shouldShowTechnologyResultFields(item.step);
+
   const number = trimValue(item.number);
   const responsibleValue = trimValue(item.responsible);
-  const algorithm = trimValue(item.algorithm);
-  const filePath = trimValue(item.filePath);
+  const algorithm = resultFieldsRequired ? trimValue(item.algorithm) : "";
+  const filePath = resultFieldsRequired ? trimValue(item.filePath) : "";
 
-  let responsibleId: number | null = null;
+  let responsibleId: string | number | null = null;
 
   if (technologicalSolutionId !== null) {
-    if (!number || !responsibleValue || (!algorithm && !filePath)) {
-      return null;
-    }
+    if (taskFieldsRequired) {
+      if (!number || !responsibleValue) return null;
 
-    responsibleId = resolveRequiredTypeId(
+      responsibleId = findTypeIdByCategoryAndCodeOrName(
         types,
         DETAIL_TYPE_CATEGORY.RESPONSIBLE,
         responsibleValue,
-    );
+      );
 
-    if (responsibleId === null) return null;
+      if (responsibleId === null) return null;
+    }
+
+    if (resultFieldsRequired && !algorithm && !filePath) {
+      return null;
+    }
   }
 
-  const feedbackFields: DetailFeedbackFields = {
-    feedbackSource: trimValue(item.feedbackSource),
-    feedbackQualityMetric: trimValue(item.feedbackQualityMetric),
-    methodologyPosition: trimValue(item.methodologyPosition),
-    problemDescription: trimValue(item.problemDescription),
-    initiatorRequisites: trimValue(item.initiatorRequisites),
-    deadline: trimValue(item.deadline),
-    initiatorAcceptance: trimValue(item.initiatorAcceptance),
-  };
-
+  const feedbackFields = buildFeedbackFields(item);
   const includeFeedbackFields =
-      includeActualActionFields && hasFeedbackFields(feedbackFields);
+    includeActualActionFields && hasFeedbackFields(feedbackFields);
 
-  const feedbackSourceId =
-      includeFeedbackFields && feedbackFields.feedbackSource
-          ? resolveRequiredTypeId(
-              types,
-              DETAIL_TYPE_CATEGORY.FEEDBACK_SOURCE,
-              feedbackFields.feedbackSource,
-          )
-          : null;
+  const feedbackSourceId: string | number | null =
+    includeFeedbackFields && feedbackFields.feedbackSource
+      ? findTypeIdByCodeOrNull(types, feedbackFields.feedbackSource)
+      : null;
 
-  const feedbackQualityMetricsId =
-      includeFeedbackFields && feedbackFields.feedbackQualityMetric
-          ? resolveRequiredTypeId(
-              types,
-              DETAIL_TYPE_CATEGORY.FEEDBACK_QUALITY_METRICS,
-              feedbackFields.feedbackQualityMetric,
-          )
-          : null;
+  const ftsFunctionEffectivenessId: string | number | null =
+    includeFeedbackFields && feedbackFields.feedbackQualityMetric
+      ? findTypeIdByCodeOrNull(types, feedbackFields.feedbackQualityMetric)
+      : null;
 
-  const ftsMethodologyStatusId =
-      includeFeedbackFields && feedbackFields.methodologyPosition
-          ? resolveRequiredTypeId(
-              types,
-              DETAIL_TYPE_CATEGORY.FTS_METHODOLOGY_STATUS,
-              feedbackFields.methodologyPosition,
-          )
-          : null;
+  const ftsMethodologyStatusId: string | number | null =
+    includeFeedbackFields && feedbackFields.methodologyPosition
+      ? findTypeIdByCategoryAndCodeOrName(
+          types,
+          DETAIL_TYPE_CATEGORY.FTS_METHODOLOGY_STATUS,
+          feedbackFields.methodologyPosition,
+        )
+      : null;
 
   if (includeFeedbackFields) {
     if (!hasRequiredFeedbackFields(feedbackFields)) return null;
 
-    if (feedbackSourceId === null || feedbackQualityMetricsId === null) {
+    if (
+      feedbackSourceId === null ||
+      ftsFunctionEffectivenessId === null ||
+      ftsMethodologyStatusId === null
+    ) {
       return null;
     }
   }
 
-  const feedbackPayload: Record<string, unknown> = includeFeedbackFields
-      ? {
-        feedbackSourceIds: feedbackSourceId === null ? [] : [feedbackSourceId],
-        feedbackQualityMetricsId,
-        ftsMethodologyStatusId,
-        methodologyPosition: feedbackFields.methodologyPosition || null,
-        problemDescription: feedbackFields.problemDescription || null,
-        initiatorRequisites: feedbackFields.initiatorRequisites || null,
-        deadline: feedbackFields.deadline || null,
-        initiatorAcceptance: feedbackFields.initiatorAcceptance || null,
-        isAccepted: item.isAccepted ?? null,
-        rejectComment: trimValue(item.rejectComment) || null,
-      }
-      : {};
-
   return {
     ftsFunctionStepId: stepId,
     ftsFunctionCategoryId: categoryId,
-    ftsFunctionActionTypeId: actionId,
+    ftsFunctionActionTypeId,
     ftsFunctionComplexityId: complexityId,
     ftsFunctionExecutionFrequencyId: frequencyId,
     whoPerformsActionId,
@@ -281,37 +281,75 @@ export function resolveDetailDto(
     artifact: trimValue(item.artifact) || null,
     basis: trimValue(item.basis) || null,
     artifactUsage: trimValue(item.artifactUsage) || null,
-    purpose: trimValue(item.purpose) || null,
-    actionsСompleteness: trimValue(item.actionsСompleteness) || null,
+    purpose: null,
+    actionsCompleteness: trimValue(item.actionsCompleteness) || null,
+    actionsСompleteness: trimValue(item.actionsCompleteness) || null,
     actionsEffectiveness: trimValue(item.actionsEffectiveness) || null,
     technologicalSolutionId,
-    responsibleId,
-    number: technologicalSolutionId !== null ? number : null,
-    algorithm: technologicalSolutionId !== null ? algorithm || null : null,
-    filePath: technologicalSolutionId !== null ? filePath || null : null,
-    ...feedbackPayload,
+    responsibleId: taskFieldsRequired ? responsibleId : null,
+    number: taskFieldsRequired ? number : null,
+    algorithm: technologicalSolutionId !== null && resultFieldsRequired
+      ? algorithm
+      : null,
+    filePath: technologicalSolutionId !== null && resultFieldsRequired
+      ? filePath
+      : null,
+    ftsFunctionEffectivenessId:
+      includeFeedbackFields && ftsFunctionEffectivenessId !== null
+        ? ftsFunctionEffectivenessId
+        : null,
+    feedbackSourceId:
+      includeFeedbackFields && feedbackSourceId !== null
+        ? feedbackSourceId
+        : null,
+    ftsMethodologyStatusId:
+      includeFeedbackFields && ftsMethodologyStatusId !== null
+        ? ftsMethodologyStatusId
+        : null,
+    problemDescription: includeFeedbackFields
+      ? feedbackFields.problemDescription || null
+      : null,
+    initiatorRequisites: includeFeedbackFields
+      ? feedbackFields.initiatorRequisites || null
+      : null,
+    deadline: includeFeedbackFields ? feedbackFields.deadline || null : null,
+    isAccepted: includeFeedbackFields ? item.isAccepted ?? null : null,
+    rejectComment: includeFeedbackFields
+      ? trimValue(item.rejectComment) || null
+      : null,
   };
 }
 
 export function buildDetailInputFromRow(
-    existing: Row,
-    updates: Partial<Row>,
+  existing: Row,
+  updates: Partial<Row>,
 ): DetailInput {
-  const merged = { ...existing, ...updates };
+  const merged = { ...existing, ...updates } as Row & {
+    actionLabel?: string;
+    feedbackSource?: string;
+    feedbackQualityMetric?: string;
+    problemDescription?: string;
+    initiatorRequisites?: string;
+    methodologyPosition?: string;
+    deadline?: string;
+    initiatorAcceptance?: string;
+    isAccepted?: boolean | null;
+    rejectComment?: string;
+  };
 
   return {
     step: merged.step,
     category: merged.category,
-    actionLabel: merged.actionLabel,
     periodicity: merged.periodicity,
     complexity: merged.complexity,
     detailText: merged.detailText,
     who: merged.who,
+    actionLabel: merged.actionLabel ?? "",
     artifact: merged.artifact,
     basis: merged.basis,
     artifactUsage: merged.artifactUsage,
     purpose: merged.purpose,
-    actionsСompleteness: merged.actionsСompleteness,
+    actionsCompleteness: merged.actionsCompleteness,
     actionsEffectiveness: merged.actionsEffectiveness,
     technologicalSolution: merged.technologicalSolution,
     number: merged.number,

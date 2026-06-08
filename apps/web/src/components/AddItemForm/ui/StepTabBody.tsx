@@ -31,6 +31,8 @@ import {
   getTypeNameOptionsByCategory,
   hasTechnologicalSolution,
   isActualActionCategory,
+  isTechnologyTaskSolution,
+  shouldShowTechnologyResultFields,
   TECHNOLOGY_DETAIL_LABELS,
 } from "src/entities/fts-function/lib/detail-technology";
 import { FtsFunctionStep } from "src/entities/fts-function/model";
@@ -90,8 +92,7 @@ export function StepTabBody({
   );
 
   const responsibleOptions = useMemo(
-    () =>
-      getTypeNameOptionsByCategory(typesAll, DETAIL_TYPE_CATEGORY.RESPONSIBLE),
+    () => getTypeCodeOptionsByCategory(typesAll, DETAIL_TYPE_CATEGORY.RESPONSIBLE),
     [typesAll],
   );
 
@@ -106,13 +107,17 @@ export function StepTabBody({
 
   const isActualAction = isActualActionCategory(fields.category);
   const technologySelected = hasTechnologicalSolution(fields);
-
-  const algorithmLabel = getAlgorithmAttachmentLabel(
+  const taskFieldsEnabled = isTechnologyTaskSolution(
+    fields.technologicalSolution,
+    typesAll,
+  );
+  const stepCode =
     step === StepKey.S2
       ? FtsFunctionStep.CLUSTERING_IMPACT
-      : FtsFunctionStep.OBJECT_SELECTION,
-  );
+      : FtsFunctionStep.OBJECT_SELECTION;
+  const showResultFields = shouldShowTechnologyResultFields(stepCode);
 
+  const algorithmLabel = getAlgorithmAttachmentLabel(stepCode);
   const hasText = Boolean(fields.algorithm.trim());
   const hasFile = Boolean(algorithmFile || fields.filePath.trim());
 
@@ -194,7 +199,7 @@ export function StepTabBody({
         <RHFTextInput
           control={control}
           name={toRHFName(step, "detailText")}
-          label="Детализация"
+          label="Наименование действия"
           testId={`${step}-detailText`}
           multiline
           theme={theme}
@@ -203,6 +208,7 @@ export function StepTabBody({
 
       <Box sx={{ gridColumn: "1 / -1" }}>
         <Divider sx={{ borderColor: c.borderLight, my: 0.5 }} />
+
         <FieldLabel fontSize="0.62rem" bold>
           {"Дополнительные сведения"}
         </FieldLabel>
@@ -228,29 +234,60 @@ export function StepTabBody({
         theme={theme}
       />
 
-      <RHFTextInput control={control} name={toRHFName(step, "artifact")} label="Артефакт" testId={`${step}-artifact`} theme={theme} />
-      <RHFTextInput control={control} name={toRHFName(step, "basis")} label="Нормативное основание" testId={`${step}-basis`} theme={theme} />
+      <RHFTextInput
+        control={control}
+        name={toRHFName(step, "artifact")}
+        label="Артефакт"
+        testId={`${step}-artifact`}
+        theme={theme}
+      />
+
+      <RHFTextInput
+        control={control}
+        name={toRHFName(step, "basis")}
+        label="Нормативное основание"
+        testId={`${step}-basis`}
+        theme={theme}
+      />
 
       <Box sx={{ gridColumn: "1 / -1" }}>
-        <RHFTextInput control={control} name={toRHFName(step, "artifactUsage")} label="Как используется артефакт" testId={`${step}-artifactUsage`} multiline theme={theme} />
+        <RHFTextInput
+          control={control}
+          name={toRHFName(step, "artifactUsage")}
+          label="Как используется артефакт"
+          testId={`${step}-artifactUsage`}
+          multiline
+          theme={theme}
+        />
       </Box>
 
       <Box sx={{ gridColumn: "1 / -1" }}>
-        <RHFTextInput control={control} name={toRHFName(step, "purpose")} label="Зачем выполняется" testId={`${step}-purpose`} multiline theme={theme} />
+        <RHFTextInput
+          control={control}
+          name={toRHFName(step, "actionsCompleteness")}
+          label="Полнота действий - метрика полноты отработки объектов"
+          testId={`${step}-actionsCompleteness`}
+          multiline
+          theme={theme}
+        />
       </Box>
 
       <Box sx={{ gridColumn: "1 / -1" }}>
-        <RHFTextInput control={control} name={toRHFName(step, "actionsСompleteness")} label="Полнота действий" testId={`${step}-actionsСompleteness`} multiline theme={theme} />
-      </Box>
-
-      <Box sx={{ gridColumn: "1 / -1" }}>
-        <RHFTextInput control={control} name={toRHFName(step, "actionsEffectiveness")} label="Эффективность действий" testId={`${step}-actionsEffectiveness`} multiline theme={theme} />
+        <RHFTextInput
+          control={control}
+          name={toRHFName(step, "actionsEffectiveness")}
+          label="Эффективность действий КПЭ"
+          testId={`${step}-actionsEffectiveness`}
+          multiline
+          theme={theme}
+        />
       </Box>
 
       {isActualAction && (
         <>
           <Box sx={{ gridColumn: "1 / -1" }}>
             <Divider sx={{ borderColor: c.borderLight, my: 0.5 }} />
+
             <FieldLabel fontSize="0.62rem" bold>
               {"Технологическое решение"}
             </FieldLabel>
@@ -267,78 +304,135 @@ export function StepTabBody({
             />
           </Box>
 
-          <RHFTextInput control={control} name={toRHFName(step, "number")} label={`${TECHNOLOGY_DETAIL_LABELS.number}${technologySelected ? " *" : ""}`} testId={`${step}-number`} disabled={!technologySelected} theme={theme} />
+          <RHFTextInput
+            control={control}
+            name={toRHFName(step, "number")}
+            label={`${TECHNOLOGY_DETAIL_LABELS.number}${
+              taskFieldsEnabled ? " *" : ""
+            }`}
+            testId={`${step}-number`}
+            disabled={!taskFieldsEnabled}
+            theme={theme}
+          />
 
-          <RHFAutocomplete control={control} name={toRHFName(step, "responsible")} label={`${TECHNOLOGY_DETAIL_LABELS.responsible}${technologySelected ? " *" : ""}`} options={responsibleOptions} testId={`${step}-responsible`} disabled={!technologySelected} theme={theme} />
+          <RHFTypeCodeSelect
+            control={control}
+            name={toRHFName(step, "responsible")}
+            label={`${TECHNOLOGY_DETAIL_LABELS.responsible}${
+              taskFieldsEnabled ? " *" : ""
+            }`}
+            options={responsibleOptions}
+            testId={`${step}-responsible`}
+            disabled={!taskFieldsEnabled}
+            theme={theme}
+          />
 
-          <Box sx={{ gridColumn: "1 / -1" }}>
-            <Controller
-              control={control}
-              name={toRHFName(step, "algorithm") as FieldPath<AddItemFormValues>}
-              render={({ field }) => (
-                <TextField
-                  value={String(field.value ?? "")}
-                  label={`${algorithmLabel} — текст`}
-                  onChange={(event) => handleAlgorithmTextChange(event.target.value)}
-                  fullWidth
-                  size="small"
-                  multiline
-                  rows={2}
-                  disabled={!technologySelected || hasFile}
-                  sx={formInputSx(theme)}
-                  data-testid={`${step}-algorithm-text`}
+          {showResultFields && (
+            <>
+              <Box sx={{ gridColumn: "1 / -1" }}>
+                <Controller
+                  control={control}
+                  name={
+                    toRHFName(step, "algorithm") as FieldPath<AddItemFormValues>
+                  }
+                  render={({ field }) => (
+                    <TextField
+                      value={String(field.value ?? "")}
+                      label={`${algorithmLabel} — текст`}
+                      onChange={(event) =>
+                        handleAlgorithmTextChange(event.target.value)
+                      }
+                      fullWidth
+                      size="small"
+                      multiline
+                      rows={2}
+                      disabled={!technologySelected || hasFile}
+                      sx={formInputSx(theme)}
+                      data-testid={`${step}-algorithm-text`}
+                    />
+                  )}
                 />
+
+                {hasFile && (
+                  <Typography
+                    sx={{
+                      color: c.textMuted,
+                      fontSize: "0.68rem",
+                      mt: 0.5,
+                    }}
+                  >
+                    {
+                      "Текст недоступен, потому что выбран файл. Чтобы ввести текст, удалите файл."
+                    }
+                  </Typography>
+                )}
+              </Box>
+
+              <Box sx={{ gridColumn: "1 / -1" }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: "block",
+                    color: c.textMuted,
+                    fontSize: "0.66rem",
+                    mb: 0.5,
+                  }}
+                >
+                  {`${algorithmLabel} — файл`}
+                </Typography>
+
+                <FileAttachmentInput
+                  fileName={fields.filePath}
+                  selectedFile={algorithmFile}
+                  disabled={!technologySelected || hasText}
+                  testId={`${step}-algorithm-file`}
+                  onChangeFile={handleAlgorithmFileChange}
+                />
+
+                {hasText && (
+                  <Typography
+                    sx={{
+                      color: c.textMuted,
+                      fontSize: "0.68rem",
+                      mt: 0.5,
+                    }}
+                  >
+                    {
+                      "Файл недоступен, потому что заполнен текст. Чтобы прикрепить файл, очистите текстовое поле."
+                    }
+                  </Typography>
+                )}
+
+                {hasFile && !hasText && (
+                  <Button
+                    size="small"
+                    onClick={handleClearFile}
+                    sx={{
+                      mt: 0.5,
+                      textTransform: "none",
+                      fontSize: "0.7rem",
+                      color: theme.palette.error.main,
+                      px: 0,
+                      minWidth: 0,
+                    }}
+                  >
+                    {"Удалить файл из поля"}
+                  </Button>
+                )}
+              </Box>
+
+              {technologySelected && !hasText && !hasFile && (
+                <Typography
+                  sx={{
+                    gridColumn: "1 / -1",
+                    color: theme.palette.warning.main,
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  {"Введите текст или прикрепите файл."}
+                </Typography>
               )}
-            />
-
-            {hasFile && (
-              <Typography sx={{ color: c.textMuted, fontSize: "0.68rem", mt: 0.5 }}>
-                {"Текст недоступен, потому что выбран файл. Чтобы ввести текст, удалите файл."}
-              </Typography>
-            )}
-          </Box>
-
-          <Box sx={{ gridColumn: "1 / -1" }}>
-            <Typography variant="caption" sx={{ display: "block", color: c.textMuted, fontSize: "0.66rem", mb: 0.5 }}>
-              {`${algorithmLabel} — файл`}
-            </Typography>
-
-            <FileAttachmentInput
-              fileName={fields.filePath}
-              selectedFile={algorithmFile}
-              disabled={!technologySelected || hasText}
-              testId={`${step}-algorithm-file`}
-              onChangeFile={handleAlgorithmFileChange}
-            />
-
-            {hasText && (
-              <Typography sx={{ color: c.textMuted, fontSize: "0.68rem", mt: 0.5 }}>
-                {"Файл недоступен, потому что заполнен текст. Чтобы прикрепить файл, очистите текстовое поле."}
-              </Typography>
-            )}
-
-            {hasFile && !hasText && (
-              <Button
-                size="small"
-                onClick={handleClearFile}
-                sx={{
-                  mt: 0.5,
-                  textTransform: "none",
-                  fontSize: "0.7rem",
-                  color: theme.palette.error.main,
-                  px: 0,
-                  minWidth: 0,
-                }}
-              >
-                {"Удалить файл из поля"}
-              </Button>
-            )}
-          </Box>
-
-          {technologySelected && !hasText && !hasFile && (
-            <Typography sx={{ gridColumn: "1 / -1", color: theme.palette.warning.main, fontSize: "0.7rem" }}>
-              {"Введите текст или прикрепите файл."}
-            </Typography>
+            </>
           )}
         </>
       )}
@@ -372,7 +466,15 @@ export function RHFCodeSelect<T extends string>({
       render={({ field }) => (
         <FormControl size="small" fullWidth>
           <InputLabel sx={formLabelSx(theme)}>{label}</InputLabel>
-          <Select value={field.value ?? ""} onChange={(event) => field.onChange(event.target.value)} label={label} sx={formSelectSx(theme)} MenuProps={formMenuSx(theme)} data-testid={testId}>
+
+          <Select
+            value={field.value ?? ""}
+            onChange={(event) => field.onChange(event.target.value)}
+            label={label}
+            sx={formSelectSx(theme)}
+            MenuProps={formMenuSx(theme)}
+            data-testid={testId}
+          >
             {options.map((option) => (
               <MenuItem key={option} value={option} sx={{ fontSize: "0.78rem" }}>
                 {findTypeNameByCode(typesAll, option)}
@@ -413,12 +515,32 @@ function RHFTypeCodeSelect({
       render={({ field }) => (
         <FormControl size="small" fullWidth disabled={disabled}>
           <InputLabel sx={formLabelSx(theme)}>{label}</InputLabel>
-          <Select value={field.value ?? ""} onChange={(event) => field.onChange(event.target.value)} label={label} sx={formSelectSx(theme)} MenuProps={formMenuSx(theme)} data-testid={testId}>
-            <MenuItem value="" sx={{ fontSize: "0.78rem", fontStyle: "italic", color: c.textDim }}>
+
+          <Select
+            value={field.value ?? ""}
+            onChange={(event) => field.onChange(event.target.value)}
+            label={label}
+            sx={formSelectSx(theme)}
+            MenuProps={formMenuSx(theme)}
+            data-testid={testId}
+          >
+            <MenuItem
+              value=""
+              sx={{
+                fontSize: "0.78rem",
+                fontStyle: "italic",
+                color: c.textDim,
+              }}
+            >
               {"— не выбрано —"}
             </MenuItem>
+
             {options.map((option) => (
-              <MenuItem key={option.id} value={option.code} sx={{ fontSize: "0.78rem" }}>
+              <MenuItem
+                key={option.id}
+                value={option.code}
+                sx={{ fontSize: "0.78rem" }}
+              >
                 {option.name}
               </MenuItem>
             ))}
@@ -534,7 +656,12 @@ function RHFAutocomplete({
             );
           }}
           renderInput={(params) => (
-            <TextField {...params} label={label} sx={formInputSx(theme)} data-testid={testId} />
+            <TextField
+              {...params}
+              label={label}
+              sx={formInputSx(theme)}
+              data-testid={testId}
+            />
           )}
         />
       )}

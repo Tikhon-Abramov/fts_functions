@@ -23,6 +23,8 @@ import {
   getTypeNameOptionsByCategory,
   hasTechnologicalSolution,
   isActualActionCategory,
+  isTechnologyTaskSolution,
+  shouldShowTechnologyResultFields,
 } from "src/entities/fts-function/lib/detail-technology";
 import { RowField } from "src/entities/fts-function/model";
 import { useDownloadDetailAlgorithmFileMutation } from "src/shared/api/ftsFunctionUploadApi";
@@ -87,15 +89,6 @@ function getRowValue(draft: RowDraft, key: keyof Row): string {
   return value === undefined || value === null ? "" : String(value);
 }
 
-function isTechnologyDependentField(field: ExtraFieldConfig): boolean {
-  return (
-    field.key === RowField.NUMBER ||
-    field.key === RowField.RESPONSIBLE ||
-    field.key === RowField.ALGORITHM ||
-    field.key === RowField.ALGORITHM_FILE
-  );
-}
-
 export function RowDetailsEdit({
   draft,
   typesAll,
@@ -114,6 +107,11 @@ export function RowDetailsEdit({
 
   const isActualAction = isActualActionCategory(draft.category);
   const technologySelected = hasTechnologicalSolution(draft);
+  const taskFieldsEnabled = isTechnologyTaskSolution(
+    draft.technologicalSolution,
+    typesAll,
+  );
+  const showResultFields = shouldShowTechnologyResultFields(draft.step);
   const algorithmLabel = getAlgorithmAttachmentLabel(draft.step);
 
   const algorithmText = String(draft.algorithm ?? "").trim();
@@ -125,13 +123,17 @@ export function RowDetailsEdit({
 
   const technologyValid =
     !isActualAction ||
-    areTechnologyRequiredFieldsFilled({
-      technologicalSolution: draft.technologicalSolution ?? "",
-      number: draft.number ?? "",
-      responsible: draft.responsible ?? "",
-      algorithm: draft.algorithm ?? "",
-      filePath: selectedFileName || savedFileName,
-    });
+    areTechnologyRequiredFieldsFilled(
+      {
+        step: draft.step,
+        technologicalSolution: draft.technologicalSolution ?? "",
+        number: draft.number ?? "",
+        responsible: draft.responsible ?? "",
+        algorithm: draft.algorithm ?? "",
+        filePath: selectedFileName || savedFileName,
+      },
+      typesAll,
+    );
 
   const handleAlgorithmTextChange = (value: string) => {
     onChangeField(RowField.ALGORITHM, value);
@@ -169,8 +171,14 @@ export function RowDetailsEdit({
     });
   };
 
+  const visibleTechnologyFields = TECHNOLOGY_FIELDS.filter(
+    (field) =>
+      showResultFields ||
+      (field.key !== RowField.ALGORITHM && field.key !== RowField.ALGORITHM_FILE),
+  );
+
   const editFields = isActualAction
-    ? [...PRIMARY_FIELDS, ...EXTRA_FIELDS, ...TECHNOLOGY_FIELDS]
+    ? [...PRIMARY_FIELDS, ...EXTRA_FIELDS, ...visibleTechnologyFields]
     : [...PRIMARY_FIELDS, ...EXTRA_FIELDS];
 
   return (
@@ -218,7 +226,7 @@ export function RowDetailsEdit({
               }}
             >
               {
-                "Если выбрано технологическое решение, заполните номер ПЗ / АЗ, ответственного и выберите один вариант: текст или файл"
+                "Если выбрано технологическое решение, заполните обязательные поля для выбранного типа решения"
               }
             </Typography>
           )}
@@ -275,8 +283,15 @@ export function RowDetailsEdit({
           const isTechnologyBlockStart =
             field.key === RowField.TECHNOLOGICAL_SOLUTION;
 
-          const dependentDisabled =
-            isTechnologyDependentField(field) && !technologySelected;
+          const numberOrResponsibleDisabled =
+            (field.key === RowField.NUMBER ||
+              field.key === RowField.RESPONSIBLE) &&
+            !taskFieldsEnabled;
+
+          const resultFieldDisabled =
+            (field.key === RowField.ALGORITHM ||
+              field.key === RowField.ALGORITHM_FILE) &&
+            !technologySelected;
 
           if (field.key === RowField.ALGORITHM) {
             return (
@@ -291,7 +306,7 @@ export function RowDetailsEdit({
                   size="small"
                   multiline
                   rows={3}
-                  disabled={!technologySelected || hasFile}
+                  disabled={resultFieldDisabled || hasFile}
                   sx={formInputSx(theme)}
                   data-testid="details-panel-algorithm-text"
                 />
@@ -331,7 +346,7 @@ export function RowDetailsEdit({
                 <FileAttachmentInput
                   fileName={selectedFileName || savedFileName}
                   selectedFile={algorithmFile}
-                  disabled={!technologySelected || hasText}
+                  disabled={resultFieldDisabled || hasText}
                   isDownloading={isDownloading}
                   testId="details-panel-algorithm-file"
                   onChangeFile={handleAlgorithmFileChange}
@@ -392,7 +407,7 @@ export function RowDetailsEdit({
                 field={field}
                 draft={draft}
                 typesAll={typesAll}
-                disabled={dependentDisabled}
+                disabled={numberOrResponsibleDisabled}
                 onChangeField={onChangeField}
               />
             </Box>

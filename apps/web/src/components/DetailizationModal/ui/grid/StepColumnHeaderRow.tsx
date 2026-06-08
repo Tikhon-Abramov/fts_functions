@@ -1,8 +1,7 @@
-import type { TFunction } from "i18next";
-
 import type { CustomPalette } from "src/app/App";
 
 import {
+  Box,
   Table,
   TableCell,
   TableContainer,
@@ -10,41 +9,31 @@ import {
   TableRow,
   useTheme,
 } from "@mui/material";
-import { Box } from "@mui/material";
 import { HEAD_HEIGHT, STEP_TITLE_HEIGHT } from "src/shared/config/ui";
-import { useTranslation } from "src/shared/i18n";
 
-/**
- * The sticky two-column header row that sits below the step title row. Each
- * step uses the same table column layout (#, detail, who, gutter), so the
- * markup is identical on both sides.
- */
 export function StepColumnHeaderRow() {
-  const { t } = useTranslation();
   const theme = useTheme();
   const c = theme.custom;
 
   return (
-      <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: "1fr 2px 1fr",
-            gap: 0,
-            minWidth: 0,
-            position: "sticky",
-            top: STEP_TITLE_HEIGHT,
-            zIndex: 4,
-          }}
-      >
-        <ColumnHeaderTable t={t} c={c} />
-        <Box sx={{ bgcolor: c.borderDivider }} />
-        <ColumnHeaderTable t={t} c={c} />
-      </Box>
+    <Box
+      sx={{
+        position: "sticky",
+        top: STEP_TITLE_HEIGHT,
+        zIndex: 5,
+        display: "grid",
+        gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+        bgcolor: c.bgPaper,
+        borderBottom: `1px solid ${c.borderMain}`,
+      }}
+    >
+      <ColumnHeaderTable c={c} />
+      <ColumnHeaderTable c={c} />
+    </Box>
   );
 }
 
 type ColumnHeaderTableProps = {
-  t: TFunction;
   c: CustomPalette;
 };
 
@@ -65,22 +54,19 @@ function ColumnHeaderTable({ c }: ColumnHeaderTableProps) {
   };
 
   return (
-      <TableContainer sx={{ overflow: "visible" }}>
-        <Table size="small" sx={{ tableLayout: "fixed" }}>
-          <TableHead>
-            <TableRow sx={{ height: HEAD_HEIGHT, maxHeight: HEAD_HEIGHT }}>
-              <TableCell sx={{ ...headCellBase, width: 56 }}>{"№"}</TableCell>
-
-              <TableCell sx={headCellBase}>{"Детализация функций"}</TableCell>
-
-              <TableCell sx={{ ...headCellBase, width: 120 }}>
-                {"Кто делает"}
-              </TableCell>
-
-              <TableCell sx={{ ...headCellBase, width: 32, px: 0.25 }} />
-            </TableRow>
-          </TableHead>
-        </Table>
-      </TableContainer>
+    <TableContainer>
+      <Table size="small" sx={{ tableLayout: "fixed" }}>
+        <TableHead>
+          <TableRow>
+            <TableCell sx={{ ...headCellBase, width: 54 }}>{"№"}</TableCell>
+            <TableCell sx={headCellBase}>{"Наименование действия"}</TableCell>
+            <TableCell sx={{ ...headCellBase, width: "22%" }}>
+              {"Кто делает"}
+            </TableCell>
+            <TableCell sx={{ ...headCellBase, width: 42 }} />
+          </TableRow>
+        </TableHead>
+      </Table>
+    </TableContainer>
   );
 }

@@ -2,7 +2,6 @@ import type { Row } from "src/entities/fts-function/types";
 import type { I18nKey } from "src/shared/i18n";
 
 import {
-  ACTIONS,
   CATEGORIES,
   COMPLEXITIES,
   PERIODICITIES,
@@ -51,10 +50,6 @@ const categoryOptions: SelectCodeOption[] = CATEGORIES.map((item) => ({
   value: item,
 }));
 
-const actionOptions: SelectCodeOption[] = ACTIONS.map((item) => ({
-  value: item,
-}));
-
 export const PRIMARY_FIELDS: ExtraFieldConfig[] = [
   {
     key: RowField.CATEGORY,
@@ -65,7 +60,7 @@ export const PRIMARY_FIELDS: ExtraFieldConfig[] = [
   },
   {
     key: RowField.DETAIL_TEXT,
-    labelKey: I18N.field.detail,
+    label: "Наименование действия",
     kind: FieldKind.TEXTAREA,
     testId: "details-panel-detail-text",
   },
@@ -75,13 +70,6 @@ export const PRIMARY_FIELDS: ExtraFieldConfig[] = [
     kind: FieldKind.AUTOCOMPLETE_FROM_TYPES,
     typeCategory: DETAIL_TYPE_CATEGORY.WHO_PERFORMS_ACTION,
     testId: "details-panel-who",
-  },
-  {
-    key: RowField.ACTION_LABEL,
-    labelKey: I18N.field.action,
-    kind: FieldKind.SELECT_CODE,
-    options: actionOptions,
-    testId: "details-panel-action",
   },
 ];
 
@@ -119,20 +107,14 @@ export const EXTRA_FIELDS: ExtraFieldConfig[] = [
     testId: "details-panel-artifactUsage",
   },
   {
-    key: RowField.PURPOSE,
-    labelKey: I18N.field.purpose,
-    kind: FieldKind.TEXTAREA,
-    testId: "details-panel-purpose",
-  },
-  {
     key: RowField.ACTIONS_COMPLETENESS,
-    label: "Полнота действий",
+    label: "Полнота действий - метрика полноты отработки объектов",
     kind: FieldKind.TEXTAREA,
     testId: "details-panel-actions-completeness",
   },
   {
     key: RowField.ACTIONS_EFFECTIVENESS,
-    label: "Эффективность действий",
+    label: "Эффективность действий КПЭ",
     kind: FieldKind.TEXTAREA,
     testId: "details-panel-actions-effectiveness",
   },
@@ -155,7 +137,7 @@ export const TECHNOLOGY_FIELDS: ExtraFieldConfig[] = [
   {
     key: RowField.RESPONSIBLE,
     label: TECHNOLOGY_DETAIL_LABELS.responsible,
-    kind: FieldKind.AUTOCOMPLETE_FROM_TYPES,
+    kind: FieldKind.SELECT_TYPE_CODE,
     typeCategory: DETAIL_TYPE_CATEGORY.RESPONSIBLE,
     testId: "details-panel-responsible",
   },
@@ -174,8 +156,8 @@ export const TECHNOLOGY_FIELDS: ExtraFieldConfig[] = [
 ];
 
 export function getFieldLabel(
-    field: ExtraFieldConfig,
-    t: (key: I18nKey) => string,
+  field: ExtraFieldConfig,
+  t: (key: I18nKey) => string,
 ): string {
   if (field.label) return field.label;
 
@@ -183,8 +165,8 @@ export function getFieldLabel(
 }
 
 export function countFilled(
-    row: Row,
-    fields: readonly ExtraFieldConfig[] = EXTRA_FIELDS,
+  row: Row,
+  fields: readonly ExtraFieldConfig[] = EXTRA_FIELDS,
 ): number {
   return fields.filter((field) => {
     const value = row[field.key];

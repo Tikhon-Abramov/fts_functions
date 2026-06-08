@@ -942,8 +942,8 @@ export type FtsFunctionDetailedResponseDto = {
     whoPerformsActionId: number | null;
     ftsFunctionActionTypeId: number | null;
     ftsFunctionEffectivenessId: number | null;
-    technologicalSolutionId?: ((string | null) | (number | null)) | null;
-    responsibleId?: ((string | null) | (number | null)) | null;
+    technologicalSolutionId?: number | null;
+    responsibleId?: number | null;
     ftsFunctionDetails: string | null;
     basis: string | null;
     actionsСompleteness: string | null;
@@ -968,7 +968,7 @@ export type FtsFunctionDetailedResponseDto = {
       initiatorAcceptance: string | null;
       deadline: string | null;
       isAccepted: boolean | null;
-      ftsMethodologyStatus: {
+      ftsMethodologyStatus?: {
         id: number;
         code: string;
         name: string;
@@ -1084,8 +1084,34 @@ export type FtsFunctionDetailedResponseDto = {
           | "ACTION_STATUS";
       };
       description: string;
-      feedbackQualityMetricsId: ((string | null) | (number | null)) | null;
+      feedbackQualityMetricsId: number | null;
       feedbackQualityMetrics: {
+        id: number;
+        code: string;
+        name: string;
+        category:
+          | "FTS_CENTRALIZATION"
+          | "FTS_FUNCTION_NAME"
+          | "FTS_FUNCTION_STEP"
+          | "FTS_FUNCTION_CATEGORY"
+          | "FTS_FUNCTION_MARKER"
+          | "FTS_FUNCTION_COMPLEXITY"
+          | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+          | "WHO_PERFORMS_ACTION"
+          | "FTS_FUNCTION_ACTION_TYPE"
+          | "FTS_FUNCTION_EFFECTIVENESS"
+          | "FTS_COMPETENCY_CENTER"
+          | "FTS_DTI"
+          | "FTS_FUNCTION_RELATION_TYPE"
+          | "TECHNOLOGICAL_SOLUTION"
+          | "FEEDBACK_SOURCE"
+          | "FEEDBACK_QUALITY_METRICS"
+          | "RESPONSIBLE"
+          | "FTS_METHODOLOGY_STATUS"
+          | "ACTION_STATUS";
+      } | null;
+      ftsMethodologyStatusId: number | null;
+      ftsMethodologyStatus?: {
         id: number;
         code: string;
         name: string;
@@ -1139,7 +1165,8 @@ export type FtsFunctionDetailedResponseDto = {
       }[];
       problemDescription: string | null;
       initiatorRequisites: string | null;
-      deadline: ((string | null) | (string | null)) | null;
+      initiatorAcceptance: string | null;
+      deadline: string | null;
     }[];
     ftsFunctionStep: {
       id: number;
@@ -1450,8 +1477,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
   whoPerformsActionId: number | null;
   ftsFunctionActionTypeId: number | null;
   ftsFunctionEffectivenessId: number | null;
-  technologicalSolutionId?: ((string | null) | (number | null)) | null;
-  responsibleId?: ((string | null) | (number | null)) | null;
+  technologicalSolutionId?: number | null;
+  responsibleId?: number | null;
   ftsFunctionDetails: string | null;
   basis: string | null;
   actionsСompleteness: string | null;
@@ -1476,7 +1503,7 @@ export type FtsFunctionDetailDetailedResponseDto = {
     initiatorAcceptance: string | null;
     deadline: string | null;
     isAccepted: boolean | null;
-    ftsMethodologyStatus: {
+    ftsMethodologyStatus?: {
       id: number;
       code: string;
       name: string;
@@ -1592,8 +1619,34 @@ export type FtsFunctionDetailDetailedResponseDto = {
         | "ACTION_STATUS";
     };
     description: string;
-    feedbackQualityMetricsId: ((string | null) | (number | null)) | null;
+    feedbackQualityMetricsId: number | null;
     feedbackQualityMetrics: {
+      id: number;
+      code: string;
+      name: string;
+      category:
+        | "FTS_CENTRALIZATION"
+        | "FTS_FUNCTION_NAME"
+        | "FTS_FUNCTION_STEP"
+        | "FTS_FUNCTION_CATEGORY"
+        | "FTS_FUNCTION_MARKER"
+        | "FTS_FUNCTION_COMPLEXITY"
+        | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+        | "WHO_PERFORMS_ACTION"
+        | "FTS_FUNCTION_ACTION_TYPE"
+        | "FTS_FUNCTION_EFFECTIVENESS"
+        | "FTS_COMPETENCY_CENTER"
+        | "FTS_DTI"
+        | "FTS_FUNCTION_RELATION_TYPE"
+        | "TECHNOLOGICAL_SOLUTION"
+        | "FEEDBACK_SOURCE"
+        | "FEEDBACK_QUALITY_METRICS"
+        | "RESPONSIBLE"
+        | "FTS_METHODOLOGY_STATUS"
+        | "ACTION_STATUS";
+    } | null;
+    ftsMethodologyStatusId: number | null;
+    ftsMethodologyStatus?: {
       id: number;
       code: string;
       name: string;
@@ -1647,7 +1700,8 @@ export type FtsFunctionDetailDetailedResponseDto = {
     }[];
     problemDescription: string | null;
     initiatorRequisites: string | null;
-    deadline: ((string | null) | (string | null)) | null;
+    initiatorAcceptance: string | null;
+    deadline: string | null;
   }[];
   ftsFunctionStep: {
     id: number;
@@ -1888,6 +1942,7 @@ export type CreateFtsFunctionDetailDto = {
   ftsFunctionDetails?: string | null;
   basis?: string | null;
   actionsСompleteness?: string | null;
+  actionsCompleteness?: string | null;
   actionsEffectiveness?: string | null;
   artifact?: string | null;
   artifactUsage?: string | null;
@@ -1909,6 +1964,7 @@ export type UpdateFtsFunctionDetailDto = {
   ftsFunctionDetails?: string | null;
   basis?: string | null;
   actionsСompleteness?: string | null;
+  actionsCompleteness?: string | null;
   actionsEffectiveness?: string | null;
   artifact?: string | null;
   artifactUsage?: string | null;
@@ -1927,7 +1983,7 @@ export type FeedbackResponseDto = {
   initiatorAcceptance: string | null;
   deadline: string | null;
   isAccepted: boolean | null;
-  ftsMethodologyStatus: {
+  ftsMethodologyStatus?: {
     id: number;
     code: string;
     name: string;
@@ -2065,8 +2121,34 @@ export type ActionResponseDto = {
       | "ACTION_STATUS";
   };
   description: string;
-  feedbackQualityMetricsId: ((string | null) | (number | null)) | null;
+  feedbackQualityMetricsId: number | null;
   feedbackQualityMetrics: {
+    id: number;
+    code: string;
+    name: string;
+    category:
+      | "FTS_CENTRALIZATION"
+      | "FTS_FUNCTION_NAME"
+      | "FTS_FUNCTION_STEP"
+      | "FTS_FUNCTION_CATEGORY"
+      | "FTS_FUNCTION_MARKER"
+      | "FTS_FUNCTION_COMPLEXITY"
+      | "FTS_FUNCTION_EXECUTION_FREQUENCY"
+      | "WHO_PERFORMS_ACTION"
+      | "FTS_FUNCTION_ACTION_TYPE"
+      | "FTS_FUNCTION_EFFECTIVENESS"
+      | "FTS_COMPETENCY_CENTER"
+      | "FTS_DTI"
+      | "FTS_FUNCTION_RELATION_TYPE"
+      | "TECHNOLOGICAL_SOLUTION"
+      | "FEEDBACK_SOURCE"
+      | "FEEDBACK_QUALITY_METRICS"
+      | "RESPONSIBLE"
+      | "FTS_METHODOLOGY_STATUS"
+      | "ACTION_STATUS";
+  } | null;
+  ftsMethodologyStatusId: number | null;
+  ftsMethodologyStatus?: {
     id: number;
     code: string;
     name: string;
@@ -2120,24 +2202,29 @@ export type ActionResponseDto = {
   }[];
   problemDescription: string | null;
   initiatorRequisites: string | null;
-  deadline: ((string | null) | (string | null)) | null;
+  initiatorAcceptance: string | null;
+  deadline: string | null;
 };
 export type CreateActionDto = {
   statusId: string | number;
   description: string;
   feedbackQualityMetricsId?: ((string | null) | (number | null)) | null;
+  ftsMethodologyStatusId?: ((string | null) | (number | null)) | null;
   feedbackSourceIds?: (string | number)[];
   problemDescription?: string | null;
   initiatorRequisites?: string | null;
+  initiatorAcceptance?: string | null;
   deadline?: ((string | null) | (string | null)) | null;
 };
 export type UpdateActionDto = {
   statusId?: string | number;
   description?: string;
   feedbackQualityMetricsId?: ((string | null) | (number | null)) | null;
+  ftsMethodologyStatusId?: ((string | null) | (number | null)) | null;
   feedbackSourceIds?: (string | number)[];
   problemDescription?: string | null;
   initiatorRequisites?: string | null;
+  initiatorAcceptance?: string | null;
   deadline?: ((string | null) | (string | null)) | null;
 };
 export type FtsFunctionTreeResponseDto = {

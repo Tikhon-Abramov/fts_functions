@@ -13,7 +13,7 @@ import { Link as LinkIcon, Save } from "@mui/icons-material";
 import { Box, Button, Typography, useTheme } from "@mui/material";
 import { FtsFunctionStep } from "src/entities/fts-function/model";
 import {
-  hasTechnologicalSolution,
+  areTechnologyRequiredFieldsFilled,
   isActualActionCategory,
 } from "src/entities/fts-function/lib/detail-technology";
 
@@ -44,8 +44,7 @@ export type NewRowData = {
   artifact?: string | undefined;
   basis?: string | undefined;
   artifactUsage?: string | undefined;
-  purpose?: string | undefined;
-  actionsСompleteness?: string | undefined;
+  actionsCompleteness?: string | undefined;
   actionsEffectiveness?: string | undefined;
   technologicalSolution?: string | undefined;
   number?: string | undefined;
@@ -70,15 +69,22 @@ type AddItemFormProps = {
 
 function isStepTechnologyValid(
   fields: StepFields,
+  step: FtsFunctionStep,
   algorithmFile: File | null,
+  typesAll: TypeResponseDto[],
 ): boolean {
   if (!isActualActionCategory(fields.category)) return true;
-  if (!hasTechnologicalSolution(fields)) return true;
 
-  return Boolean(
-    fields.number.trim() &&
-      fields.responsible.trim() &&
-      (fields.algorithm.trim() || fields.filePath.trim() || algorithmFile),
+  return areTechnologyRequiredFieldsFilled(
+    {
+      step,
+      technologicalSolution: fields.technologicalSolution,
+      number: fields.number,
+      responsible: fields.responsible,
+      algorithm: fields.algorithm,
+      filePath: algorithmFile?.name || fields.filePath,
+    },
+    typesAll,
   );
 }
 
@@ -118,8 +124,18 @@ export default function AddItemForm({
   const s2Filled = isStepFilled(s2);
   const bothFilled = s1Filled && s2Filled;
 
-  const s1TechnologyValid = isStepTechnologyValid(s1, s1AlgorithmFile);
-  const s2TechnologyValid = isStepTechnologyValid(s2, s2AlgorithmFile);
+  const s1TechnologyValid = isStepTechnologyValid(
+    s1,
+    FtsFunctionStep.OBJECT_SELECTION,
+    s1AlgorithmFile,
+    typesAll,
+  );
+  const s2TechnologyValid = isStepTechnologyValid(
+    s2,
+    FtsFunctionStep.CLUSTERING_IMPACT,
+    s2AlgorithmFile,
+    typesAll,
+  );
 
   const canSave = useMemo(() => {
     if (saving) return false;
@@ -174,9 +190,21 @@ export default function AddItemForm({
       const includeS2Technology = isActualActionCategory(v2.category);
 
       const canS1 =
-        isStepFilled(v1) && isStepTechnologyValid(v1, s1AlgorithmFile);
+        isStepFilled(v1) &&
+        isStepTechnologyValid(
+          v1,
+          FtsFunctionStep.OBJECT_SELECTION,
+          s1AlgorithmFile,
+          typesAll,
+        );
       const canS2 =
-        isStepFilled(v2) && isStepTechnologyValid(v2, s2AlgorithmFile);
+        isStepFilled(v2) &&
+        isStepTechnologyValid(
+          v2,
+          FtsFunctionStep.CLUSTERING_IMPACT,
+          s2AlgorithmFile,
+          typesAll,
+        );
 
       if (!canS1 && !canS2) return;
 
@@ -272,7 +300,7 @@ export default function AddItemForm({
               }}
             >
               {
-                "Если выбрано технологическое решение, заполните номер ПЗ / АЗ, ответственного и выберите один вариант: текст или файл"
+                "Если выбрано технологическое решение, заполните обязательные поля для выбранного типа решения"
               }
             </Typography>
           )}

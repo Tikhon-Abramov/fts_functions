@@ -317,6 +317,7 @@ model Type {
   feedbackQualityMetricsToFeedback                  Feedback[]          @relation("feedback__feedback_quality_metrics")
   actions                                           Action[]            @relation("action__status")
   feedbackQualityMetricsToAction                    Action[]            @relation("action__feedback_quality_metrics")
+  ftsMethodologyStatusToAction                       Action[]            @relation("action__fts_methodology_status")
   ftsFunctionTree                                   FtsFunctionTree[]
   
   @@index([code])
@@ -603,12 +604,16 @@ model Action {
   description         String @db.Text @map("description")
   /// Уникальный идентификатор метрики обратной связи
   feedbackQualityMetricsId        Int?      @map("feedback_quality_metrics_id")
+  /// Методологическая позиция ЦА ФНС России из справочника
+  ftsMethodologyStatusId          Int?      @map("fts_methodology_status_id")
   /// Описание проблемы с указанием источника, метрики, способа решения
   problemDescription              String?   @map("problem_description") @db.Text
   /// Реквизиты автора инициативы
   initiatorRequisites             String?   @map("initiator_requisites") @db.Text
   /// Срок реализации доработки
   deadline                        DateTime? @map("deadline")
+  /// Акцепт автора инициативы
+  initiatorAcceptance             String?   @map("initiator_acceptance") @db.Text
   /// Флаг мягкого удаления
   isDeleted           Boolean   @default(false) @map("is_deleted")
   /// Дата мягкого удаления (если удалена)
@@ -618,11 +623,13 @@ model Action {
   ftsFunctionDetail      FtsFunctionDetail @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
   status                 Type  @relation("action__status", fields: [statusId], references: [id])
   feedbackQualityMetrics Type? @relation("action__feedback_quality_metrics", fields: [feedbackQualityMetricsId], references: [id])
+  ftsMethodologyStatus   Type? @relation("action__fts_methodology_status", fields: [ftsMethodologyStatusId], references: [id])
 
   
   /// Набор источников обратной связи
   feedbackSources ActionToFeedbackSource[]
 
+  @@index([ftsMethodologyStatusId])
   @@map("actions")
 }
 

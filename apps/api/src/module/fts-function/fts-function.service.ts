@@ -1,30 +1,25 @@
 /**
  * FtsFunctionService — service layer for FtsFunction + FtsFunctionDetail +
  * tree edges + DTI links.
- *
- * The soft-delete filter, counter fan-out, and audit-log writes are
- * applied by hand inside each method; the planned `prisma.$extends`
- * refactor that would centralise them is documented in
- * `docs/known-limitations.md` (Backend gaps).
  */
 import type {
+  ActionDetailedEntity,
+  DownloadActionEntity,
+  DownloadFeedbackEntity,
+  DownloadFFtsFunctionTreeEntity,
+  DownloadFtsFunctionDetailEntity,
+  DownloadFtsFunctionEntity,
+  FeedbackDetailedEntity,
   FtsFunctionBaseEntity,
   FtsFunctionDetailDetailedEntity,
   FtsFunctionDetailedEntity,
   FtsFunctionListEntity,
   FtsFunctionToDtiEntity,
   FtsFunctionTreeEntity,
-  FeedbackDetailedEntity,
-  DownloadFtsFunctionEntity,
-  DownloadFtsFunctionDetailEntity,
-  DownloadFeedbackEntity,
-  DownloadFFtsFunctionTreeEntity,
-  DownloadActionEntity,
-  ActionDetailedEntity,
 } from './internal/fts-function.entity';
 
+import { Buffer } from 'node:buffer';
 import { Injectable, NotFoundException } from '@nestjs/common';
-
 import {
   DuplicateTreeEdgeException,
   FtsFunctionDetailNotFoundException,
@@ -42,37 +37,35 @@ import { assertTypeCategory } from './internal/assert-type-category';
 import { assertTypesCategories } from './internal/assert-types-categories';
 import { assertUserRole, UserRoleSlot } from './internal/assert-user-role';
 import {
+  actionSelect,
+  downloadActionSelect,
+  downloadFeedbackSelect,
+  downloadFtsFunctionDetailSelect,
+  downloadFtsFunctionSelect,
+  downloadFtsFunctionTreeSelect,
+  feedbackDetailedSelect,
   ftsFunctionBaseSelect,
   ftsFunctionDetailDetailedSelect,
   ftsFunctionDetailedSelect,
   ftsFunctionListSelect,
   ftsFunctionToDtiSelect,
   ftsFunctionTreeSelect,
-  feedbackDetailedSelect,
-  downloadFtsFunctionSelect,
-  downloadFtsFunctionDetailSelect,
-  downloadFeedbackSelect,
-  downloadFtsFunctionTreeSelect,
-  downloadActionSelect,
-  actionSelect,
 } from './internal/fts-function.selects';
 import {
+  AcceptFeedbackDto,
+  CreateActionDto,
+  CreateFeedbackDto,
   CreateFtsFunctionDetailDto,
   CreateFtsFunctionDto,
   CreateFtsFunctionTreeDto,
   FtsFunctionListQueryDto,
+  UpdateActionDto,
+  UpdateFeedbackDto,
   UpdateFtsFunctionDetailDto,
   UpdateFtsFunctionDto,
-  CreateFeedbackDto,
-  UpdateFeedbackDto,
-  AcceptFeedbackDto,
-  CreateActionDto,
-  UpdateActionDto,
 } from './fts-function.schema';
 import { FtsFunctionCounterService } from './fts-function-counter.service';
 import { ExcelService } from '../excel/excel.service';
-import * as ExcelJS from 'exceljs';
-
 
 type FtsFunctionListResult = {
   items: FtsFunctionListEntity[];
@@ -88,19 +81,19 @@ const ALIVE_SELECT = { id: true, isDeleted: true } as const;
 type FeedbackAgreementStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 
 type DetailDtoWithFeedbackSourceId = UpdateFtsFunctionDetailDto &
-    CreateFtsFunctionDetailDto & {
-  feedbackSourceId?: number | null;
-  feedbackSourceIds?: number[];
-  methodologyPosition?: string | null;
-  initiatorAcceptance?: string | null;
-};
+  CreateFtsFunctionDetailDto & {
+    feedbackSourceId?: number | null;
+    feedbackSourceIds?: number[];
+    methodologyPosition?: string | null;
+    initiatorAcceptance?: string | null;
+  };
 
 @Injectable()
 export class FtsFunctionService {
   constructor(
-      private readonly prisma: PrismaService,
-      private readonly counter: FtsFunctionCounterService,
-      private readonly excel: ExcelService<never>,
+    private readonly prisma: PrismaService,
+    private readonly counter: FtsFunctionCounterService,
+    private readonly excel: ExcelService<true>,
   ) {}
 
   async list(query: FtsFunctionListQueryDto): Promise<FtsFunctionListResult> {
@@ -116,11 +109,10 @@ export class FtsFunctionService {
 
     const sortBy: SortBy = query.sortBy ?? 'createdAt';
     const sortDir: SortDir = query.sortDir ?? 'desc';
-
     const orderBy: Prisma.FtsFunctionOrderByWithRelationInput[] =
-        sortBy === 'id'
-            ? [{ id: sortDir }]
-            : [{ [sortBy]: sortDir }, { id: sortDir }];
+      sortBy === 'id'
+        ? [{ id: sortDir }]
+        : [{ [sortBy]: sortDir }, { id: sortDir }];
 
     const [items, filteredTotal] = await this.prisma.$transaction([
       this.prisma.ftsFunction.findMany({
@@ -136,6 +128,7 @@ export class FtsFunctionService {
 
   async getById(id: number): Promise<FtsFunctionDetailedEntity> {
     const entity = await this.prisma.ftsFunction.findUnique({
+      relationLoadStrategy: 'query',
       where: { id },
       select: ftsFunctionDetailedSelect,
     });
@@ -160,10 +153,10 @@ export class FtsFunctionService {
           ftsFunctionMarkerId: dto.ftsFunctionMarkerId,
           curatorCentralOfficeId: dto.curatorCentralOfficeId,
           managerInterregionalInspectionId:
-          dto.managerInterregionalInspectionId,
+            dto.managerInterregionalInspectionId,
           departmentHeadCentralOfficeId: dto.departmentHeadCentralOfficeId,
           departmentHeadInterregionalInspectionId:
-          dto.departmentHeadInterregionalInspectionId,
+            dto.departmentHeadInterregionalInspectionId,
         },
         select: ftsFunctionBaseSelect,
       });
@@ -177,8 +170,8 @@ export class FtsFunctionService {
   }
 
   async update(
-      id: number,
-      dto: UpdateFtsFunctionDto,
+    id: number,
+    dto: UpdateFtsFunctionDto,
   ): Promise<FtsFunctionBaseEntity> {
     await this.ensureFtsFunctionAlive(id);
     await this.validateFtsFunctionWrite(dto as unknown as Record<string, unknown>);
@@ -213,12 +206,12 @@ export class FtsFunctionService {
   }
 
   async createDetail(
-      ftsFunctionId: number,
-      dto: CreateFtsFunctionDetailDto,
+    ftsFunctionId: number,
+    dto: CreateFtsFunctionDetailDto,
   ): Promise<FtsFunctionDetailDetailedEntity> {
     await this.ensureFtsFunctionAlive(ftsFunctionId);
     await this.validateFtsFunctionDetailWrite(
-        dto as unknown as Record<string, unknown>,
+      dto as unknown as Record<string, unknown>,
     );
 
     return this.prisma.$transaction(async (tx) => {
@@ -229,14 +222,18 @@ export class FtsFunctionService {
           ftsFunctionCategoryId: dto.ftsFunctionCategoryId ?? null,
           ftsFunctionComplexityId: dto.ftsFunctionComplexityId ?? null,
           ftsFunctionExecutionFrequencyId:
-              dto.ftsFunctionExecutionFrequencyId ?? null,
+            dto.ftsFunctionExecutionFrequencyId ?? null,
           whoPerformsActionId: dto.whoPerformsActionId ?? null,
           ftsFunctionActionTypeId: dto.ftsFunctionActionTypeId ?? null,
-          ftsFunctionEffectivenessId: dto.ftsFunctionEffectivenessId ?? null,
+          ftsFunctionEffectivenessId:
+            dto.ftsFunctionEffectivenessId ?? null,
           technologicalSolutionId: dto.technologicalSolutionId ?? null,
           responsibleId: dto.responsibleId ?? null,
           ftsFunctionDetails: dto.ftsFunctionDetails ?? null,
           basis: dto.basis ?? null,
+          actionsСompleteness:
+            dto.actionsСompleteness ?? dto.actionsCompleteness ?? null,
+          actionsEffectiveness: dto.actionsEffectiveness ?? null,
           artifact: dto.artifact ?? null,
           artifactUsage: dto.artifactUsage ?? null,
           purpose: dto.purpose ?? null,
@@ -258,10 +255,9 @@ export class FtsFunctionService {
     });
   }
 
-
   async updateDetail(
-      detailId: number,
-      dto: UpdateFtsFunctionDetailDto,
+    detailId: number,
+    dto: UpdateFtsFunctionDetailDto,
   ): Promise<FtsFunctionDetailDetailedEntity> {
     await this.ensureDetailAlive(detailId);
     await this.validateFtsFunctionDetailWrite(dto as unknown as Record<string, unknown>);
@@ -269,19 +265,27 @@ export class FtsFunctionService {
     const {
       feedbackSourceId: _feedbackSourceId,
       feedbackSourceIds: _feedbackSourceIds,
+      actionsCompleteness,
       ...rawData
-    } = dto as DetailDtoWithFeedbackSourceId;
+    } = dto as DetailDtoWithFeedbackSourceId & {
+      actionsCompleteness?: string | null;
+    };
+
+    const normalizedData = {
+      ...rawData,
+      ...(actionsCompleteness !== undefined
+        ? { actionsСompleteness: actionsCompleteness }
+        : {}),
+    };
 
     return this.prisma.$transaction(async (tx) => {
       await tx.ftsFunctionDetail.update({
         where: { id: detailId },
         data: {
-          ...stripUndefined(rawData as unknown as Record<string, unknown>),
+          ...stripUndefined(normalizedData as unknown as Record<string, unknown>),
         },
         select: { id: true },
       });
-
-
 
       const updated = await tx.ftsFunctionDetail.findUnique({
         where: { id: detailId },
@@ -293,15 +297,10 @@ export class FtsFunctionService {
       return updated;
     });
   }
-  // Добавь этот метод внутрь класса FtsFunctionService в apps/api/src/module/fts-function/fts-function.service.ts
-// Также проверь, что в imports service.ts есть ftsFunctionDetailDetailedSelect.
-
-  // Добавь этот метод внутрь класса FtsFunctionService в apps/api/src/module/fts-function/fts-function.service.ts
-// Также проверь, что в imports service.ts есть ftsFunctionDetailDetailedSelect.
 
   async uploadDetailAlgorithmFile(
-      detailId: number,
-      fileName: string,
+    detailId: number,
+    fileName: string,
   ): Promise<FtsFunctionDetailDetailedEntity> {
     await this.ensureDetailAlive(detailId);
 
@@ -317,9 +316,8 @@ export class FtsFunctionService {
     });
   }
 
-
   async softDeleteDetail(
-      detailId: number,
+    detailId: number,
   ): Promise<FtsFunctionDetailDetailedEntity> {
     await this.ensureDetailAlive(detailId);
 
@@ -330,16 +328,14 @@ export class FtsFunctionService {
     });
   }
 
-
-
   async createFeedback(
-      ftsFunctionDetailId: number,
-      dto: CreateFeedbackDto,
+    ftsFunctionDetailId: number,
+    dto: CreateFeedbackDto,
   ): Promise<FeedbackDetailedEntity> {
     await this.ensureDetailAlive(ftsFunctionDetailId);
 
     const sourceIds = resolveFeedbackSourceIds(
-        dto as DetailDtoWithFeedbackSourceId,
+      dto as DetailDtoWithFeedbackSourceId,
     );
 
     return this.prisma.feedback.create({
@@ -353,22 +349,22 @@ export class FtsFunctionService {
         deadline: dto.deadline ?? null,
         isAccepted: null,
         ...(sourceIds.length > 0
-            ? {
-                feedbackSources: {
-                  create: sourceIds.map((feedbackSourceId) => ({
-                    feedbackSourceId,
-                  })),
-                },
-              }
-            : {}),
+          ? {
+              feedbackSources: {
+                create: sourceIds.map((feedbackSourceId) => ({
+                  feedbackSourceId,
+                })),
+              },
+            }
+          : {}),
       },
       select: feedbackDetailedSelect,
-      });
+    });
   }
 
   async updateFeedback(
-      feedbackId: number,
-      dto: UpdateFeedbackDto,
+    feedbackId: number,
+    dto: UpdateFeedbackDto,
   ): Promise<FeedbackDetailedEntity> {
     const { feedbackSourceIds, ...scalar } = dto as UpdateFeedbackDto & {
       feedbackSourceIds?: number[];
@@ -377,10 +373,7 @@ export class FtsFunctionService {
     return this.prisma.$transaction(async (tx) => {
       const before = await tx.feedback.findUnique({
         where: { id: feedbackId },
-        select: {
-          id: true,
-          isAccepted: true,
-        },
+        select: { id: true, isAccepted: true },
       });
 
       if (!before) {
@@ -388,11 +381,9 @@ export class FtsFunctionService {
       }
 
       const fromStatus =
-          getAgreementStatusFromAccepted(before.isAccepted) ?? 'PENDING';
-
+        getAgreementStatusFromAccepted(before.isAccepted) ?? 'PENDING';
       const shouldMoveBackToPending = before.isAccepted !== null;
 
-      // Полная пересборка набора источников только если массив передан явно
       if (feedbackSourceIds !== undefined) {
         const sourceIds = resolveFeedbackSourceIds({
           feedbackSourceIds,
@@ -455,9 +446,9 @@ export class FtsFunctionService {
   }
 
   async acceptFeedback(
-      feedbackId: number,
-      isAccepted: boolean,
-      rejectComment?: string,
+    feedbackId: number,
+    isAccepted: boolean,
+    rejectComment?: string,
   ): Promise<FeedbackDetailedEntity> {
     const before = await this.prisma.feedback.findUnique({
       where: { id: feedbackId },
@@ -465,17 +456,15 @@ export class FtsFunctionService {
     });
 
     const toStatus: FeedbackAgreementStatus = isAccepted
-        ? 'ACCEPTED'
-        : 'REJECTED';
-
+      ? 'ACCEPTED'
+      : 'REJECTED';
     const comment = !isAccepted && rejectComment ? rejectComment : null;
 
     return this.prisma.$transaction(async (tx) => {
       await tx.ftsFunctionDetailAgreementHistory.create({
         data: {
           feedbackId,
-          fromStatus:
-              getAgreementStatusFromAccepted(before?.isAccepted) ?? 'PENDING',
+          fromStatus: getAgreementStatusFromAccepted(before?.isAccepted) ?? 'PENDING',
           toStatus,
           comment,
         },
@@ -489,17 +478,9 @@ export class FtsFunctionService {
     });
   }
 
-
-
-
-
-
-
-
-
   async createAction(
-      ftsFunctionDetailId: number,
-      dto: CreateActionDto,
+    ftsFunctionDetailId: number,
+    dto: CreateActionDto,
   ): Promise<ActionDetailedEntity> {
     await this.ensureDetailAlive(ftsFunctionDetailId);
 
@@ -508,27 +489,29 @@ export class FtsFunctionService {
         ftsFunctionDetailId,
         statusId: dto.statusId,
         description: dto.description.trim(),
-        feedbackQualityMetricsId: dto.feedbackQualityMetricsId,
-        problemDescription: dto.problemDescription,
-        initiatorRequisites: dto.initiatorRequisites,
-        deadline: dto.deadline,
-        ...(dto.feedbackSourceIds.length > 0
-            ? {
-                feedbackSources: {
-                  create: dto.feedbackSourceIds.map((feedbackSourceId) => ({
-                    feedbackSourceId,
-                  })),
-                },
-              }
-            : {}),
+        feedbackQualityMetricsId: dto.feedbackQualityMetricsId ?? null,
+        ftsMethodologyStatusId: dto.ftsMethodologyStatusId ?? null,
+        problemDescription: dto.problemDescription ?? null,
+        initiatorRequisites: dto.initiatorRequisites ?? null,
+        initiatorAcceptance: dto.initiatorAcceptance ?? null,
+        deadline: dto.deadline ?? null,
+        ...((dto.feedbackSourceIds ?? []).length > 0
+          ? {
+              feedbackSources: {
+                create: (dto.feedbackSourceIds ?? []).map((feedbackSourceId) => ({
+                  feedbackSourceId,
+                })),
+              },
+            }
+          : {}),
       },
       select: actionSelect,
     });
   }
 
   async updateAction(
-      actionId: number,
-      dto: UpdateActionDto,
+    actionId: number,
+    dto: UpdateActionDto,
   ): Promise<ActionDetailedEntity> {
     const existingAction = await this.prisma.action.findFirst({
       where: {
@@ -547,8 +530,10 @@ export class FtsFunctionService {
     const {
       feedbackSourceIds,
       feedbackQualityMetricsId,
+      ftsMethodologyStatusId,
       problemDescription,
       initiatorRequisites,
+      initiatorAcceptance,
       deadline,
       ...actionFields
     } = dto;
@@ -560,22 +545,20 @@ export class FtsFunctionService {
         },
         data: {
           ...stripUndefined(actionFields as unknown as Record<string, unknown>),
-
           ...(feedbackQualityMetricsId !== undefined
-              ? { feedbackQualityMetricsId }
-              : {}),
-
-          ...(problemDescription !== undefined
-              ? { problemDescription }
-              : {}),
-
+            ? { feedbackQualityMetricsId }
+            : {}),
+          ...(ftsMethodologyStatusId !== undefined
+            ? { ftsMethodologyStatusId }
+            : {}),
+          ...(problemDescription !== undefined ? { problemDescription } : {}),
           ...(initiatorRequisites !== undefined
-              ? { initiatorRequisites }
-              : {}),
-
-          ...(deadline !== undefined
-              ? { deadline }
-              : {}),
+            ? { initiatorRequisites }
+            : {}),
+          ...(initiatorAcceptance !== undefined
+            ? { initiatorAcceptance }
+            : {}),
+          ...(deadline !== undefined ? { deadline } : {}),
         },
         select: {
           id: true,
@@ -628,27 +611,17 @@ export class FtsFunctionService {
     });
   }
 
-
-
-
-
-
-
-
-
-
-
   async createTreeEdge(
-      dto: CreateFtsFunctionTreeDto,
+    dto: CreateFtsFunctionTreeDto,
   ): Promise<FtsFunctionTreeEntity> {
     if (dto.parentFtsFunctionId === dto.childFtsFunctionId) {
       throw new TreeSelfLoopException();
     }
 
     await assertTypeCategory(
-        this.prisma,
-        dto.relationTypeId,
-        Category.FTS_FUNCTION_RELATION_TYPE,
+      this.prisma,
+      dto.relationTypeId,
+      Category.FTS_FUNCTION_RELATION_TYPE,
     );
 
     const [parent, child] = await Promise.all([
@@ -693,8 +666,8 @@ export class FtsFunctionService {
   }
 
   async deleteTreeEdge(
-      parentId: number,
-      childId: number,
+    parentId: number,
+    childId: number,
   ): Promise<FtsFunctionTreeEntity> {
     const existing = await this.prisma.ftsFunctionTree.findUnique({
       where: {
@@ -723,8 +696,8 @@ export class FtsFunctionService {
   }
 
   async attachDti(
-      ftsFunctionId: number,
-      dtiId: number,
+    ftsFunctionId: number,
+    dtiId: number,
   ): Promise<FtsFunctionToDtiEntity> {
     await this.ensureFtsFunctionAlive(ftsFunctionId);
     await assertTypeCategory(this.prisma, dtiId, Category.FTS_DTI);
@@ -738,33 +711,32 @@ export class FtsFunctionService {
   }
 
   async batchAttachDtis(
-      ftsFunctionId: number,
-      dtiIds: number[],
+    ftsFunctionId: number,
+    dtiIds: number[],
   ): Promise<FtsFunctionDetailedEntity> {
     await this.ensureFtsFunctionAlive(ftsFunctionId);
-
     await assertTypesCategories(
-        this.prisma,
-        dtiIds.map((id) => ({ id, expected: Category.FTS_DTI })),
+      this.prisma,
+      dtiIds.map((id) => ({ id, expected: Category.FTS_DTI })),
     );
 
     await this.prisma.$transaction(
-        dtiIds.map((dtiId) =>
-            this.prisma.ftsFunctionToDti.upsert({
-              where: { ftsFunctionId_dtiId: { ftsFunctionId, dtiId } },
-              create: { ftsFunctionId, dtiId },
-              update: {},
-              select: ftsFunctionToDtiSelect,
-            }),
-        ),
+      dtiIds.map((dtiId) =>
+        this.prisma.ftsFunctionToDti.upsert({
+          where: { ftsFunctionId_dtiId: { ftsFunctionId, dtiId } },
+          create: { ftsFunctionId, dtiId },
+          update: {},
+          select: ftsFunctionToDtiSelect,
+        }),
+      ),
     );
 
     return this.getById(ftsFunctionId);
   }
 
   async detachDti(
-      ftsFunctionId: number,
-      dtiId: number,
+    ftsFunctionId: number,
+    dtiId: number,
   ): Promise<FtsFunctionToDtiEntity> {
     const existing = await this.prisma.ftsFunctionToDti.findUnique({
       where: { ftsFunctionId_dtiId: { ftsFunctionId, dtiId } },
@@ -783,10 +755,9 @@ export class FtsFunctionService {
   }
 
   private async buildListWhereClause(
-      query: FtsFunctionListQueryDto,
+    query: FtsFunctionListQueryDto,
   ): Promise<Prisma.FtsFunctionWhereInput | null> {
     const where: Prisma.FtsFunctionWhereInput = {};
-
     if (!query.includeDeleted) where.isDeleted = false;
 
     if (query.ftsCentralizationIds) {
@@ -845,16 +816,17 @@ export class FtsFunctionService {
     if (query.idLte !== undefined) idFilter['lte'] = query.idLte;
 
     if (Object.keys(idFilter).length > 0) {
-      where.id = idFilter;
+      where.id = idFilter as Prisma.IntFilter<'FtsFunction'>;
     }
 
     if (query.search) {
       const matchedIds = await this.buildSearchFilter(query.search);
+
       if (matchedIds.length === 0) return null;
 
       where.id = where.id
-          ? { in: matchedIds, ...(where.id as object) }
-          : { in: matchedIds };
+        ? { in: matchedIds, ...(where.id as object) }
+        : { in: matchedIds };
     }
 
     return where;
@@ -862,12 +834,12 @@ export class FtsFunctionService {
 
   private async buildSearchFilter(search: string): Promise<number[]> {
     const matchedIds = await this.prisma.$queryRawUnsafe<Array<{ id: number }>>(
-        `SELECT DISTINCT d.fts_function_id AS id
+      `SELECT DISTINCT d.fts_function_id AS id
        FROM fts_function_details d
        WHERE d.is_deleted = 0
-         AND MATCH (d.fts_function_details, d.basis, d.artifact, d.artifact_usage, d.purpose)
+         AND MATCH (d.fts_function_details, d.basis, d.artifact, d.artifact_usage, d.purpose, d.number)
              AGAINST (? IN NATURAL LANGUAGE MODE)`,
-        search,
+      search,
     );
 
     return matchedIds.map((r) => r.id);
@@ -883,8 +855,8 @@ export class FtsFunctionService {
   }
 
   private async ensureFtsFunctionNameAvailable(
-      ftsFunctionNameId: number,
-      excludeId?: number,
+    ftsFunctionNameId: number,
+    excludeId?: number,
   ): Promise<void> {
     const conflict = await this.prisma.ftsFunction.findFirst({
       where: {
@@ -908,14 +880,13 @@ export class FtsFunctionService {
   }
 
   private async validateFtsFunctionWrite(
-      dto: Record<string, unknown>,
+    dto: Record<string, unknown>,
   ): Promise<void> {
     const typeChecks = collectTypeChecks(dto, FTS_FUNCTION_TYPE_FIELDS);
     const userChecks: Array<Promise<void>> = [];
 
     for (const slot of FTS_FUNCTION_USER_SLOTS) {
       const id = dto[`${slot}Id`];
-
       if (id != null) {
         userChecks.push(assertUserRole(this.prisma, id as number, slot));
       }
@@ -928,84 +899,95 @@ export class FtsFunctionService {
   }
 
   private async validateFtsFunctionDetailWrite(
-      dto: Record<string, unknown>,
+    dto: Record<string, unknown>,
   ): Promise<void> {
     await assertTypesCategories(
-        this.prisma,
-        collectTypeChecks(dto, FTS_FUNCTION_DETAIL_TYPE_FIELDS),
+      this.prisma,
+      collectTypeChecks(dto, FTS_FUNCTION_DETAIL_TYPE_FIELDS),
     );
   }
 
-  async getDownload(): Promise<ExcelJS.Buffer> {
-    const [ftsFunctions, ftsFunctionDetails, feedback, tree, actions] = await Promise.all([
-      this.prisma.ftsFunction.findMany({
-        where: { isDeleted: false },
-        select: downloadFtsFunctionSelect,
-        orderBy: { id: 'asc' }
-      }),
-
-      this.prisma.ftsFunctionDetail.findMany({
-        where: {
-          isDeleted: false,
-          ftsFunction: { isDeleted: false },
-        },
-        select: downloadFtsFunctionDetailSelect,
-        orderBy: [
-          { ftsFunctionId: 'asc' },
-          { ftsFunctionStepId: 'asc' },
-          { ftsFunctionCategoryId: 'asc' },
-        ],
-      }),
-
-      this.prisma.feedback.findMany({
-        where: {
-          isDeleted: false,
-          ftsFunctionDetail: {
+  async getDownload(): Promise<Buffer> {
+    const [
+      ftsFunctions,
+      ftsFunctionDetails,
+      feedback,
+      tree,
+      actions,
+      methodologyStatuses,
+    ] = await Promise.all([
+        this.prisma.ftsFunction.findMany({
+          where: { isDeleted: false },
+          select: downloadFtsFunctionSelect,
+          orderBy: { id: 'asc' },
+        }),
+        this.prisma.ftsFunctionDetail.findMany({
+          where: {
             isDeleted: false,
             ftsFunction: { isDeleted: false },
           },
-        },
-        select: downloadFeedbackSelect,
-        orderBy: [
-          { ftsFunctionDetail: { ftsFunctionId: 'asc' } },
-          { ftsFunctionDetail: { ftsFunctionStepId: 'asc' } },
-          { ftsFunctionDetail: { ftsFunctionCategoryId: 'asc' } },
-        ],
-      }),
-
-      this.prisma.ftsFunctionTree.findMany({
-        where: {
-          parentFtsFunction: {
+          select: downloadFtsFunctionDetailSelect,
+          orderBy: [
+            { ftsFunctionId: 'asc' },
+            { ftsFunctionStepId: 'asc' },
+            { ftsFunctionCategoryId: 'asc' },
+          ],
+        }),
+        this.prisma.feedback.findMany({
+          where: {
             isDeleted: false,
-            ftsFunction: { isDeleted: false },
+            ftsFunctionDetail: {
+              isDeleted: false,
+              ftsFunction: { isDeleted: false },
+            },
           },
-        },
-        select: downloadFtsFunctionTreeSelect,
-        orderBy: [
-          { parentFtsFunction: { ftsFunctionId: 'asc' } },
-          { parentFtsFunction: { ftsFunctionStepId: 'asc' } },
-          { parentFtsFunction: { ftsFunctionCategoryId: 'asc' } },
-        ],
-      }),
-
-      this.prisma.action.findMany({
-        where: {
-          isDeleted: false,
-          ftsFunctionDetail: {
+          select: downloadFeedbackSelect,
+          orderBy: [
+            { ftsFunctionDetail: { ftsFunctionId: 'asc' } },
+            { ftsFunctionDetail: { ftsFunctionStepId: 'asc' } },
+            { ftsFunctionDetail: { ftsFunctionCategoryId: 'asc' } },
+          ],
+        }),
+        this.prisma.ftsFunctionTree.findMany({
+          where: {
+            parentFtsFunction: {
+              isDeleted: false,
+              ftsFunction: { isDeleted: false },
+            },
+          },
+          select: downloadFtsFunctionTreeSelect,
+          orderBy: [
+            { parentFtsFunction: { ftsFunctionId: 'asc' } },
+            { parentFtsFunction: { ftsFunctionStepId: 'asc' } },
+            { parentFtsFunction: { ftsFunctionCategoryId: 'asc' } },
+          ],
+        }),
+        this.prisma.action.findMany({
+          where: {
             isDeleted: false,
-            ftsFunction: { isDeleted: false },
+            ftsFunctionDetail: {
+              isDeleted: false,
+              ftsFunction: { isDeleted: false },
+            },
           },
-        },
-        select: downloadActionSelect,
-        orderBy: [
-          { ftsFunctionDetail: { ftsFunctionId: 'asc' } },
-          { ftsFunctionDetail: { ftsFunctionStepId: 'asc' } },
-          { ftsFunctionDetail: { ftsFunctionCategoryId: 'asc' } },
-        ],
-      })
-    ]);
+          select: downloadActionSelect,
+          orderBy: [
+            { ftsFunctionDetail: { ftsFunctionId: 'asc' } },
+            { ftsFunctionDetail: { ftsFunctionStepId: 'asc' } },
+            { ftsFunctionDetail: { ftsFunctionCategoryId: 'asc' } },
+          ],
+        }),
+        this.prisma.type.findMany({
+          where: { category: Category.FTS_METHODOLOGY_STATUS },
+          select: { id: true, name: true },
+        }),
+      ]);
 
-    return this.excel.createExcelWorkbook({
+    const methodologyStatusNameById = new Map(
+      methodologyStatuses.map((item) => [item.id, item.name]),
+    );
+
+    const workbookBuffer = await this.excel.createExcelWorkbook({
       sheets: [
         {
           name: 'Функции',
@@ -1017,45 +999,53 @@ export class FtsFunctionService {
             },
             {
               header: 'Наименование функции',
-              map: (row: DownloadFtsFunctionEntity) => row.ftsFunctionName.name,
+              map: (row: DownloadFtsFunctionEntity) =>
+                row.ftsFunctionName.name,
             },
             {
               header: 'Маркер функции',
-              map: (row: DownloadFtsFunctionEntity) => row.ftsFunctionMarker.name,
+              map: (row: DownloadFtsFunctionEntity) =>
+                row.ftsFunctionMarker.name,
             },
             {
               header: 'Стратегия Д, DTI',
               map: (row: DownloadFtsFunctionEntity) => {
-                const dtis = row.dtis.map(
-                  ({ dti }) => dti.name ? `${dti.code}, ${dti.name}` : dti.code
+                const dtis = row.dtis.map(({ dti }) =>
+                  dti.name ? `${dti.code}, ${dti.name}` : dti.code,
                 );
 
-                return dtis?.join(';\n');
+                return dtis.join(';\n');
               },
             },
             {
               header: 'Централизация функции',
-              map: (row: DownloadFtsFunctionEntity) => row.ftsCentralization.name,
+              map: (row: DownloadFtsFunctionEntity) =>
+                row.ftsCentralization.name,
             },
             {
               header: 'Центр компетенции',
-              map: (row: DownloadFtsFunctionEntity) => row.competencyCenter.name,
+              map: (row: DownloadFtsFunctionEntity) =>
+                row.competencyCenter.name,
             },
             {
               header: 'Куратор ЦА',
-              map: (row: DownloadFtsFunctionEntity) => row.curatorCentralOffice.fullName,
+              map: (row: DownloadFtsFunctionEntity) =>
+                row.curatorCentralOffice.fullName,
             },
             {
               header: 'НУ / ЗНУ',
-              map: (row: DownloadFtsFunctionEntity) => row.departmentHeadCentralOffice.fullName,
+              map: (row: DownloadFtsFunctionEntity) =>
+                row.departmentHeadCentralOffice.fullName,
             },
             {
               header: 'Менеджер МИУДОЛ',
-              map: (row: DownloadFtsFunctionEntity) => row.managerInterregionalInspection.fullName,
+              map: (row: DownloadFtsFunctionEntity) =>
+                row.managerInterregionalInspection.fullName,
             },
             {
               header: 'НИ / ЗНИ',
-              map: (row: DownloadFtsFunctionEntity) => row.departmentHeadInterregionalInspection.fullName,
+              map: (row: DownloadFtsFunctionEntity) =>
+                row.departmentHeadInterregionalInspection.fullName,
             },
             {
               header: 'Дата создания',
@@ -1081,27 +1071,33 @@ export class FtsFunctionService {
             },
             {
               header: 'Наименование функции',
-              map: (row: DownloadFtsFunctionDetailEntity) => row.ftsFunction.ftsFunctionName.name,
+              map: (row: DownloadFtsFunctionDetailEntity) =>
+                row.ftsFunction.ftsFunctionName.name,
             },
             {
               header: 'Шаг функции',
-              map: (row: DownloadFtsFunctionDetailEntity) => row.ftsFunctionStep.name,
+              map: (row: DownloadFtsFunctionDetailEntity) =>
+                row.ftsFunctionStep.name,
             },
             {
               header: 'Категория функции',
-              map: (row: DownloadFtsFunctionDetailEntity) => row.ftsFunctionCategory?.name,
+              map: (row: DownloadFtsFunctionDetailEntity) =>
+                row.ftsFunctionCategory?.name,
             },
             {
-              header: 'Детализация',
-              map: (row: DownloadFtsFunctionDetailEntity) => row.ftsFunctionDetails,
+              header: 'Наименование действия',
+              map: (row: DownloadFtsFunctionDetailEntity) =>
+                row.ftsFunctionDetails,
             },
             {
               header: 'Периодичность выполнения',
-              map: (row: DownloadFtsFunctionDetailEntity) => row.ftsFunctionExecutionFrequency?.name,
+              map: (row: DownloadFtsFunctionDetailEntity) =>
+                row.ftsFunctionExecutionFrequency?.name,
             },
             {
               header: 'Сложности функции',
-              map: (row: DownloadFtsFunctionDetailEntity) => row.ftsFunctionComplexity?.name,
+              map: (row: DownloadFtsFunctionDetailEntity) =>
+                row.ftsFunctionComplexity?.name,
             },
             {
               header: 'Артефакт',
@@ -1113,15 +1109,24 @@ export class FtsFunctionService {
             },
             {
               header: 'Как используется артефакт',
-              map: (row: DownloadFtsFunctionDetailEntity) => row.artifactUsage,
+              map: (row: DownloadFtsFunctionDetailEntity) =>
+                row.artifactUsage,
             },
             {
-              header: 'Зачем выполняется',
-              map: (row: DownloadFtsFunctionDetailEntity) => row.purpose,
+              header:
+                'Полнота действий - метрика полноты отработки объектов',
+              map: (row: DownloadFtsFunctionDetailEntity) =>
+                row.actionsСompleteness,
+            },
+            {
+              header: 'Эффективность действий КПЭ',
+              map: (row: DownloadFtsFunctionDetailEntity) =>
+                row.actionsEffectiveness,
             },
             {
               header: 'Технологическое решение',
-              map: (row: DownloadFtsFunctionDetailEntity) => row.technologicalSolution?.name,
+              map: (row: DownloadFtsFunctionDetailEntity) =>
+                row.technologicalSolution?.name,
             },
             {
               header: 'Номер ПЗ / АЗ',
@@ -1129,13 +1134,14 @@ export class FtsFunctionService {
             },
             {
               header: 'Ответственный',
-              map: (row: DownloadFtsFunctionDetailEntity) => row.technologicalSolution?.name,
+              map: (row: DownloadFtsFunctionDetailEntity) =>
+                row.responsible?.name,
             },
             {
-              header: 'Алгоритм срабатывания',
-              map: (row: DownloadFtsFunctionDetailEntity) => row.algorithm,
+              header: 'Результат отработки',
+              map: (row: DownloadFtsFunctionDetailEntity) =>
+                row.algorithm ?? row.filePath,
             },
-          
             {
               header: 'Дата создания',
               map: (row: DownloadFtsFunctionDetailEntity) => row.createdAt,
@@ -1152,11 +1158,13 @@ export class FtsFunctionService {
           columns: [
             {
               header: 'ID функции',
-              map: (row: DownloadFeedbackEntity) => row.ftsFunctionDetail.ftsFunction.id,
+              map: (row: DownloadFeedbackEntity) =>
+                row.ftsFunctionDetail.ftsFunction.id,
             },
             {
               header: 'ID детализации',
-              map: (row: DownloadFeedbackEntity) => row.ftsFunctionDetail.id,
+              map: (row: DownloadFeedbackEntity) =>
+                row.ftsFunctionDetail.id,
             },
             {
               header: 'ID обратной связи',
@@ -1164,26 +1172,29 @@ export class FtsFunctionService {
             },
             {
               header: 'Наименование функции',
-              map: (row: DownloadFeedbackEntity) => row.ftsFunctionDetail.ftsFunction.ftsFunctionName.name,
+              map: (row: DownloadFeedbackEntity) =>
+                row.ftsFunctionDetail.ftsFunction.ftsFunctionName.name,
             },
             {
               header: 'Детализация функции',
-              map: (row: DownloadFeedbackEntity) => row.ftsFunctionDetail.ftsFunctionDetails,
+              map: (row: DownloadFeedbackEntity) =>
+                row.ftsFunctionDetail.ftsFunctionDetails,
             },
             {
               header: 'Источники обратной связи',
-              map: (row: DownloadFeedbackEntity) => {
-                return row.feedbackSources.map(
-                  ({ feedbackSource }) => feedbackSource.name
-                ).join(';\n');
-              },
+              map: (row: DownloadFeedbackEntity) =>
+                row.feedbackSources
+                  .map(({ feedbackSource }) => feedbackSource.name)
+                  .join(';\n'),
             },
             {
               header: 'Метрики качества процесса в рамках обратной связи',
-              map: (row: DownloadFeedbackEntity) => row.feedbackQualityMetrics?.name,
+              map: (row: DownloadFeedbackEntity) =>
+                row.feedbackQualityMetrics?.name,
             },
             {
-              header: 'Описание проблемы с указанием источника, метрики, способа решения',
+              header:
+                'Описание проблемы с указанием источника, метрики, способа решения',
               map: (row: DownloadFeedbackEntity) => row.problemDescription,
             },
             {
@@ -1192,15 +1203,12 @@ export class FtsFunctionService {
             },
             {
               header: 'Методология позиции ЦА ФНС России',
-              map: (row: DownloadFeedbackEntity) => row.ftsMethodologyStatus?.name,
+              map: (row: DownloadFeedbackEntity) =>
+                row.ftsMethodologyStatus?.name,
             },
             {
               header: 'Акцепт автора инициативы',
               map: (row: DownloadFeedbackEntity) => row.initiatorAcceptance,
-            },
-            {
-              header: 'Методологическая позиция ЦА ФНС России из справочника',
-              map: (row: DownloadFeedbackEntity) => row.ftsMethodologyStatus?.name,
             },
             {
               header: 'Срок реализации доработки',
@@ -1208,7 +1216,8 @@ export class FtsFunctionService {
             },
             {
               header: 'Согласовано',
-              map: (row: DownloadFeedbackEntity) => row.isAccepted ? 'Да' : 'Нет',
+              map: (row: DownloadFeedbackEntity) =>
+                row.isAccepted ? 'Да' : 'Нет',
             },
           ],
         },
@@ -1218,49 +1227,59 @@ export class FtsFunctionService {
           columns: [
             {
               header: 'ID функции',
-              map: (row: DownloadFFtsFunctionTreeEntity) => row.parentFtsFunction.ftsFunction.id,
+              map: (row: DownloadFFtsFunctionTreeEntity) =>
+                row.parentFtsFunction.ftsFunction.id,
             },
             {
               header: 'ID детализации',
-              map: (row: DownloadFFtsFunctionTreeEntity) => row.parentFtsFunction.id,
+              map: (row: DownloadFFtsFunctionTreeEntity) =>
+                row.parentFtsFunction.id,
             },
             {
               header: 'Наименование функции',
-              map: (row: DownloadFFtsFunctionTreeEntity) => row.parentFtsFunction.ftsFunction.ftsFunctionName.name,
+              map: (row: DownloadFFtsFunctionTreeEntity) =>
+                row.parentFtsFunction.ftsFunction.ftsFunctionName.name,
             },
             {
               header: 'Детализация функции',
-              map: (row: DownloadFFtsFunctionTreeEntity) => row.parentFtsFunction.ftsFunctionDetails,
+              map: (row: DownloadFFtsFunctionTreeEntity) =>
+                row.parentFtsFunction.ftsFunctionDetails,
             },
             {
               header: '',
-              map: (row: DownloadFFtsFunctionTreeEntity) => row.relationType.name,
+              map: (row: DownloadFFtsFunctionTreeEntity) =>
+                row.relationType.name,
             },
             {
               header: 'ID функции',
-              map: (row: DownloadFFtsFunctionTreeEntity) => row.childFtsFunction.ftsFunction.id,
+              map: (row: DownloadFFtsFunctionTreeEntity) =>
+                row.childFtsFunction.ftsFunction.id,
             },
             {
               header: 'ID детализации',
-              map: (row: DownloadFFtsFunctionTreeEntity) => row.childFtsFunction.id,
+              map: (row: DownloadFFtsFunctionTreeEntity) =>
+                row.childFtsFunction.id,
             },
             {
               header: 'Наименование функции',
-              map: (row: DownloadFFtsFunctionTreeEntity) => row.childFtsFunction.ftsFunction.ftsFunctionName.name,
+              map: (row: DownloadFFtsFunctionTreeEntity) =>
+                row.childFtsFunction.ftsFunction.ftsFunctionName.name,
             },
             {
               header: 'Детализация функции',
-              map: (row: DownloadFFtsFunctionTreeEntity) => row.childFtsFunction.ftsFunctionDetails,
+              map: (row: DownloadFFtsFunctionTreeEntity) =>
+                row.childFtsFunction.ftsFunctionDetails,
             },
           ],
         },
         {
-          name: 'Действия',
+          name: 'Операции',
           data: actions,
           columns: [
             {
               header: 'ID функции',
-              map: (row: DownloadActionEntity) => row.ftsFunctionDetail.ftsFunction.id,
+              map: (row: DownloadActionEntity) =>
+                row.ftsFunctionDetail.ftsFunction.id,
             },
             {
               header: 'ID детализации',
@@ -1268,11 +1287,13 @@ export class FtsFunctionService {
             },
             {
               header: 'Наименование функции',
-              map: (row: DownloadActionEntity) => row.ftsFunctionDetail.ftsFunction.ftsFunctionName.name,
+              map: (row: DownloadActionEntity) =>
+                row.ftsFunctionDetail.ftsFunction.ftsFunctionName.name,
             },
             {
               header: 'Детализация функции',
-              map: (row: DownloadActionEntity) => row.ftsFunctionDetail.ftsFunctionDetails,
+              map: (row: DownloadActionEntity) =>
+                row.ftsFunctionDetail.ftsFunctionDetails,
             },
             {
               header: 'Статус',
@@ -1282,14 +1303,49 @@ export class FtsFunctionService {
               header: 'Описание',
               map: (row: DownloadActionEntity) => row.description,
             },
+            {
+              header: 'Источники обратной связи',
+              map: (row: DownloadActionEntity) =>
+                row.feedbackSources
+                  .map(({ feedbackSource }) => feedbackSource.name)
+                  .join(';\n'),
+            },
+            {
+              header: 'Метрики качества процесса в рамках обратной связи',
+              map: (row: DownloadActionEntity) =>
+                row.feedbackQualityMetrics?.name,
+            },
+            {
+              header: 'Методология позиции ЦА ФНС России',
+              map: (row: DownloadActionEntity) =>
+                methodologyStatusNameById.get(row.ftsMethodologyStatusId ?? 0),
+            },
+            {
+              header:
+                'Описание проблемы с указанием источника, метрики, способа решения',
+              map: (row: DownloadActionEntity) => row.problemDescription,
+            },
+            {
+              header: 'Реквизиты автора инициативы',
+              map: (row: DownloadActionEntity) => row.initiatorRequisites,
+            },
+            {
+              header: 'Срок реализации доработки',
+              map: (row: DownloadActionEntity) => row.deadline,
+            },
+            {
+              header: 'Акцепт автора инициативы',
+              map: (row: DownloadActionEntity) =>
+                row.initiatorAcceptance,
+            },
           ],
         },
-      ]
+      ],
     });
+
+    return Buffer.from(workbookBuffer as unknown as Uint8Array);
   }
 }
-
-
 
 const FTS_FUNCTION_TYPE_FIELDS = {
   ftsCentralizationId: Category.FTS_CENTRALIZATION,
@@ -1315,11 +1371,11 @@ const FTS_FUNCTION_DETAIL_TYPE_FIELDS = {
 } satisfies Record<string, Category>;
 
 const FTS_FUNCTION_USER_SLOTS: readonly UserRoleSlot[] =
-    Object.values(UserRoleSlot);
+  Object.values(UserRoleSlot);
 
 function collectTypeChecks(
-    dto: Record<string, unknown>,
-    fields: Record<string, Category>,
+  dto: Record<string, unknown>,
+  fields: Record<string, Category>,
 ): Array<{ id: number; expected: Category }> {
   const out: Array<{ id: number; expected: Category }> = [];
 
@@ -1355,7 +1411,7 @@ function resolveFeedbackSourceIds(dto: DetailDtoWithFeedbackSourceId): number[] 
 }
 
 function getAgreementStatusFromAccepted(
-    isAccepted: boolean | null | undefined,
+  isAccepted: boolean | null | undefined,
 ): FeedbackAgreementStatus | null {
   if (isAccepted === true) return 'ACCEPTED';
   if (isAccepted === false) return 'REJECTED';
@@ -1371,13 +1427,13 @@ function mapDuplicateNameOrRethrow(error: unknown): unknown {
 
   const target = (error.meta as { target?: unknown } | undefined)?.target;
   const fields = Array.isArray(target)
-      ? target.filter((x): x is string => typeof x === 'string')
-      : typeof target === 'string'
-          ? [target]
-          : [];
+    ? target.filter((x): x is string => typeof x === 'string')
+    : typeof target === 'string'
+      ? [target]
+      : [];
 
   const matchesNameUnique = fields.some(
-      (f) => f === 'fts_function_name_id' || f.endsWith('fts_function_name_id_key'),
+    (f) => f === 'fts_function_name_id' || f.endsWith('fts_function_name_id_key'),
   );
 
   if (matchesNameUnique) return new DuplicateNameError();

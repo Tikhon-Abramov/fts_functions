@@ -20,7 +20,7 @@ function buildDraft(row: Row): RowDraft {
     basis: row.basis ?? "",
     artifactUsage: row.artifactUsage ?? "",
     purpose: row.purpose ?? "",
-    actionsСompleteness: row.actionsСompleteness ?? "",
+    actionsCompleteness: row.actionsCompleteness ?? "",
     actionsEffectiveness: row.actionsEffectiveness ?? "",
     technologicalSolution: row.technologicalSolution ?? "",
     number: row.number ?? "",

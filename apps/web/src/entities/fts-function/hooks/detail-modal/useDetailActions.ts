@@ -67,6 +67,9 @@ type RowFormInput = Partial<Row> & {
   algorithmFile?: File | null;
 };
 
+type ActionCreateInput = DetailActionFormInput &
+    Partial<DetailActionFeedbackFormInput>;
+
 type ActionUpdateInput = Partial<
     DetailActionFormInput & DetailActionFeedbackFormInput
 >;
@@ -111,7 +114,7 @@ export type DetailActions = {
   deleteFeedback: (feedbackId: string) => Promise<boolean>;
   createAction: (
       detailId: string,
-      input: DetailActionFormInput,
+      input: ActionCreateInput,
   ) => Promise<DetailAction | null>;
   updateAction: (
       actionId: string,
@@ -135,14 +138,14 @@ function toNullableText(value: string): string | null {
   return trimmed ? trimmed : null;
 }
 
-function toPositiveNumber(value: string): number | null {
+function toPositiveNumber(value: string | null | undefined): number | null {
   const parsed = Number(value);
 
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function toIsoDeadline(value: string): string | null {
-  const trimmed = value.trim();
+function toIsoDeadline(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? "";
 
   if (!trimmed) return null;
 
@@ -167,16 +170,52 @@ function buildFeedbackDto(
   };
 }
 
-function buildActionDto(input: DetailActionFormInput): CreateActionDto | null {
+function buildActionDto(input: ActionCreateInput): CreateActionDto | null {
   const statusId = toPositiveNumber(input.statusId);
   const description = input.description.trim();
 
   if (!statusId || !description) return null;
 
-  return {
+  const dto: Record<string, unknown> = {
     statusId,
     description,
   };
+
+  if (input.feedbackSourceIds !== undefined) {
+    dto["feedbackSourceIds"] = input.feedbackSourceIds
+        .map(toPositiveNumber)
+        .filter((id): id is number => id !== null);
+  }
+
+  if (input.feedbackQualityMetricId !== undefined) {
+    dto["feedbackQualityMetricsId"] = toPositiveNumber(
+        input.feedbackQualityMetricId,
+    );
+  }
+
+  if (input.ftsMethodologyStatusId !== undefined) {
+    dto["ftsMethodologyStatusId"] = toPositiveNumber(
+        input.ftsMethodologyStatusId,
+    );
+  }
+
+  if (input.problemDescription !== undefined) {
+    dto["problemDescription"] = toNullableText(input.problemDescription);
+  }
+
+  if (input.initiatorRequisites !== undefined) {
+    dto["initiatorRequisites"] = toNullableText(input.initiatorRequisites);
+  }
+
+  if (input.deadline !== undefined) {
+    dto["deadline"] = toIsoDeadline(input.deadline);
+  }
+
+  if (input.initiatorAcceptance !== undefined) {
+    dto["initiatorAcceptance"] = toNullableText(input.initiatorAcceptance);
+  }
+
+  return dto as CreateActionDto;
 }
 
 function buildUpdateActionDto(input: ActionUpdateInput): Record<string, unknown> {
@@ -202,6 +241,12 @@ function buildUpdateActionDto(input: ActionUpdateInput): Record<string, unknown>
     );
   }
 
+  if (input.ftsMethodologyStatusId !== undefined) {
+    dto["ftsMethodologyStatusId"] = toPositiveNumber(
+        input.ftsMethodologyStatusId,
+    );
+  }
+
   if (input.problemDescription !== undefined) {
     dto["problemDescription"] = toNullableText(input.problemDescription);
   }
@@ -212,6 +257,10 @@ function buildUpdateActionDto(input: ActionUpdateInput): Record<string, unknown>
 
   if (input.deadline !== undefined) {
     dto["deadline"] = toIsoDeadline(input.deadline);
+  }
+
+  if (input.initiatorAcceptance !== undefined) {
+    dto["initiatorAcceptance"] = toNullableText(input.initiatorAcceptance);
   }
 
   return dto;
@@ -664,13 +713,13 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
   const createAction = useCallback(
       async (
           detailId: string,
-          input: DetailActionFormInput,
+          input: ActionCreateInput,
       ): Promise<DetailAction | null> => {
         const createActionDto = buildActionDto(input);
 
         if (!createActionDto) {
           dispatch(
-              showSnackbar({ message: "Заполните описание и статус действия" }),
+              showSnackbar({ message: "Заполните описание и статус операции" }),
           );
 
           return null;
@@ -713,11 +762,11 @@ export function useDetailActions(ctx: UseDetailActionsContext): DetailActions {
             updateActionDto: updateActionDto as never,
           }).unwrap();
 
-          dispatch(showSnackbar({ message: "Действие обновлено" }));
+          dispatch(showSnackbar({ message: "Операция обновлена" }));
 
           return mapActionApiToDetailAction(updated);
         } catch {
-          dispatch(showSnackbar({ message: "Не удалось обновить действие" }));
+          dispatch(showSnackbar({ message: "Не удалось обновить операцию" }));
 
           return null;
         }

@@ -53,9 +53,14 @@ export type DetailAction = {
   feedbackSourceIds: string[];
   feedbackQualityMetricId?: string | null;
   feedbackQualityMetricName?: string;
+
+  ftsMethodologyStatusId?: string | null;
+  ftsMethodologyStatusName?: string;
+
   problemDescription?: string;
   initiatorRequisites?: string;
   deadline?: string;
+  initiatorAcceptance?: string;
 };
 
 export type DetailActionFormInput = {
@@ -66,9 +71,11 @@ export type DetailActionFormInput = {
 export type DetailActionFeedbackFormInput = {
   feedbackSourceIds: string[];
   feedbackQualityMetricId: string;
+  ftsMethodologyStatusId: string;
   problemDescription: string;
   initiatorRequisites: string;
   deadline: string;
+  initiatorAcceptance: string;
 };
 
 export type Row = {
@@ -85,22 +92,12 @@ export type Row = {
   artifactUsage?: string;
   purpose?: string;
   actionsСompleteness?: string;
+  actionsCompleteness?: string;
   actionsEffectiveness?: string;
   technologicalSolution?: string;
   number?: string;
   responsible?: string;
-
-  /**
-   * Текстовое значение поля:
-   * - Шаг 1: "Алгоритм срабатывания"
-   * - Шаг 2: "Результат отработки"
-   */
   algorithm?: string;
-
-  /**
-   * Имя прикрепленного файла для того же поля.
-   * Сам файл хранится на бэке, здесь только имя/путь из API.
-   */
   filePath?: string;
 
   feedbackSource?: string;

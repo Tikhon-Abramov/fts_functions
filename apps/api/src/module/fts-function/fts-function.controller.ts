@@ -25,7 +25,6 @@ import type { MultipartFile } from '@fastify/multipart';
 import type { FastifyRequest } from 'fastify';
 import { ZodValidationPipe } from '@common/pipes/validation.pipe';
 import { SWAGGER_DESCRIPTION } from '@common/strings';
-import { Buffer } from 'node:buffer';
 import { constants, createReadStream, createWriteStream } from 'node:fs';
 import { access, mkdir } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
@@ -81,8 +80,7 @@ import { FtsFunctionService } from './fts-function.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const XLSX_MIME =
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const DETAIL_FILES_ROOT = 'uploads/fts-function-details';
 
 type MultipartFastifyRequest = FastifyRequest & {
@@ -95,21 +93,19 @@ function stripGeneratedFilePrefixes(fileName: string): string {
 
 function sanitizeFileBaseName(fileName: string): string {
   return fileName
-      .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_')
-      .replace(/\s+/g, '_')
-      .slice(0, 120);
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_')
+    .replace(/\s+/g, '_')
+    .slice(0, 120);
 }
 
 function buildStoredFileName(originalName: string): string {
   const originalBaseName = basename(originalName);
   const withoutGeneratedPrefixes = stripGeneratedFilePrefixes(originalBaseName);
-
   const ext = extname(withoutGeneratedPrefixes);
   const rawBaseName = withoutGeneratedPrefixes.slice(
-      0,
-      withoutGeneratedPrefixes.length - ext.length,
+    0,
+    withoutGeneratedPrefixes.length - ext.length,
   );
-
   const safeBaseName = sanitizeFileBaseName(rawBaseName);
   const safeExtension = ext.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '');
 
@@ -117,8 +113,8 @@ function buildStoredFileName(originalName: string): string {
 }
 
 async function saveDetailFile(
-    detailId: number,
-    file: MultipartFile,
+  detailId: number,
+  file: MultipartFile,
 ): Promise<string> {
   const storedFileName = buildStoredFileName(file.filename);
   const dir = join(DETAIL_FILES_ROOT, String(detailId));
@@ -132,14 +128,15 @@ async function saveDetailFile(
 
 // TODO: auth-gating these endpoints is a follow-up product decision (see
 // docs/known-limitations.md). For now @Public() opens them to anonymous users.
+
 @Controller({
   path: 'fts-functions',
   version: '1',
 })
 export class FtsFunctionController {
   constructor(
-      private readonly service: FtsFunctionService,
-      private readonly prisma: PrismaService,
+    private readonly service: FtsFunctionService,
+    private readonly prisma: PrismaService,
   ) {}
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -153,8 +150,8 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionListResponseDto, FtsFunctionBaseResponseDto)
   list(
-      @Query(new ZodValidationPipe(FtsFunctionListQuerySchema))
-      query: FtsFunctionListQueryDto,
+    @Query(new ZodValidationPipe(FtsFunctionListQuerySchema))
+    query: FtsFunctionListQueryDto,
   ): Promise<FtsFunctionListResponseDto> {
     return this.service.list(query);
   }
@@ -163,7 +160,7 @@ export class FtsFunctionController {
   @ApiOperation({
     summary: 'Скачивание выгрузки по функциям',
     description:
-        'Выгружает все функции с их детализациями в формате XLSX-файла.',
+      'Выгружает все функции с их детализациями в формате XLSX-файла.',
   })
   @ApiProduces(XLSX_MIME)
   @ApiOkResponse({
@@ -180,7 +177,7 @@ export class FtsFunctionController {
   async getDownload(): Promise<StreamableFile> {
     const buffer = await this.service.getDownload();
 
-    return new StreamableFile(Buffer.from(buffer as ArrayBuffer), {
+    return new StreamableFile(buffer, {
       type: XLSX_MIME,
       disposition: 'attachment; filename="fts-functions.xlsx"',
     });
@@ -193,7 +190,7 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionDetailedResponseDto)
   getById(
-      @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
+    @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
   ): Promise<FtsFunctionDetailedResponseDto> {
     return this.service.getById(params.id);
   }
@@ -209,8 +206,8 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionBaseResponseDto)
   create(
-      @Body(new ZodValidationPipe(CreateFtsFunctionSchema))
-      body: CreateFtsFunctionDto,
+    @Body(new ZodValidationPipe(CreateFtsFunctionSchema))
+    body: CreateFtsFunctionDto,
   ): Promise<FtsFunctionBaseResponseDto> {
     return this.service.create(body);
   }
@@ -222,9 +219,9 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionBaseResponseDto)
   update(
-      @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
-      @Body(new ZodValidationPipe(UpdateFtsFunctionSchema))
-      body: UpdateFtsFunctionDto,
+    @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
+    @Body(new ZodValidationPipe(UpdateFtsFunctionSchema))
+    body: UpdateFtsFunctionDto,
   ): Promise<FtsFunctionBaseResponseDto> {
     return this.service.update(params.id, body);
   }
@@ -236,7 +233,7 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionBaseResponseDto)
   softDelete(
-      @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
+    @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
   ): Promise<FtsFunctionBaseResponseDto> {
     return this.service.softDelete(params.id);
   }
@@ -252,9 +249,9 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionDetailDetailedResponseDto)
   createDetail(
-      @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
-      @Body(new ZodValidationPipe(CreateFtsFunctionDetailSchema))
-      body: CreateFtsFunctionDetailDto,
+    @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
+    @Body(new ZodValidationPipe(CreateFtsFunctionDetailSchema))
+    body: CreateFtsFunctionDetailDto,
   ): Promise<FtsFunctionDetailDetailedResponseDto> {
     return this.service.createDetail(params.id, body);
   }
@@ -266,10 +263,10 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionDetailDetailedResponseDto)
   updateDetail(
-      @Param(new ZodValidationPipe(DetailIdParamSchema))
-      params: DetailIdParamDto,
-      @Body(new ZodValidationPipe(UpdateFtsFunctionDetailSchema))
-      body: UpdateFtsFunctionDetailDto,
+    @Param(new ZodValidationPipe(DetailIdParamSchema))
+    params: DetailIdParamDto,
+    @Body(new ZodValidationPipe(UpdateFtsFunctionDetailSchema))
+    body: UpdateFtsFunctionDetailDto,
   ): Promise<FtsFunctionDetailDetailedResponseDto> {
     return this.service.updateDetail(params.detailId, body);
   }
@@ -296,9 +293,9 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionDetailDetailedResponseDto)
   async uploadDetailAlgorithmFile(
-      @Param(new ZodValidationPipe(DetailIdParamSchema))
-      params: DetailIdParamDto,
-      @Req() request: MultipartFastifyRequest,
+    @Param(new ZodValidationPipe(DetailIdParamSchema))
+    params: DetailIdParamDto,
+    @Req() request: MultipartFastifyRequest,
   ): Promise<FtsFunctionDetailDetailedResponseDto> {
     const file = await request.file();
 
@@ -309,8 +306,8 @@ export class FtsFunctionController {
     const storedFileName = await saveDetailFile(params.detailId, file);
 
     return this.service.uploadDetailAlgorithmFile(
-        params.detailId,
-        storedFileName,
+      params.detailId,
+      storedFileName,
     );
   }
 
@@ -331,8 +328,8 @@ export class FtsFunctionController {
     },
   })
   async downloadDetailAlgorithmFile(
-      @Param(new ZodValidationPipe(DetailIdParamSchema))
-      params: DetailIdParamDto,
+    @Param(new ZodValidationPipe(DetailIdParamSchema))
+    params: DetailIdParamDto,
   ): Promise<StreamableFile> {
     const detail = await this.prisma.ftsFunctionDetail.findFirst({
       where: {
@@ -377,8 +374,8 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionDetailDetailedResponseDto)
   softDeleteDetail(
-      @Param(new ZodValidationPipe(DetailIdParamSchema))
-      params: DetailIdParamDto,
+    @Param(new ZodValidationPipe(DetailIdParamSchema))
+    params: DetailIdParamDto,
   ): Promise<FtsFunctionDetailDetailedResponseDto> {
     return this.service.softDeleteDetail(params.detailId);
   }
@@ -394,10 +391,10 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FeedbackResponseDto)
   createFeedback(
-      @Param(new ZodValidationPipe(DetailIdParamSchema))
-      params: DetailIdParamDto,
-      @Body(new ZodValidationPipe(CreateFeedbackSchema))
-      body: CreateFeedbackDto,
+    @Param(new ZodValidationPipe(DetailIdParamSchema))
+    params: DetailIdParamDto,
+    @Body(new ZodValidationPipe(CreateFeedbackSchema))
+    body: CreateFeedbackDto,
   ): Promise<FeedbackResponseDto> {
     return this.service.createFeedback(params.detailId, body);
   }
@@ -409,10 +406,10 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FeedbackResponseDto)
   updateFeedback(
-      @Param(new ZodValidationPipe(FeedbackIdParamSchema))
-      params: FeedbackIdParamDto,
-      @Body(new ZodValidationPipe(UpdateFeedbackSchema))
-      body: UpdateFeedbackDto,
+    @Param(new ZodValidationPipe(FeedbackIdParamSchema))
+    params: FeedbackIdParamDto,
+    @Body(new ZodValidationPipe(UpdateFeedbackSchema))
+    body: UpdateFeedbackDto,
   ): Promise<FeedbackResponseDto> {
     return this.service.updateFeedback(params.feedbackId, body);
   }
@@ -424,15 +421,15 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FeedbackResponseDto)
   acceptFeedback(
-      @Param(new ZodValidationPipe(FeedbackIdParamSchema))
-      params: FeedbackIdParamDto,
-      @Body(new ZodValidationPipe(AcceptFeedbackSchema))
-      body: AcceptFeedbackDto,
+    @Param(new ZodValidationPipe(FeedbackIdParamSchema))
+    params: FeedbackIdParamDto,
+    @Body(new ZodValidationPipe(AcceptFeedbackSchema))
+    body: AcceptFeedbackDto,
   ): Promise<FeedbackResponseDto> {
     return this.service.acceptFeedback(
-        params.feedbackId,
-        body.isAccepted,
-        body.rejectComment,
+      params.feedbackId,
+      body.isAccepted,
+      body.rejectComment,
     );
   }
 
@@ -443,8 +440,8 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FeedbackResponseDto)
   deleteFeedback(
-      @Param(new ZodValidationPipe(FeedbackIdParamSchema))
-      params: FeedbackIdParamDto,
+    @Param(new ZodValidationPipe(FeedbackIdParamSchema))
+    params: FeedbackIdParamDto,
   ): Promise<FeedbackResponseDto> {
     return this.service.deleteFeedback(params.feedbackId);
   }
@@ -460,10 +457,10 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(ActionResponseDto)
   creatAction(
-      @Param(new ZodValidationPipe(DetailIdParamSchema))
-      params: DetailIdParamDto,
-      @Body(new ZodValidationPipe(CreateActionSchema))
-      body: CreateActionDto,
+    @Param(new ZodValidationPipe(DetailIdParamSchema))
+    params: DetailIdParamDto,
+    @Body(new ZodValidationPipe(CreateActionSchema))
+    body: CreateActionDto,
   ): Promise<ActionResponseDto> {
     return this.service.createAction(params.detailId, body);
   }
@@ -475,10 +472,10 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(ActionResponseDto)
   updateAction(
-      @Param(new ZodValidationPipe(ActionIdParamSchema))
-      params: ActionIdParamDto,
-      @Body(new ZodValidationPipe(UpdateActionSchema))
-      body: UpdateActionDto,
+    @Param(new ZodValidationPipe(ActionIdParamSchema))
+    params: ActionIdParamDto,
+    @Body(new ZodValidationPipe(UpdateActionSchema))
+    body: UpdateActionDto,
   ): Promise<ActionResponseDto> {
     return this.service.updateAction(params.actionId, body);
   }
@@ -490,8 +487,8 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(ActionResponseDto)
   deleteAction(
-      @Param(new ZodValidationPipe(ActionIdParamSchema))
-      params: ActionIdParamDto,
+    @Param(new ZodValidationPipe(ActionIdParamSchema))
+    params: ActionIdParamDto,
   ): Promise<ActionResponseDto> {
     return this.service.deleteAction(params.actionId);
   }
@@ -507,8 +504,8 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionTreeResponseDto)
   createTreeEdge(
-      @Body(new ZodValidationPipe(CreateFtsFunctionTreeSchema))
-      body: CreateFtsFunctionTreeDto,
+    @Body(new ZodValidationPipe(CreateFtsFunctionTreeSchema))
+    body: CreateFtsFunctionTreeDto,
   ): Promise<FtsFunctionTreeResponseDto> {
     return this.service.createTreeEdge(body);
   }
@@ -520,8 +517,8 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionTreeResponseDto)
   deleteTreeEdge(
-      @Param(new ZodValidationPipe(TreeEdgeParamSchema))
-      params: TreeEdgeParamDto,
+    @Param(new ZodValidationPipe(TreeEdgeParamSchema))
+    params: TreeEdgeParamDto,
   ): Promise<FtsFunctionTreeResponseDto> {
     return this.service.deleteTreeEdge(params.parentId, params.childId);
   }
@@ -537,9 +534,9 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionDetailedResponseDto)
   batchAttachDtisV1(
-      @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
-      @Body(new ZodValidationPipe(BatchAttachDtisRequestSchema))
-      body: BatchAttachDtisRequestDto,
+    @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamDto,
+    @Body(new ZodValidationPipe(BatchAttachDtisRequestSchema))
+    body: BatchAttachDtisRequestDto,
   ): Promise<FtsFunctionDetailedResponseDto> {
     return this.service.batchAttachDtis(params.id, body.dtiIds);
   }
@@ -551,7 +548,8 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionToDtiResponseDto)
   attachDti(
-      @Param(new ZodValidationPipe(DtiParamSchema)) params: DtiParamDto,
+    @Param(new ZodValidationPipe(DtiParamSchema))
+    params: DtiParamDto,
   ): Promise<FtsFunctionToDtiResponseDto> {
     return this.service.attachDti(params.id, params.dtiId);
   }
@@ -563,7 +561,8 @@ export class FtsFunctionController {
   })
   @ApiExtraModels(FtsFunctionToDtiResponseDto)
   detachDti(
-      @Param(new ZodValidationPipe(DtiParamSchema)) params: DtiParamDto,
+    @Param(new ZodValidationPipe(DtiParamSchema))
+    params: DtiParamDto,
   ): Promise<FtsFunctionToDtiResponseDto> {
     return this.service.detachDti(params.id, params.dtiId);
   }
