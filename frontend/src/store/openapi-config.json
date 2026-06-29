@@ -1,0 +1,35 @@
+{
+  "schemaFile": "http://localhost:3000/api/json",
+  "apiFile": "./baseApi.ts",
+  "apiImport": "baseApi",
+  "outputFile": "./ftsFunctionRegistry.ts",
+  "exportName": "ftsFunctionRegistry",
+  "hooks": true,
+  "tag": true,
+  "endpointOverrides": [
+    {
+      "pattern": "feedbackControllerUpdateV1",
+      "invalidatesTags": ["Feedback", "FtsFunctionDetail"]
+    },
+    {
+      "pattern": "feedbackControllerAcceptV1",
+      "invalidatesTags": ["Feedback", "FtsFunctionDetail"]
+    },
+    {
+      "pattern": "feedbackControllerCreateV1",
+      "invalidatesTags": ["Feedback", "FtsFunctionDetail"]
+    },
+    {
+      "pattern": "feedbackControllerDeleteV1",
+      "invalidatesTags": ["Feedback", "FtsFunctionDetail"]
+    },
+    {
+      "pattern": "fileControllerDeleteFileV1",
+      "invalidatesTags": ["File", "FtsFunctionDetail"]
+    },
+    {
+      "pattern": "fileControllerConfirmUploadV1",
+      "invalidatesTags": ["File", "FtsFunctionDetail"]
+    }
+  ]
+}

@@ -1,0 +1,804 @@
+generator client {
+  provider        = "prisma-client"
+  previewFeatures = ["relationJoins", "typedSql"]
+  output          = "../src/generated/prisma"
+  // binaryTargets   = ["native", "windows"]
+}
+
+generator prismaClassGenerator {
+  provider = "prisma-class-generator"
+  output   = "../src/generated/prisma-class"
+  dryRun   = false
+}
+
+generator gen {
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins", "typedSql"]
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Роли пользователей на сервисе
+enum UserRole {
+  ADMIN // Администратор
+  USER // Пользователь
+}
+
+/// Должостная роль пользователя
+enum FtsPositionRole {
+  DEPUTY_CHIEF // Заместитель начальника инспекции / управления (ЗНИ / ЗНУ)
+  CHIEF // Начальник инспекции / управления (НИ / НУ)
+}
+
+/// Роль пользователя в функции ФНС
+enum FtsFunctionRole {
+  CURATOR // Куратор функции ФНС
+  MANAGER // Менеджер функции ФНС
+}
+
+/// Тип структурного подразделения ФНС
+enum FtsBranchType {
+  CENTRAL_OFFICE // Центральный аппарат (ЦА)
+  INTERREGIONAL_INSPECTION // Межрегиональная инспекция (МИУДОЛ)
+}
+
+/// Справочник категорий, определяющий область применения элементов модели Type.
+enum Category {
+  token_status // Категория для статусов токенов обновления
+  token_rotation_event // Категория для событий ротации токенов
+  ACTION_HISTORY_TYPE // Категория "Вид изменений данных"
+  FTS_CENTRALIZATION // Категория "Централизация функции"
+  FTS_FUNCTION_NAME // Категория "Название функции"
+  FTS_FUNCTION_STEP // Категория "Шаг функции"
+  FTS_FUNCTION_CATEGORY // Категория "Категория функции"
+  FTS_FUNCTION_MARKER // Категория "Маркер функции"
+  FTS_FUNCTION_COMPLEXITY // Категория "Сложность функции"
+  FTS_FUNCTION_EXECUTION_FREQUENCY // Категория "Периодичность выполнения функции"
+  WHO_PERFORMS_ACTION // Категория "Кто выполнил действие над функцией"
+  FTS_FUNCTION_ACTION_TYPE // Категория "Действие над функцией"
+  FTS_FUNCTION_EFFECTIVENESS // Категория "Эффективность функции ФНС"
+  FTS_COMPETENCY_CENTER // Категория "Центр компетенции"
+  FTS_DTI // Категория "DTI"
+  FTS_FUNCTION_RELATION_TYPE // Категория "Тип связи"
+  TECHNOLOGICAL_SOLUTION // Категория "Технологическое решение"
+  FEEDBACK_SOURCE // Категория "Источник обратной связи"
+  FEEDBACK_QUALITY_METRICS // Категория "Метрики качества обратной связи"
+  FEEDBACK_ACCEPT_STATUS // Категория "Статус согласования обратной связи"
+  RESPONSIBLE // Категория "Ответственный в технологическом решении"
+  FTS_METHODOLOGY_STATUS // Категория "Методологическая позиция ЦА ФНС России (поддержано/нет)
+  ACTION_STATUS // Категория "Статус действия"
+  PRIORITY_ACTION // Категория "Приоритет выполнения действия"
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Справочник значений, используемый для констант
+model Type {
+  /// Уникальный идентификатор типа
+  id          Int      @id @default(autoincrement())
+  /// Код типа
+  code        String @db.VarChar(64)    @map("code") 
+  /// Категория элемента справочника, определяющая область его применения
+  category    Category                  @map("category")
+  /// Отображаемое название типа (на русском)
+  name        String @db.VarChar(512)   @map("name") 
+  /// Подробное описание элемента, раскрывающее его назначение
+  description String? @db.VarChar(1024) @map("description")
+  /// Уникальный идентификатор родительского типа
+  supertypeId Int?                      @map("supertype_id")
+  /// Флаг удаления
+  isDeleted   Boolean  @default(false)  @map("is_deleted")
+
+  /// Связь с родительским типом
+  supertype Type?  @relation("hierarchy_type", fields: [supertypeId], references: [id])
+  /// Связь с дочерними типами
+  subtypes  Type[] @relation("hierarchy_type")
+
+  /// Связь с refresh токенами
+  refreshTokens     RefreshToken[]
+
+  /// Связь с историей изменений
+  history HistoryLog[]
+
+  /// Связи с таблицей функций ФНС
+  ftsCentralizationToFtsFunctions FtsFunction[] @relation("fts_functions__fts_centralization")
+  ftsFunctionNameToFtsFunctions   FtsFunction[] @relation("fts_functions__fts_function_name")
+  competencyCenterToFtsFunctions  FtsFunction[] @relation("fts_functions__competency_center")
+  ftsFunctionMarkerToFtsFunctions FtsFunction[] @relation("fts_functions__fts_function_marker")
+
+  /// Связи с таблицей детализаций функций ФНС
+  ftsFunctionStepToFtsFunctionDetails               FtsFunctionDetail[] @relation("fts_function_details__fts_function_step")
+  ftsFunctionCategoryToFtsFunctionDetails           FtsFunctionDetail[] @relation("fts_function_details__fts_function_category")
+  ftsFunctionComplexityToFtsFunctionDetails         FtsFunctionDetail[] @relation("fts_function_details__fts_function_complexity")
+  ftsFunctionExecutionFrequencyToFtsFunctionDetails FtsFunctionDetail[] @relation("fts_function_details__fts_function_execution_frequency")
+  whoPerformsActionToFtsFunctionDetails             FtsFunctionDetail[] @relation("fts_function_details__who_performs_action")
+  ftsFunctionActionTypeToFtsFunctionDetails         FtsFunctionDetail[] @relation("fts_function_details__fts_function_action_type")
+  ftsFunctionEffectivenessToFtsFunctionDetails      FtsFunctionDetail[] @relation("fts_function_details__fts_function_effectiveness")
+  technologicalSolutionToFtsFunctionDetails         FtsFunctionDetail[] @relation("fts_function_details__technological_solution")  
+  responsibleToFtsFunctionDetails                   FtsFunctionDetail[] @relation("fts_function_details__responsible")
+  
+  /// Связи с таблицей обратной связи для каждой детализации функций ФНС
+  ftsMethodologyStatusToFeedbacks   Feedback[] @relation("feedbacks__fts_methodology_status")
+  feedbackQualityMetricsToFeedbacks Feedback[] @relation("feedbacks__feedback_quality_metrics")
+  acceptStatusToFeedbacks           Feedback[] @relation("feedbacks__feedback_accept_status")
+
+  /// Связи с таблицей действий для каждой детализации функций ФНС
+  statusToActions                Action[] @relation("actions__status")
+  feedbackQualityMetricsToAction Action[] @relation("actions__feedback_quality_metrics")
+  ftsMethodologyStatusToAction   Action[] @relation("action__fts_methodology_status")
+  priorityActionToAction         Action[] @relation("action__priority_action")
+
+  /// Связи с таблицей истории согласований обратной связи для каждой детализации функций ФНС
+  feedbackAgreementHistory FeedbackAgreementHistory[]
+
+  /// Связь с деревом детализаций функций ФНС
+  ftsFunctionTree FtsFunctionTree[]
+
+  /// Связи многие-ко-многим с таблицами функций ФНС, обратных связей и действий
+  entitys EntityToType[]
+
+  @@index([code])
+  @@index([category])
+  @@index([supertypeId])
+  @@index([category, supertypeId])
+  @@unique([code])
+  @@map("types")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Таблица "Пользователи сервиса"
+model User {
+  /// Уникальный идентификатор пользователя
+  id                    Int @id @default(autoincrement())
+  /// Уникальный идентификатор пользователя в сервисе "ФНС - Взаимодействие"
+  ftsInteractionUsersId Int?                                 @map("fts_interaction_users_id")
+  /// Роль пользователя
+  role                  UserRole                             @map("role")
+  /// Должостная роль пользователя
+  ftsPositionRole       FtsPositionRole?                     @map("fts_position_role")
+  /// Роль пользователя в функции ФНС
+  ftsFunctionRole       FtsFunctionRole?                     @map("fts_function_role")
+  /// Тип структурного подразделения ФНС
+  ftsBranchType         FtsBranchType                        @map("fts_branch_type")
+  /// Имя
+  firstName             String  @db.VarChar(50)              @map("first_name")
+  /// Фамилия
+  lastName              String  @db.VarChar(50)              @map("last_name")
+  /// Отчество
+  patronymic            String? @db.VarChar(50)              @map("patronymic")
+  /// Полное ФИО пользователя
+  fullName              String? @db.VarChar(160)             @map("full_name")
+  /// Краткая фарма полного ФИО пользователя
+  shortName             String? @db.VarChar(60)              @map("short_name")
+  /// Описание пользователя (при необходиммости)
+  description           String? @db.VarChar(512)             @map("description")
+  /// Логин для входа
+  login                 String? @db.VarChar(50)              @map("login")
+  /// Хэш пароля
+  passwordHash          String? @db.VarChar(255)             @map("password_hash")
+  /// Дата последнего входа
+  lastLogin             DateTime?                            @map("last_login")
+  /// Дата создания
+  createdAt             DateTime  @default(now())            @map("created_at")
+  /// Дата обновления
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
+  /// Флаг удаления
+  isDeleted             Boolean @default(false)              @map("is_deleted")
+  /// Дата мягкого удаления (если удалён)
+  deletedAt             DateTime?                            @map("deleted_at")
+
+  createdFtsFunctions FtsFunction[] @relation("fts_function_creator")
+  updatedFtsFunctions FtsFunction[] @relation("fts_function_updater")
+  deletedFtsFunctions FtsFunction[] @relation("fts_function_deleter")
+  createdFtsFunctionDetails FtsFunctionDetail[] @relation("fts_function_detail_creator")
+  updatedFtsFunctionDetails FtsFunctionDetail[] @relation("fts_function_detail_updater")
+  reorderedFtsFunctionDetails FtsFunctionDetail[] @relation("fts_function_detail_reorderer")
+  deletedFtsFunctionDetails FtsFunctionDetail[] @relation("fts_function_detail_deleter")
+  createdFeedbacks Feedback[] @relation("feedback_creator")
+  updatedFeedbacks Feedback[] @relation("feedback_updater")
+  acceptedFeedbacks Feedback[] @relation("feedback_acceptor")
+  reorderedFeedbacks Feedback[] @relation("feedback_reorderer")
+  deletedFeedbacks Feedback[] @relation("feedback_deleter")
+  createdActions Action[] @relation("action_creator")
+  updatedActions Action[] @relation("action_updater")
+  reorderedActions Action[] @relation("action_reorderer")
+  deletedActions Action[] @relation("action_deleter")
+  acceptedFeedbackAgreementHistory FeedbackAgreementHistory[]
+  createdFtsFunctionTree FtsFunctionTree[]
+  createdFiles File[] @relation("file_creator")
+  updatedFiles File[] @relation("file_updater")
+  deletedFiles File[] @relation("file_deleter")
+
+  /// Связь с refresh токенами
+  refreshTokens     RefreshToken[]
+
+  /// Связь с историей изменений
+  history HistoryLog[]
+
+  /// Связи с функциями ФНС
+  curatedFtsFunctions           FtsFunction[] @relation("fts_functions__curator_central_office")
+  managedFtsFunctions           FtsFunction[] @relation("fts_functions__manager_interregional_inspection")
+  centralOfficeHeadFtsFunctions FtsFunction[] @relation("fts_functions__department_head_central_office")
+  inspectionHeadFtsFunctions    FtsFunction[] @relation("fts_functions__department_head_interregional_inspection")
+
+  @@index([role])
+  @@index([ftsPositionRole])
+  @@index([ftsBranchType])
+  @@index([ftsFunctionRole])
+  @@index([isDeleted])
+  @@index([ftsPositionRole, ftsBranchType, isDeleted])
+  @@index([ftsFunctionRole, ftsBranchType, isDeleted])
+  @@fulltext([login, fullName, description])
+  @@unique([ftsInteractionUsersId])
+  @@unique([login])
+  @@map("users")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Таблица для управления ротацией refresh токенов
+/// Обеспечивает одноразовое использование токенов и отслеживание их цепочки
+model RefreshToken {
+  /// Уникальный идентификатор записи (автоинкремент)
+  id              Int       @id @default(autoincrement())
+  /// JWT ID (JTI) - уникальный идентификатор токена
+  jti             String    @unique @db.VarChar(36)
+  /// Хэш refresh токена (храним только хэш для безопасности)
+  tokenHash       String    @unique @map("token_hash") @db.VarChar(512)
+  /// Семейство токенов - все токены одной сессии
+  familyId        String    @map("family_id") @db.VarChar(36)
+  /// Родительский токен (предыдущий в цепочке)
+  parentTokenHash String?   @map("parent_token_hash") @db.VarChar(512)
+  /// Пользователь, которому принадлежит токен
+  userId          Int       @map("user_id")
+  /// Статус токена (из справочника типов)
+  statusTypeId    Int       @map("status_type_id")
+  /// Дата и время создания токена
+  issuedAt        DateTime  @default(now()) @map("issued_at")
+  /// Дата и время истечения срока действия
+  expiresAt       DateTime  @map("expires_at")
+  /// Дата и время использования (для ротации)
+  usedAt          DateTime? @map("used_at")
+  /// IP адрес, с которого был создан токен
+  ipAddress       String?   @map("ip_address") @db.VarChar(45)
+  /// User-Agent клиента
+  userAgent       String?   @map("user_agent") @db.VarChar(512)
+  /// Количество ротаций в цепочке
+  rotationCount   Int       @default(0) @map("rotation_count")
+
+  /// Refresh-токен другого сервиса (для пользователей, которых нет в текущей БД).
+  /// Если заполнено — сессия внешняя, ротация выполняется через API другого сервиса.
+  externalRefreshToken String? @map("external_refresh_token") @db.VarChar(1024)
+
+  /// Связь с пользователем
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Связь с типом статуса
+  statusType Type @relation(fields: [statusTypeId], references: [id])
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([statusTypeId])
+  @@index([expiresAt])
+  @@index([issuedAt])
+  @@map("refresh_tokens")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Таблица "История изменений"
+model HistoryLog {
+  /// Уникальный идентификатор записи истории
+  id           Int @id @default(autoincrement())
+  /// Уникальный идентификатор пользователя
+  userId       Int                      @map("user_id")
+  /// Тип объекта, над которым совершено действие
+  entityType   String? @db.VarChar(64)  @map("entity_type")
+  /// ID объекта, над которым совершено действие
+  entityId     Int?                     @map("entity_id")
+  /// Поле объекта, над которым совершено действие
+  entityField  String? @db.VarChar(64)  @map("entity_field")
+  /// Тип совершенного действия
+  actionTypeId Int                      @map("action_type_id")
+  /// Старые значения до совершенного действия
+  oldValue     Json?                    @map("old_value")
+  /// Дата и время создания записи
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  /// Связь с пользователем, создавший изменение
+  user User @relation(fields: [userId], references: [id])
+
+  /// Связь с типом совершенного действия
+  actionType Type @relation(fields: [actionTypeId], references: [id])
+
+  @@index([createdAt])
+  @@index([createdAt, id])
+  @@index([userId, createdAt])
+  @@index([userId, actionTypeId, createdAt])
+  @@index([actionTypeId, createdAt])
+  @@index([entityType, entityId])
+  @@index([entityId, entityField])
+  @@index([entityId, entityField, createdAt])
+  @@map("history_log")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Таблица связки функций ФНС, обратных связей и действий с типами
+model EntityToType {
+  /// Уникальный идентификатор связи
+  id            Int @id @default(autoincrement())
+  /// Уникальный идентификатор функции ФНС
+  ftsFunctionId Int?                     @map("fts_function_id")
+  /// Уникальный идентификатор обратной связи
+  feedbackId    Int?                     @map("feedback_id")
+  /// Уникальный идентификатор действия
+  actionId      Int?                     @map("action_id")
+  /// Уникальный идентификатор DTI
+  typeId        Int                      @map("type_id")
+  /// Дата создания связи
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  /// Связь с таблицей функций ФНС
+  ftsFunction FtsFunction? @relation(fields: [ftsFunctionId], references: [id], onDelete: Cascade)
+  /// Связь с таблицей обратной связи
+  feedback    Feedback?    @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  /// Связь с таблицей действий
+  action      Action?      @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  /// Связь с таблицей типов
+  type Type @relation(fields: [typeId], references: [id])
+
+  @@index([ftsFunctionId])
+  @@index([feedbackId])
+  @@index([actionId])
+  @@index([typeId])
+  @@unique([typeId, ftsFunctionId])
+  @@unique([typeId, feedbackId])
+  @@unique([typeId, actionId])
+  @@map("entity_to_types")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Таблица функций ФНС
+model FtsFunction {
+  /// Уникальный идентификатор функции ФНС
+  id                                      Int @id @default(autoincrement())
+  /// Уникальный идентификатор создавшего функцию
+  creatorId                               Int?                                @map("creator_id")
+  /// Уникальный идентификатор отредактировавшего функцию
+  updaterId                               Int?                                @map("updater_id")
+  /// Уникальный идентификатор удалившего функцию
+  deleterId                               Int?                                @map("deleter_id")
+  /// Уникальный идентификатор значения централизации функции (Да / Нет)
+  ftsCentralizationId                     Int                                 @map("fts_centralization_id")
+  /// Уникальный идентификатор названия функции
+  ftsFunctionNameId                       Int                                 @map("fts_function_name_id")
+  /// Уникальный идентификатор маркера функции
+  ftsFunctionMarkerId                     Int                                 @map("fts_function_marker_id")
+  /// Уникальный идентификатор центра компетенции
+  competencyCenterId                      Int                                 @map("competency_center_id")
+  /// Уникальный идентификатор куратора ЦА
+  curatorCentralOfficeId                  Int                                 @map("curator_central_office_id")
+  /// Уникальный идентификатор менеджера МИУДОЛ
+  managerInterregionalInspectionId        Int                                 @map("manager_interregional_inspection_id")
+  /// Уникальный идентификатор НУ/ЗНУ ЦА
+  departmentHeadCentralOfficeId           Int                                 @map("department_head_central_office_id")
+  /// Уникальный идентификатор НИ/ЗНИ МИУДОЛ
+  departmentHeadInterregionalInspectionId Int                                 @map("department_head_interregional_inspection_id")
+  /// Флаг мягкого удаления
+  isDeleted                               Boolean @default(false)             @map("is_deleted")
+  /// Дата создания
+  createdAt                               DateTime @default(now())            @map("created_at")
+  /// Дата обновления
+  updatedAt                               DateTime @default(now()) @updatedAt @map("updated_at")
+  /// Дата мягкого удаления (если удалена)
+  deletedAt                               DateTime?                           @map("deleted_at")
+
+  /// Связи с таблицей пользователей, исполнившие какое-либо действие
+  creator User? @relation("fts_function_creator", fields: [creatorId], references: [id])
+  updater User? @relation("fts_function_updater", fields: [updaterId], references: [id])
+  deleter User? @relation("fts_function_deleter", fields: [deleterId], references: [id])
+
+  /// Связи с таблицей пользователей
+  curatorCentralOffice                  User @relation("fts_functions__curator_central_office", fields: [curatorCentralOfficeId], references: [id])
+  managerInterregionalInspection        User @relation("fts_functions__manager_interregional_inspection", fields: [managerInterregionalInspectionId], references: [id])
+  departmentHeadCentralOffice           User @relation("fts_functions__department_head_central_office", fields: [departmentHeadCentralOfficeId], references: [id])
+  departmentHeadInterregionalInspection User @relation("fts_functions__department_head_interregional_inspection", fields: [departmentHeadInterregionalInspectionId], references: [id])
+
+  /// Связи с таблицей типов
+  ftsCentralization Type @relation("fts_functions__fts_centralization", fields: [ftsCentralizationId], references: [id])
+  ftsFunctionName   Type @relation("fts_functions__fts_function_name", fields: [ftsFunctionNameId], references: [id])
+  ftsFunctionMarker Type @relation("fts_functions__fts_function_marker", fields: [ftsFunctionMarkerId], references: [id])
+  competencyCenter  Type @relation("fts_functions__competency_center", fields: [competencyCenterId], references: [id])
+
+  /// Связь с набором ДТИ
+  dtis EntityToType[]
+
+  /// Связи с таблицей детализаций функций ФНС
+  ftsFunctionDetails FtsFunctionDetail[]
+
+  @@index([ftsFunctionNameId])
+  @@index([ftsCentralizationId])
+  @@index([competencyCenterId])
+  @@index([ftsFunctionMarkerId])
+  @@index([curatorCentralOfficeId])
+  @@index([managerInterregionalInspectionId])
+  @@index([departmentHeadCentralOfficeId])
+  @@index([departmentHeadInterregionalInspectionId])
+  @@index([isDeleted])
+  @@map("fts_functions")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Таблица детализаций функций ФНС
+model FtsFunctionDetail {
+  /// Уникальный идентификатор детализации функции ФНС
+  id                              Int       @id @default(autoincrement())
+  /// Уникальный идентификатор создавшего детализацию функции
+  creatorId                       Int?      @map("creator_id")
+  /// Уникальный идентификатор отредактировавшего детализацию функции
+  updaterId                       Int?      @map("updater_id")
+  /// Уникальный идентификатор переставившего детализацию функции
+  reordererId                     Int?      @map("reorderer_id")
+  /// Уникальный идентификатор удалившего детализацию функции
+  deleterId                       Int?      @map("deleter_id")
+  /// Уникальный идентификатор функции ФНС
+  ftsFunctionId                   Int       @map("fts_function_id")
+  /// Уникальный идентификатор шага функции ФНС
+  ftsFunctionStepId               Int       @map("fts_function_step_id")
+  /// Уникальный идентификатор категории функции ФНС
+  ftsFunctionCategoryId           Int       @map("fts_function_category_id")
+  /// Уникальный идентификатор сложности функции ФНС
+  ftsFunctionComplexityId         Int?      @map("fts_function_complexity_id")
+  /// Уникальный идентификатор периодичности выполнения функции ФНС
+  ftsFunctionExecutionFrequencyId Int?      @map("fts_function_execution_frequency_id")
+  /// Уникальный идентификатор выполняющего действия над функции ФНС
+  whoPerformsActionId             Int?      @map("who_performs_action_id")
+  /// Уникальный идентификатор действия над функции ФНС
+  ftsFunctionActionTypeId         Int?      @map("fts_function_action_type_id")
+  /// Уникальный идентификатор эффективности функции ФНС
+  ftsFunctionEffectivenessId      Int?      @map("fts_function_effectiveness_id")
+  /// Уникальный идентификатор технологического решения
+  technologicalSolutionId         Int?      @map("technological_solution_id")
+  /// Уникальный идентификатор ответственного в технологическом решении
+  responsibleId                   Int?      @map("responsible_id")
+  /// Детализация функции ФНС
+  ftsFunctionDetails              String    @map("fts_function_details") @db.Text
+  /// Полнота действий
+  actionsСompleteness             String?   @map("actions_completeness") @db.Text
+  /// Эффективность действий
+  actionsEffectiveness            String?   @map("actions_effectiveness") @db.Text
+  /// Нормативное основание
+  basis                           String?   @map("basis") @db.Text
+  /// Артефакт
+  artifact                        String?   @map("artifact") @db.Text
+  /// Как используется артефакт
+  artifactUsage                   String?   @map("artifact_usage") @db.Text
+  /// Зачем выполняется функция
+  purpose                         String?   @map("purpose") @db.Text
+  /// Номер ПЗ / АЗ
+  number                          String?   @map("number") @db.VarChar(64)
+  /// Алгоритм срабатывания
+  algorithm                       String?   @map("algorithm") @db.Text
+  /// Входная информация по действиям
+  actionsInput                    String?   @map("actions_input") @db.Text
+  /// Выходная информация по действиям
+  actionsOutput                   String?   @map("actions_output") @db.Text
+  /// Порядок расположения действий
+  order                           Int?       @map("order")
+  /// Флаг мягкого удаления
+  isDeleted                       Boolean   @default(false) @map("is_deleted")
+  /// Дата создания
+  createdAt                       DateTime  @default(now()) @map("created_at")
+  /// Дата обновления
+  updatedAt                       DateTime  @default(now()) @updatedAt @map("updated_at")
+  /// Дата переупорядочивания
+  reorderedAt                     DateTime?                 @map("reordered_at")
+  /// Дата мягкого удаления (если удалена)
+  deletedAt                       DateTime? @map("deleted_at")
+
+  /// Связи с таблицей пользователей, исполнившие какое-либо действие
+  creator   User? @relation("fts_function_detail_creator", fields: [creatorId], references: [id])
+  updater   User? @relation("fts_function_detail_updater", fields: [updaterId], references: [id])
+  reorderer User? @relation("fts_function_detail_reorderer", fields: [reordererId], references: [id])
+  deleter   User? @relation("fts_function_detail_deleter", fields: [deleterId], references: [id])
+
+  /// Связь с функцией ФНС
+  ftsFunction FtsFunction @relation(fields: [ftsFunctionId], references: [id])
+
+  /// Связи с таблицей типов
+  ftsFunctionStep               Type  @relation("fts_function_details__fts_function_step", fields: [ftsFunctionStepId], references: [id])
+  ftsFunctionCategory           Type  @relation("fts_function_details__fts_function_category", fields: [ftsFunctionCategoryId], references: [id])
+  ftsFunctionComplexity         Type? @relation("fts_function_details__fts_function_complexity", fields: [ftsFunctionComplexityId], references: [id])
+  ftsFunctionExecutionFrequency Type? @relation("fts_function_details__fts_function_execution_frequency", fields: [ftsFunctionExecutionFrequencyId], references: [id])
+  whoPerformsAction             Type? @relation("fts_function_details__who_performs_action", fields: [whoPerformsActionId], references: [id])
+  ftsFunctionActionType         Type? @relation("fts_function_details__fts_function_action_type", fields: [ftsFunctionActionTypeId], references: [id])
+  ftsFunctionEffectiveness      Type? @relation("fts_function_details__fts_function_effectiveness", fields: [ftsFunctionEffectivenessId], references: [id])
+  technologicalSolution         Type? @relation("fts_function_details__technological_solution", fields: [technologicalSolutionId], references: [id])
+  responsible                   Type? @relation("fts_function_details__responsible", fields: [responsibleId], references: [id])
+
+  /// Связь с таблицей обратной связи
+  feedbacks Feedback[]
+
+  /// Связь с таблицей действий
+  actions   Action[]
+
+  /// Связь с таблицей файлов, приложенных к алгоритму срабатыванию
+  algorithmFiles File[]
+
+  /// Связи с деревом детализаций функций
+  parents  FtsFunctionTree[] @relation("data_parents")
+  children FtsFunctionTree[] @relation("data_children")
+
+  @@index([ftsFunctionId])
+  @@index([ftsFunctionStepId])
+  @@index([ftsFunctionCategoryId])
+  @@index([ftsFunctionComplexityId])
+  @@index([ftsFunctionExecutionFrequencyId])
+  @@index([ftsFunctionActionTypeId])
+  @@index([whoPerformsActionId])
+  @@index([ftsFunctionEffectivenessId])
+  @@index([technologicalSolutionId])
+  @@index([responsibleId])
+  @@index([isDeleted])
+  @@fulltext([ftsFunctionDetails, basis, artifact, artifactUsage, purpose, number])
+  @@map("fts_function_details")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Таблица обратной связи
+model Feedback {
+  /// Уникальный идентификатор обратной связи
+  id Int @id @default(autoincrement())
+  /// Уникальный идентификатор создавшего обратную связь
+  creatorId                       Int?      @map("creator_id")
+  /// Уникальный идентификатор отредактировавшего обратную связь
+  updaterId                       Int?      @map("updater_id")
+  /// Уникальный идентификатор акцептующего обратную связь
+  acceptorId                      Int?      @map("acceptor_id")
+  /// Уникальный идентификатор переставившего обратную связь
+  reordererId                     Int?      @map("reorderer_id")
+  /// Уникальный идентификатор удалившего обратную связь
+  deleterId                       Int?      @map("deleter_id")
+  /// Уникальный идентификатор строки детализации
+  ftsFunctionDetailId             Int                       @map("fts_function_detail_id")
+  /// Уникальный идентификатор метрики обратной связи
+  feedbackQualityMetricsId        Int?                      @map("feedback_quality_metrics_id")
+  /// Описание проблемы с указанием источника, метрики, способа решения
+  problemDescription              String? @db.Text          @map("problem_description")
+  /// Реквизиты автора инициативы
+  initiatorRequisites             String? @db.Text          @map("initiator_requisites")
+  /// Методологическая позиция ЦА ФНС России из справочника
+  ftsMethodologyStatusId          Int?                      @map("fts_methodology_status_id")
+  /// Срок реализации доработки
+  deadline                        DateTime?                 @map("deadline")
+  /// Акцепт автора инициативы
+  initiatorAcceptance             String? @db.Text          @map("initiator_acceptance")
+  /// Уникальный идентификатор статуса согласования обратной связи
+  acceptStatusId                  Int                       @map("accept_status_id")
+  /// Порядок расположения действий
+  order                           Int?                      @map("order")
+  /// Флаг мягкого удаления
+  isDeleted                       Boolean @default(false)   @map("is_deleted")
+  /// Дата создания
+  createdAt                       DateTime  @default(now()) @map("created_at")
+  /// Дата обновления
+  updatedAt                       DateTime  @default(now()) @updatedAt @map("updated_at")
+  /// Дата переупорядочивания
+  reorderedAt                     DateTime?                 @map("reordered_at")
+  /// Дата согласования
+  acceptedAt                      DateTime?                 @map("accepted_at")
+  /// Дата мягкого удаления (если удалена)
+  deletedAt                       DateTime?                 @map("deleted_at")
+
+  /// Связи с таблицей пользователей, исполнившие какое-либо действие
+  creator   User? @relation("feedback_creator", fields: [creatorId], references: [id])
+  updater   User? @relation("feedback_updater", fields: [updaterId], references: [id])
+  acceptor  User? @relation("feedback_acceptor", fields: [acceptorId], references: [id])
+  reorderer User? @relation("feedback_reorderer", fields: [reordererId], references: [id])
+  deleter   User? @relation("feedback_deleter", fields: [deleterId], references: [id])
+
+  /// Связь с таблицей детализаций функций ФНС
+  ftsFunctionDetail      FtsFunctionDetail @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
+
+  /// Связи с таблицей типов
+  feedbackQualityMetrics Type? @relation("feedbacks__feedback_quality_metrics", fields: [feedbackQualityMetricsId], references: [id])
+  ftsMethodologyStatus   Type? @relation("feedbacks__fts_methodology_status", fields: [ftsMethodologyStatusId], references: [id])
+  acceptStatus           Type  @relation("feedbacks__feedback_accept_status", fields: [acceptStatusId], references: [id])
+
+  /// Связь с набором источников обратной связи
+  feedbackSources EntityToType[]
+
+  /// Связи с таблицей истории согласований
+  agreementHistory FeedbackAgreementHistory[]
+
+  @@map("feedback")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Действия для каждой детализации
+model Action {
+  /// Уникальный идентификатор действия
+  id Int @id @default(autoincrement())
+  /// Уникальный идентификатор создавшего детализацию функции
+  creatorId                Int?      @map("creator_id")
+  /// Уникальный идентификатор отредактировавшего детализацию функции
+  updaterId                Int?      @map("updater_id")
+  /// Уникальный идентификатор переставившего детализацию функции
+  reordererId              Int?      @map("reorderer_id")
+  /// Уникальный идентификатор удалившего детализацию функции
+  deleterId                Int?      @map("deleter_id")
+  /// Уникальный идентификатор строки детализации
+  ftsFunctionDetailId      Int                     @map("fts_function_detail_id")
+  /// Уникальный идентификатор статуса действия
+  statusId                 Int                     @map("status_id")
+  /// Описание действия
+  description              String @db.Text         @map("description")
+  /// Уникальный идентификатор метрики обратной связи
+  feedbackQualityMetricsId Int?                    @map("feedback_quality_metrics_id")
+  /// Методологическая позиция ЦА ФНС России из справочника
+  ftsMethodologyStatusId   Int?                    @map("fts_methodology_status_id")
+  /// Приоритет выполнения действия
+  priorityActionId         Int?                    @map("priority_action_id")
+  /// Описание проблемы с указанием источника, метрики, способа решения
+  problemDescription       String? @db.Text        @map("problem_description")
+  /// Реквизиты автора инициативы
+  initiatorRequisites      String? @db.Text        @map("initiator_requisites")
+  /// Акцепт автора инициативы
+  initiatorAcceptance      String? @db.Text        @map("initiator_acceptance")
+  /// Срок реализации доработки
+  deadline                 DateTime?               @map("deadline")
+  /// Порядок расположения действий
+  order                    Int?                    @map("order")
+  /// Флаг мягкого удаления
+  isDeleted                Boolean @default(false) @map("is_deleted")
+  /// Дата создания
+  createdAt                DateTime @default(now()) @map("created_at")
+  /// Дата обновления
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at")
+  /// Дата переупорядочивания
+  reorderedAt              DateTime?                 @map("reordered_at")
+  /// Дата мягкого удаления (если удалена)
+  deletedAt                DateTime?               @map("deleted_at")
+
+  /// Связи с таблицей пользователей, исполнившие какое-либо действие
+  creator   User? @relation("action_creator", fields: [creatorId], references: [id])
+  updater   User? @relation("action_updater", fields: [updaterId], references: [id])
+  reorderer User? @relation("action_reorderer", fields: [reordererId], references: [id])
+  deleter   User? @relation("action_deleter", fields: [deleterId], references: [id])
+
+  /// Связь с таблицей детализаций функций ФНС
+  ftsFunctionDetail      FtsFunctionDetail @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
+
+  /// Связи с таблицей типов
+  status                 Type  @relation("actions__status", fields: [statusId], references: [id])
+  feedbackQualityMetrics Type? @relation("actions__feedback_quality_metrics", fields: [feedbackQualityMetricsId], references: [id])
+  ftsMethodologyStatus   Type? @relation("action__fts_methodology_status", fields: [ftsMethodologyStatusId], references: [id])
+  priorityAction         Type? @relation("action__priority_action", fields: [priorityActionId], references: [id])
+
+  /// Связь с набором источников обратной связи
+  feedbackSources EntityToType[]
+
+  @@map("actions")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// История согласования обратной связи
+model FeedbackAgreementHistory {
+  /// Уникальный идентификатор записи истории
+  id                  Int @id @default(autoincrement())
+  /// Уникальный идентификатор акцептующего обратную связь
+  acceptorId          Int?                     @map("acceptor_id")
+  /// Уникальный идентификатор обратной связи
+  feedbackId          Int                      @map("feedback_id")
+  /// Уникальный идентификатор статуса согласования обратной связи
+  acceptStatusId      Int                      @map("accept_status_id")
+  /// Комментарий при отказе
+  comment             String? @db.Text         @map("comment")
+  /// Дата создания записи истории
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  /// Связи с таблицей пользователей, исполнившие какое-либо действие
+  acceptor   User? @relation(fields: [acceptorId], references: [id])
+
+  /// Связь с таблицей обратной связи
+  feedback Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  /// Связи с таблицей типов
+  acceptStatus Type  @relation(fields: [acceptStatusId], references: [id])
+
+  @@index([feedbackId])
+  @@index([acceptStatusId])
+  @@index([feedbackId, acceptStatusId])
+  @@map("feedback_agreement_history")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Дерево функций ФНС
+model FtsFunctionTree {
+  /// Уникальный идентификатор создавшего связь
+  creatorId           Int?      @map("creator_id")
+  /// Уникальный идентификатор родительской детализации функции ФНС
+  parentFtsFunctionId Int      @map("parent_fts_function_id")
+  /// Уникальный идентификатор дочерней детализации функции ФНС
+  childFtsFunctionId  Int      @map("child_fts_function_id")
+  /// Уникальный идентификатор типа связи
+  relationTypeId      Int      @map("relation_type_id")
+  /// Дата создания связи
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  /// Связи с таблицей пользователей, исполнившие какое-либо действие
+  creator   User? @relation(fields: [creatorId], references: [id])
+
+  /// Связи с таблицей детализаций функций ФНС
+  parentFtsFunction FtsFunctionDetail @relation("data_children", fields: [parentFtsFunctionId], references: [id], onDelete: Cascade)
+  childFtsFunction  FtsFunctionDetail @relation("data_parents", fields: [childFtsFunctionId], references: [id], onDelete: Cascade)
+
+  /// Связи с таблицей типов
+  relationType Type @relation(fields: [relationTypeId], references: [id])
+
+  @@id([parentFtsFunctionId, childFtsFunctionId])
+  @@index([childFtsFunctionId])
+  @@index([relationTypeId])
+  @@map("fts_function_tree")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+model File {
+  /// Уникальный идентификатор файла
+  id                  Int       @id @default(autoincrement())
+  /// Уникальный идентификатор создавшего файл
+  creatorId           Int?      @map("creator_id")
+  /// Уникальный идентификатор отредактировавшего файл
+  updaterId           Int?      @map("updater_id")
+  /// Уникальный идентификатор удалившего файл
+  deleterId           Int?      @map("deleter_id")
+  /// Уникальный идентификатор строки детализации
+  ftsFunctionDetailId Int?      @map("fts_function_detail_id")
+  /// Ключ объекта в S3
+  objectKey           String    @map("object_key") @db.VarChar(128)
+  /// Оригинальное имя файла
+  originalName        String?   @map("original_name") @db.VarChar(255)
+  /// MIME-тип файла
+  mimeType            String?   @map("mime_type") @db.VarChar(100)
+  /// Размер файла в байтах
+  size                Int?      @db.UnsignedInt
+  /// Дата загрузки
+  createdAt           DateTime  @default(now()) @map("created_at")
+  /// Дата обновления
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at")
+  /// Дата удаления
+  deletedAt           DateTime? @map("deleted_at")
+  /// Флаг подтверждения загрузки
+  isUploadConfirmed   Boolean   @default(false) @map("is_upload_confirmed")
+  /// Флаг удаления
+  isDeleted           Boolean   @default(false) @map("is_deleted")
+
+  /// Связи с таблицей пользователей, исполнившие какое-либо действие
+  creator   User? @relation("file_creator", fields: [creatorId], references: [id])
+  updater   User? @relation("file_updater", fields: [updaterId], references: [id])
+  deleter   User? @relation("file_deleter", fields: [deleterId], references: [id])
+
+  /// Связь со строкой детализации
+  ftsFunctionDetail FtsFunctionDetail? @relation(fields: [ftsFunctionDetailId], references: [id])
+
+  @@index([isUploadConfirmed, isDeleted])
+  @@index([createdAt])
+  @@index([createdAt, isUploadConfirmed])
+  @@index([objectKey])
+  @@index([ftsFunctionDetailId, isDeleted, isUploadConfirmed])
+  @@index([ftsFunctionDetailId, isDeleted])
+  @@map("files")
+}

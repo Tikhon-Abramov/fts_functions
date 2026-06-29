@@ -1,0 +1,30 @@
+import { z } from "zod";
+
+export const FeedbackFormSchema = z.object({
+  ftsFunctionDetailId: z.number(),
+  feedbackQualityMetricsId: z.number(),
+  ftsMethodologyStatusId: z.number(),
+  feedbackSourceIds: z.array(z.number()).min(1, "Обязательное поле"),
+  problemDescription: z
+    .string()
+    .trim()
+    .min(1, "Обязательное поле")
+    .max(4096, 'Описание проблемы не может превышать 4096 символов'),
+  initiatorRequisites: z
+    .string()
+    .trim()
+    .min(1, "Обязательное поле")
+    .max(4096, 'Реквизиты автора инициатора не могут превышать 4096 символов'),
+  initiatorAcceptance: z
+    .string()
+    .trim()
+    .min(1, "Обязательное поле")
+    .max(4096, 'Акцепт автора не может превышать 4096 символов'),
+  deadline: z.string()
+    .optional()
+    .refine(val => !val || !isNaN(Date.parse(val)), {
+      message: 'Некорректная дата',
+    }),
+});
+
+export type FeedbackFormData = z.infer<typeof FeedbackFormSchema>;
