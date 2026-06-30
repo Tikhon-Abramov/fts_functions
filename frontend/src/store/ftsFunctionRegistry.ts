@@ -526,7 +526,13 @@ export type ConstantControllerGetUsersV1ApiArg = {
   roles?: ("ADMIN" | "USER")[];
   ftsPositionRoles?: ("DEPUTY_CHIEF" | "CHIEF")[];
   ftsFunctionRoles?: ("CURATOR" | "MANAGER")[];
-  ftsBranchTypes?: ("CENTRAL_OFFICE" | "INTERREGIONAL_INSPECTION")[];
+  ftsBranchTypes?: (
+    | "CENTRAL_OFFICE"
+    | "INTERREGIONAL_INSPECTION"
+    | "COMPETENCY_CENTER"
+    | "TERRITORIAL_OFFICE"
+    | "TERRITORIAL_ADMINISTRATION"
+  )[];
 };
 export type FtsFunctionControllerGetAllFtsFunctionsV1ApiResponse =
   /** status 200 Ресурс успешно найден */ FtsFunctionItemsResponseDto;
@@ -786,7 +792,12 @@ export type LoginResponseDto = {
     role: "ADMIN" | "USER";
     ftsPositionRole: ("DEPUTY_CHIEF" | "CHIEF") | null;
     ftsFunctionRole: ("CURATOR" | "MANAGER") | null;
-    ftsBranchType: "CENTRAL_OFFICE" | "INTERREGIONAL_INSPECTION";
+    ftsBranchType:
+      | "CENTRAL_OFFICE"
+      | "INTERREGIONAL_INSPECTION"
+      | "COMPETENCY_CENTER"
+      | "TERRITORIAL_OFFICE"
+      | "TERRITORIAL_ADMINISTRATION";
     fullName: string | null;
     shortName: string | null;
     description: string | null;
@@ -818,7 +829,12 @@ export type RefreshResponseDto = {
     role: "ADMIN" | "USER";
     ftsPositionRole: ("DEPUTY_CHIEF" | "CHIEF") | null;
     ftsFunctionRole: ("CURATOR" | "MANAGER") | null;
-    ftsBranchType: "CENTRAL_OFFICE" | "INTERREGIONAL_INSPECTION";
+    ftsBranchType:
+      | "CENTRAL_OFFICE"
+      | "INTERREGIONAL_INSPECTION"
+      | "COMPETENCY_CENTER"
+      | "TERRITORIAL_OFFICE"
+      | "TERRITORIAL_ADMINISTRATION";
     fullName: string | null;
     shortName: string | null;
     description: string | null;
