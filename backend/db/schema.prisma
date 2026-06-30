@@ -44,6 +44,9 @@ enum FtsFunctionRole {
 enum FtsBranchType {
   CENTRAL_OFFICE // Центральный аппарат (ЦА)
   INTERREGIONAL_INSPECTION // Межрегиональная инспекция (МИУДОЛ)
+  COMPETENCY_CENTER /// Центр компетенции (ЦК)
+  TERRITORIAL_OFFICE // Территориальный налоговый орган (ТНО / ИФНС)
+  TERRITORIAL_ADMINISTRATION // Территориальное управление (ТНО / УФНС)
 }
 
 /// Справочник категорий, определяющий область применения элементов модели Type.
