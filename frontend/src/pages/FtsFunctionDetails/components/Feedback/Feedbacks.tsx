@@ -60,6 +60,12 @@ export function Feedbacks() {
   const rowRefs = useRef<Map<number, HTMLElement>>(new Map());
   const dragRef = useRef<{ id: number; pointerStartY: number } | null>(null);
 
+  // Автоскролл при перетаскивании у верхней/нижней границы списка.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const pointerYRef = useRef(0);
+  const dragScrollRef = useRef(0);
+  const autoScrollRaf = useRef<number | null>(null);
+
   const setRowRef = (id: number) => (element: HTMLElement | null) => {
     if (element) rowRefs.current.set(id, element);
     else rowRefs.current.delete(id);
@@ -113,7 +119,9 @@ export function Feedbacks() {
       const drag = dragRef.current;
       if (!drag) return;
 
-      setDragOffsetY(event.clientY - drag.pointerStartY);
+      pointerYRef.current = event.clientY;
+      // Смещение учитывает накопленный автоскролл, чтобы блок оставался под курсором.
+      setDragOffsetY(event.clientY - drag.pointerStartY + dragScrollRef.current);
 
       const { others, insertAt } = computeInsert(event.clientY, drag.id);
       setDropBeforeId(insertAt < others.length ? Number(others[insertAt].id) : "end");
@@ -152,6 +160,69 @@ export function Feedbacks() {
       window.removeEventListener("mouseup", handleUp);
     };
   }, [items, feedbacks, selectedFtsFunctionDetailId]);
+
+  // Автоскролл контейнера, пока курсор удерживается у его верхнего/нижнего края.
+  // Это позволяет дотянуть блок до позиций, которые не видны в длинном списке.
+  useEffect(() => {
+    if (draggingId === null) return;
+
+    const EDGE = 56; // зона у края, в которой включается автоскролл
+    const MAX_SPEED = 16; // макс. скорость прокрутки, px за кадр
+
+    const step = () => {
+      const container = scrollRef.current;
+      const drag = dragRef.current;
+
+      if (container && drag) {
+        const rect = container.getBoundingClientRect();
+        const y = pointerYRef.current;
+
+        let delta = 0;
+        if (y < rect.top + EDGE) {
+          delta = -Math.ceil(MAX_SPEED * Math.min(1, (rect.top + EDGE - y) / EDGE));
+        } else if (y > rect.bottom - EDGE) {
+          delta = Math.ceil(MAX_SPEED * Math.min(1, (y - (rect.bottom - EDGE)) / EDGE));
+        }
+
+        if (delta !== 0) {
+          const before = container.scrollTop;
+          container.scrollTop += delta;
+          const applied = container.scrollTop - before; // фактический сдвиг (с учётом границ)
+
+          if (applied !== 0) {
+            dragScrollRef.current += applied;
+            setDragOffsetY(y - drag.pointerStartY + dragScrollRef.current);
+
+            // Пересчёт позиции вставки после прокрутки (строки сместились).
+            const others = items.filter((item) => Number(item.id) !== drag.id);
+            let insertAt = 0;
+            for (const item of others) {
+              const element = rowRefs.current.get(Number(item.id));
+              if (!element) {
+                insertAt += 1;
+                continue;
+              }
+              const r = element.getBoundingClientRect();
+              if (y > r.top + r.height / 2) insertAt += 1;
+              else break;
+            }
+            setDropBeforeId(insertAt < others.length ? Number(others[insertAt].id) : "end");
+          }
+        }
+      }
+
+      autoScrollRaf.current = requestAnimationFrame(step);
+    };
+
+    autoScrollRaf.current = requestAnimationFrame(step);
+
+    return () => {
+      if (autoScrollRaf.current !== null) {
+        cancelAnimationFrame(autoScrollRaf.current);
+        autoScrollRaf.current = null;
+      }
+    };
+  }, [draggingId, items]);
 
   const handleOpenCreate = () => {
     setSelectedFeedbackId(null);
@@ -302,6 +373,8 @@ export function Feedbacks() {
                     event.preventDefault();
                     event.stopPropagation();
                     dragRef.current = { id: Number(feedback.id), pointerStartY: event.clientY };
+                    pointerYRef.current = event.clientY;
+                    dragScrollRef.current = 0;
                     setDraggingId(Number(feedback.id));
                     setDragOffsetY(0);
                     document.body.style.userSelect = "none";
@@ -359,6 +432,7 @@ export function Feedbacks() {
   return (
 
     <Box
+      ref={scrollRef}
       sx={{
         p: 2,
         height: "100%",
