@@ -1,10 +1,7 @@
 import { join } from 'node:path';
 import { Module } from '@nestjs/common';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { seconds, ThrottlerModule } from '@nestjs/throttler';
-import { ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { ConfigModule } from '@nestjs/config';
 import { envBaseSchema, envLocalSchema } from '@common/schemas/env.schema';
 import { PrismaModule } from './module/prisma/prisma.module';
 import { AuthModule } from './module/auth/auth.module';
@@ -54,7 +51,7 @@ import { ExportModule } from './module/export/export.module';
     ...(process.env['NODE_ENV'] === 'production'
       ? [
           ServeStaticModule.forRoot({
-            rootPath: join(__dirname, '../../..', 'frontend', 'dist'),
+            rootPath: join(__dirname, '../..', 'frontend', 'dist'),
             serveStaticOptions: {
               fallthrough: true,
             },
