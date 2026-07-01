@@ -58,7 +58,7 @@ export class ExternalAuthService {
     try {
       const { data } = await firstValueFrom(
         this.http.post(
-          `${this.baseUrl}/auth/token`,
+          `${this.baseUrl}/token`,
           {},
           {
             headers: {

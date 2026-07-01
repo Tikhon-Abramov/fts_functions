@@ -38,7 +38,7 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
 
     const initialFormData = useRef<ActionFormData | null>(null);
 
-    const { data: actonData } = useActionControllerGetActionByIdV1Query(
+    const { currentData: actonData } = useActionControllerGetActionByIdV1Query(
         open && !isCreateMode ? { id: String(actionId) } : skipToken,
     );
     const actionInfo = useMemo(() => actonData?.data, [actonData]);
@@ -58,7 +58,7 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
             initiatorAcceptance: actionInfo.initiatorAcceptance ?? undefined,
             deadline: actionInfo.deadline ? actionInfo.deadline : undefined,
         };
-    }, [actionInfo]);
+    }, [actionInfo, actionId]);
 
 
     const { data: actionStatus } = useConstantControllerGetTypesV1Query({ categories: ['ACTION_STATUS'] });

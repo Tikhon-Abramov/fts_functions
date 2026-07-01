@@ -220,7 +220,7 @@ export function FeedbackCardModal({ feedbackId, open, onClose }: FeedbackCardMod
     const acceptedStatusId = acceptStatusOptions.find((option) => option.code === "ACCEPTED")?.value;
     const rejectedStatusId = acceptStatusOptions.find((option) => option.code === "REJECTED")?.value;
 
-    const { data: feedbackData } = useFeedbackControllerGetFeedbackByIdV1Query(
+    const { currentData: feedbackData } = useFeedbackControllerGetFeedbackByIdV1Query(
         open && feedbackId != null ? { id: String(feedbackId) } : skipToken,
     );
     const feedbackInfo = feedbackData?.data;
