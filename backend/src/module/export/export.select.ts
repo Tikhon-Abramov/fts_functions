@@ -3,11 +3,8 @@ import { TypeSelect, UserSelect } from "../constant/constant.select";
 
 export const feedbackSelect = {
   id: true,
-  ftsFunctionDetailId: true,
-  feedbackQualityMetricsId: true,
   problemDescription: true,
   initiatorRequisites: true,
-  ftsMethodologyStatusId: true,
   deadline: true,
   initiatorAcceptance: true,
   acceptStatus: {
@@ -28,53 +25,47 @@ export const feedbackSelect = {
   },
 } as const satisfies Prisma.FeedbackSelect;
 
-export const actionSelect = {
-  id: true,
-  ftsFunctionDetailId: true,
-  statusId: true,
-  description: true,
-  feedbackQualityMetricsId: true,
-  ftsMethodologyStatusId: true,
-  problemDescription: true,
-  initiatorRequisites: true,
-  deadline: true,
-  initiatorAcceptance: true,
-  status: { select: TypeSelect },
-  feedbackQualityMetrics: { select: TypeSelect },
-  feedbackSources: {
-    select: {
-      type: {
-        select: TypeSelect,
-      },
-    },
-  },
-} as const satisfies Prisma.ActionSelect;
+// export const actionSelect = {
+//   id: true,
+//   ftsFunctionDetailId: true,
+//   statusId: true,
+//   description: true,
+
+
+//   // feedbackQualityMetricsId: true,
+//   // ftsMethodologyStatusId: true,
+//   // problemDescription: true,
+//   // initiatorRequisites: true,
+//   // deadline: true,
+//   // initiatorAcceptance: true,
+//   // status: { select: TypeSelect },
+//   // feedbackQualityMetrics: { select: TypeSelect },
+//   // feedbackSources: {
+//   //   select: {
+//   //     type: {
+//   //       select: TypeSelect,
+//   //     },
+//   //   },
+//   // },
+// } as const satisfies Prisma.ActionSelect;
 
 export const ftsFunctionDetailDetailedSelect = {
   id: true,
   ftsFunctionId: true,
-  ftsFunctionStepId: true,
-  ftsFunctionCategoryId: true,
-  ftsFunctionComplexityId: true,
-  ftsFunctionExecutionFrequencyId: true,
-  whoPerformsActionId: true,
-  ftsFunctionActionTypeId: true,
-  ftsFunctionEffectivenessId: true,
-  technologicalSolutionId: true,
-  responsibleId: true,
   ftsFunctionDetails: true,
   basis: true,
   actionsСompleteness: true,
   actionsEffectiveness: true,
+  otherPersonPerformingAction: true,
   artifact: true,
   artifactUsage: true,
   purpose: true,
   number: true,
-  algorithm: true,
   createdAt: true,
   updatedAt: true,
   isDeleted: true,
   deletedAt: true,
+
   ftsFunctionStep: {
     select: TypeSelect,
   },
@@ -90,6 +81,9 @@ export const ftsFunctionDetailDetailedSelect = {
   whoPerformsAction: {
     select: TypeSelect,
   },
+  personPerformingAction: {
+    select: TypeSelect,
+  },
   ftsFunctionActionType: {
     select: TypeSelect,
   },
@@ -101,18 +95,6 @@ export const ftsFunctionDetailDetailedSelect = {
   },
   responsible: {
     select: TypeSelect,
-  },
-  feedbacks: {
-    select: feedbackSelect,
-    where: {
-      isDeleted: false,
-    },
-  },
-  actions: {
-    select: actionSelect,
-    where: {
-      isDeleted: false,
-    },
   },
 } as const satisfies Prisma.FtsFunctionDetailSelect;
 
@@ -161,6 +143,9 @@ export const downloadFtsFunctionDetailSelect = {
       ftsFunctionName: {
         select: TypeSelect,
       },
+      competencyCenter: {
+        select: TypeSelect,
+      },
     },
   },
   createdAt: true,
@@ -176,6 +161,9 @@ export const downloadFeedbackSelect = {
         select: {
           id: true,
           ftsFunctionName: {
+            select: TypeSelect,
+          },
+          competencyCenter: {
             select: TypeSelect,
           },
         },
@@ -195,6 +183,9 @@ export const downloadFtsFunctionTreeSelect = {
           ftsFunctionName: {
             select: TypeSelect,
           },
+          competencyCenter: {
+            select: TypeSelect,
+          },
         },
       },
       ftsFunctionDetails: true,
@@ -209,6 +200,9 @@ export const downloadFtsFunctionTreeSelect = {
           ftsFunctionName: {
             select: TypeSelect,
           },
+          competencyCenter: {
+            select: TypeSelect,
+          },
         },
       },
       ftsFunctionDetails: true,
@@ -221,9 +215,6 @@ export const downloadFtsFunctionTreeSelect = {
 } as const satisfies Prisma.FtsFunctionTreeSelect;
 
 export const downloadActionSelect = {
-  id: true,
-  ftsFunctionDetailId: true,
-  statusId: true,
   ftsFunctionDetail: {
     select: {
       id: true,
@@ -233,18 +224,19 @@ export const downloadActionSelect = {
           ftsFunctionName: {
             select: TypeSelect,
           },
+          competencyCenter: {
+            select: TypeSelect,
+          },
         },
       },
       ftsFunctionDetails: true,
     },
   },
-  description: true,
   ftsMethodologyStatusId: true,
   problemDescription: true,
   initiatorRequisites: true,
   initiatorAcceptance: true,
   deadline: true,
-  status: { select: TypeSelect },
   feedbackQualityMetrics: { select: TypeSelect },
   feedbackSources: {
     select: {
@@ -253,4 +245,14 @@ export const downloadActionSelect = {
       },
     },
   },
-} as const satisfies Prisma.ActionSelect;
+  action: {
+    select: {
+      status: { select: TypeSelect },
+      description: true,
+      priorityAction: { select: TypeSelect },
+      characterAction: { select: TypeSelect },
+      personPerformingAction: { select: TypeSelect },
+      otherPersonPerformingAction: true,
+    },
+  },
+} as const satisfies Prisma.FeedbackSelect;

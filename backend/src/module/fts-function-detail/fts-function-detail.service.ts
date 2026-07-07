@@ -158,6 +158,20 @@ export class FtsFunctionDetailService {
 
   /// Создание детализации
   async create(userId: number, data: CreateFtsFunctionDetailDto): Promise<FtsFunctionDetailBaseDto> {
+    if (data.personPerformingActionId) {
+      const type = await this.prisma.type.findUnique({
+        where: { id: data.personPerformingActionId },
+        select: { code: true },
+      });
+
+      if (
+        (type?.code === Code.PERSON_PERFORMING_ACTION.OTHER_PERSON)
+        && !data.otherPersonPerformingAction?.trim()
+      ) {
+        throw new BadRequestException('Не указано иное лицо, выполняющее действие');
+      }
+    }
+
     return this.prisma.$transaction(async (tr: Prisma.TransactionClient) => {
       const ftsFunctionDetail = await tr.ftsFunctionDetail.create({
         data: {
@@ -184,6 +198,21 @@ export class FtsFunctionDetailService {
   /// Обновление детализации
   async update(userId: number, id: number, data: UpdateFtsFunctionDetailDto): Promise<FtsFunctionDetailBaseDto> {
     const oldData = await this.ensureExists(id);
+
+    if (data.personPerformingActionId) {
+      const type = await this.prisma.type.findUnique({
+        where: { id: data.personPerformingActionId },
+        select: { code: true },
+      });
+
+      if (
+        !data.otherPersonPerformingAction?.trim()
+        && (type?.code === Code.PERSON_PERFORMING_ACTION.OTHER_PERSON)
+        && (oldData.personPerformingAction?.code === Code.PERSON_PERFORMING_ACTION.OTHER_PERSON)
+      ) {
+        throw new BadRequestException('Необходимо указать иное лицо, выполняющее действие, или выбрать другое значение');
+      }
+    }
 
     return this.prisma.$transaction(async (tr: Prisma.TransactionClient) => {
       const ftsFunctionDetail = await tr.ftsFunctionDetail.update({

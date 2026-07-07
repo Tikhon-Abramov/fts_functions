@@ -20,6 +20,9 @@ function countFilled(detail: DetailData): number {
   const values = [
     detail.ftsFunctionExecutionFrequency?.name,
     detail.ftsFunctionComplexity?.name,
+    detail.whoPerformsAction?.name,
+    detail.personPerformingAction?.name,
+    detail.otherPersonPerformingAction,
     detail.artifact,
     detail.basis,
     detail.artifactUsage,
@@ -28,7 +31,6 @@ function countFilled(detail: DetailData): number {
     detail.technologicalSolution?.name,
     detail.number,
     detail.responsible?.name,
-    detail.algorithm,
   ];
 
   return values.filter((value) => value != null && String(value).trim() !== "").length;
@@ -44,6 +46,10 @@ export function FtsFunctionDetailInfoView({ detail, onStartEdit }: FtsFunctionDe
 
   const filledCount = countFilled(detail);
   const showTechnology = detail.ftsFunctionCategory.code === ACTUAL_ACTION_CODE;
+
+  const personPerformingAction = (detail.personPerformingAction?.code === 'OTHER_PERSON') && !!detail.otherPersonPerformingAction
+    ? detail.personPerformingAction.name + `: ${detail.otherPersonPerformingAction}`
+    : detail.personPerformingAction ? detail.personPerformingAction.name : '';
 
   // Файл алгоритма (один) — скачивание через тот же хук, что и в форме.
   const { downloadFile } = useFileUtils();
@@ -150,6 +156,7 @@ export function FtsFunctionDetailInfoView({ detail, onStartEdit }: FtsFunctionDe
         <ReadField label="Сложность" value={detail.ftsFunctionComplexity?.name} c={c} />
         <ReadField label="Артефакт" value={detail.artifact} c={c} />
         <ReadField label="Нормативное основание" value={detail.basis} c={c} />
+        <ReadField label="Лицо, выполняющее действие" value={personPerformingAction} c={c} />
         <ReadField label="Как используется артефакт" value={detail.artifactUsage} c={c} />
         <ReadField
           label="Полнота действий — метрика полноты отработки объектов"
@@ -172,14 +179,13 @@ export function FtsFunctionDetailInfoView({ detail, onStartEdit }: FtsFunctionDe
             />
             <ReadField label="Номер" value={detail.number} c={c} />
             <ReadField label="Ответственный" value={detail.responsible?.name} c={c} />
-            <ReadField label="Результат отработки — текст" value={detail.algorithm} c={c} />
 
             <Box>
               <Typography
                 variant="caption"
                 sx={{ display: "block", color: c.textMuted, fontSize: "0.66rem", mb: 0.25 }}
               >
-                {"Результат отработки — файл"}
+                Файл
               </Typography>
               <FileAttachmentInput
                 readOnly

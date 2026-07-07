@@ -341,7 +341,7 @@ export function Actions() {
                 </Box>
 
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  {action.feedbackQualityMetricsId && (
+                  {(action.feedbacks.length > 0) && (
                     <Tooltip title="Есть обратная связь">
                       <FeedbackOutlined sx={{ fontSize: 16, color: c.accentBlue, opacity: 0.8 }} />
                     </Tooltip>

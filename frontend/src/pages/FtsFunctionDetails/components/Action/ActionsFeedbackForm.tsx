@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, FormControl, InputLabel, MenuItem, OutlinedInput, Select, TextField, Typography, useTheme } from "@mui/material";
 import { Save } from "@mui/icons-material";
-import { useActionControllerDeleteFeedbackV1Mutation, useActionControllerUpdateFeedbackV1Mutation, useConstantControllerGetTypesV1Query } from "../../../../store/ftsFunctionRegistry";
+import { useActionControllerCreateFeedbackV1Mutation, useActionControllerDeleteFeedbackV1Mutation, useActionControllerUpdateFeedbackV1Mutation, useConstantControllerGetTypesV1Query } from "../../../../store/ftsFunctionRegistry";
 import { createOtionsFromTypes } from "../../../../utils/create-options";
 import type { ActionsFeedbackFormData } from "./schema";
 
@@ -30,10 +30,9 @@ const EMPTY_FEEDBACK_FORM: FeedbackFormState = {
 
 type ActionsFeedbackFormProps = {
     actionId?: number | null;
+    feedbackId?: number | null;
     open: boolean;
     onClose: () => void;
-    // Данные обратной связи приходят из ActionCardModal (тип из schema.ts),
-    // чтобы не вызывать useActionControllerGetActionByIdV1Query повторно.
     initialFeedback?: Partial<ActionsFeedbackFormData>;
 }
 
@@ -57,7 +56,7 @@ function toFeedbackFormState(data?: Partial<ActionsFeedbackFormData>): FeedbackF
 }
 
 
-export function ActionsFeedbackForm({ actionId, open, onClose, initialFeedback }: ActionsFeedbackFormProps) {
+export function ActionsFeedbackForm({ actionId, feedbackId, open, onClose, initialFeedback }: ActionsFeedbackFormProps) {
     const theme = useTheme();
     const c = theme.custom;
 
@@ -70,15 +69,22 @@ export function ActionsFeedbackForm({ actionId, open, onClose, initialFeedback }
     const methodologyStatusOptions = useMemo(() => createOtionsFromTypes(ftsMethodologyStatus), [ftsMethodologyStatus]);
 
     // Добавление/обновление обратной связи делаем через updateFeedback (частичный upsert):
-    // эндпоинт createFeedback требует обязательный priorityActionId, которого нет в этой форме.
+    const [createFeedback, { isLoading: isCreatingFeedback }] = useActionControllerCreateFeedbackV1Mutation();
     const [updateFeedback, { isLoading: isUpdatingFeedback }] = useActionControllerUpdateFeedbackV1Mutation();
     const [deleteFeedback, { isLoading: isDeletingFeedback }] = useActionControllerDeleteFeedbackV1Mutation();
 
     const [feedbackForm, setFeedbackForm] = useState<FeedbackFormState>(EMPTY_FEEDBACK_FORM);
 
-    const saving = isUpdatingFeedback || isDeletingFeedback;
-    const canSaveFeedback =
-        Boolean(feedbackForm.feedbackQualityMetricId && feedbackForm.ftsMethodologyStatusId) && !saving;
+    const saving = isCreatingFeedback || isUpdatingFeedback || isDeletingFeedback;
+    const canSaveFeedback = Boolean(
+        feedbackForm.feedbackSourceIds.length > 0
+        && feedbackForm.feedbackQualityMetricId 
+        && feedbackForm.ftsMethodologyStatusId
+        && feedbackForm.problemDescription
+        && feedbackForm.initiatorRequisites
+        && feedbackForm.deadline
+        && feedbackForm.initiatorAcceptance
+    ) && !saving;
 
     // Префилл из данных операции, переданных пропсом (без повторного getActionById) / сброс при закрытии.
     const initialApplied = useRef(false);
@@ -111,10 +117,19 @@ export function ActionsFeedbackForm({ actionId, open, onClose, initialFeedback }
                 deadline,
             };
 
-            await updateFeedback({
-                id: String(actionId),
-                updateActionsFeedbackDto: payload,
-            }).unwrap();
+            if (feedbackId == null) {
+                await createFeedback({
+                    id: String(actionId),
+                    createActionsFeedbackDto: payload,
+                }).unwrap();
+            } else {
+                // Обновление конкретной ОС по её id.
+                await updateFeedback({
+                    id: String(feedbackId),
+                    updateActionsFeedbackDto: payload,
+                }).unwrap();
+            }
+
             onClose();
         } catch (error) {
             console.error("Не удалось сохранить обратную связь:", error);
@@ -122,10 +137,10 @@ export function ActionsFeedbackForm({ actionId, open, onClose, initialFeedback }
     };
 
     const handleDeleteFeedback = async () => {
-        if (actionId == null) return;
+        if (feedbackId == null) return;
 
         try {
-            await deleteFeedback({ id: String(actionId) }).unwrap();
+            await deleteFeedback({ id: String(feedbackId) }).unwrap();
             setFeedbackForm(EMPTY_FEEDBACK_FORM);
             onClose();
         } catch (error) {
@@ -505,18 +520,22 @@ export function ActionsFeedbackForm({ actionId, open, onClose, initialFeedback }
                     gap: 1,
                 }}
             >
-                <Button
-                    size="small"
-                    onClick={handleDeleteFeedback}
-                    disabled={saving}
-                    sx={{
-                        textTransform: "none",
-                        fontSize: "0.72rem",
-                        color: theme.palette.error.main,
-                    }}
-                >
-                    {"Удалить обратную связь"}
-                </Button>
+                {feedbackId != null ? (
+                    <Button
+                        size="small"
+                        onClick={handleDeleteFeedback}
+                        disabled={saving}
+                        sx={{
+                            textTransform: "none",
+                            fontSize: "0.72rem",
+                            color: theme.palette.error.main,
+                        }}
+                    >
+                        {"Удалить обратную связь"}
+                    </Button>
+                ) : (
+                    <Box />
+                )}
 
                 <Button
                     variant="contained"

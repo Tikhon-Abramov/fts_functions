@@ -182,6 +182,10 @@ export const CodesByCategory = {
     ACTION_STATUS: ['AUTO', 'MANUAL'],
 
     PRIORITY_ACTION: ['NECESSARILY', 'NOT_NECESSARILY'],
+
+    CHARACTER_ACTION: ['EXCLUDE_ACTION', 'OPTIMIZE_ACTION'],
+
+    PERSON_PERFORMING_ACTION: ['CHIEF', 'DEPUTY_CHIEF', 'INSPECTOR', 'OTHER_PERSON'],
 } as const satisfies Record<Category, readonly string[]>;
 
 export const ValidCodes = new Set(Object.values(CodesByCategory).flat());

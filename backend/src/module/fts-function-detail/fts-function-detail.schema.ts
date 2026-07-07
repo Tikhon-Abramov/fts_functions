@@ -44,16 +44,17 @@ export const CreateFtsFunctionDetailSchema = z.object({
   ftsFunctionComplexityId: positiveInt.nullish().optional(),
   ftsFunctionExecutionFrequencyId: positiveInt.nullish().optional(),
   whoPerformsActionId: positiveInt.nullish().optional(),
+  personPerformingActionId: positiveInt.nullish().optional(),
   technologicalSolutionId: positiveInt.nullish().optional(),
   responsibleId: positiveInt.nullish().optional(),
   ftsFunctionDetails: z.string().min(1, 'Обязательное поле'),
   actionsСompleteness: z.string().nullish().optional(),
   actionsEffectiveness: z.string().nullish().optional(),
+  otherPersonPerformingAction: z.string().nullish().optional(),
   basis: z.string().nullish().optional(),
   artifact: z.string().nullish().optional(),
   artifactUsage: z.string().nullish().optional(),
   number: z.string().max(64, 'Не более 64 символов').nullish().optional(),
-  algorithm: z.string().nullish().optional(),
 });
 
 export const UpdateFtsFunctionDetailSchema = CreateFtsFunctionDetailSchema.partial();
@@ -88,7 +89,11 @@ export const FtsFunctionDetailPreviewSchema = z.object({
   ftsFunctionStep: TypeResponseSchema,
   ftsFunctionCategory: TypeResponseSchema,
   whoPerformsAction: TypeResponseSchema.nullable(),
-  feedbacks: z.array(z.object({ acceptStatus: TypeResponseSchema })),
+  feedbacks: z.array(
+    z.object({ 
+      acceptStatus: TypeResponseSchema.nullable()
+    })
+  ),
   parents: z.array(z.object({ parentFtsFunctionId: z.number() })),
   children: z.array(z.object({ childFtsFunctionId: z.number() })),
 });
@@ -100,16 +105,17 @@ export const FtsFunctionDetailBaseSchema = z.object({
   ftsFunctionComplexity: TypeResponseSchema.nullable(),
   ftsFunctionExecutionFrequency: TypeResponseSchema.nullable(),
   whoPerformsAction: TypeResponseSchema.nullable(),
+  personPerformingAction: TypeResponseSchema.nullable(),
   technologicalSolution: TypeResponseSchema.nullable(),
   responsible: TypeResponseSchema.nullable(),
   ftsFunctionDetails: z.string(),
   actionsСompleteness: z.string().nullable(),
   actionsEffectiveness: z.string().nullable(),
+  otherPersonPerformingAction: z.string().nullable(),
   basis: z.string().nullable(),
   artifact: z.string().nullable(),
   artifactUsage: z.string().nullable(),
   number: z.string().nullable(),
-  algorithm: z.string().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
 

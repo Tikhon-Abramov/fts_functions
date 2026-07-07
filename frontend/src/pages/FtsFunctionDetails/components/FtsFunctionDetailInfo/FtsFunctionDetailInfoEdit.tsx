@@ -27,6 +27,7 @@ type FtsFunctionDetailInfoEditProps = {
     ftsFunctionComplexityOptions: OptionType[];
     ftsFunctionExecutionFrequencyOptions: OptionType[];
     whoPerformsActionOptions: OptionType[];
+    personPerformingActionOptions: OptionType[];
     ftsFunctionActionTypeOptions: OptionType[];
     ftsFunctionEffectivenessOptions: OptionType[];
     technologicalSolutionOptions: OptionType[];
@@ -49,6 +50,8 @@ function toFormValues(detail: DetailData): Omit<FtsFunctionDetailData, "ftsFunct
     ftsFunctionComplexityId: detail.ftsFunctionComplexity?.id ?? null,
     ftsFunctionExecutionFrequencyId: detail.ftsFunctionExecutionFrequency?.id ?? null,
     whoPerformsActionId: detail.whoPerformsAction!.id,
+    personPerformingActionId: detail.personPerformingAction?.id ?? null,
+    otherPersonPerformingAction: detail.otherPersonPerformingAction ?? "",
     technologicalSolutionId: detail.technologicalSolution?.id ?? null,
     responsibleId: detail.responsible?.id ?? null,
     ftsFunctionDetails: detail.ftsFunctionDetails,
@@ -58,7 +61,6 @@ function toFormValues(detail: DetailData): Omit<FtsFunctionDetailData, "ftsFunct
     artifact: detail.artifact ?? "",
     artifactUsage: detail.artifactUsage ?? "",
     number: detail.number ?? "",
-    algorithm: detail.algorithm ?? "",
   };
 }
 

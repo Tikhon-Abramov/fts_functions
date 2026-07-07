@@ -6,6 +6,12 @@ export const CreateFtsFunctionDetailSchema = z.object({
   ftsFunctionStepId: z.number({ error: () => "Обязательное поле" }),
   ftsFunctionCategoryId: z.number({ error: () => "Обязательное поле" }),
   whoPerformsActionId: z.number({ error: () => "Обязательное поле" }),
+  personPerformingActionId: z.number().nullish(),
+  otherPersonPerformingAction: z
+    .string()
+    .trim()
+    .max(4096, 'Иное лицо, выполняющее действие не может превышать 4096 символов')
+    .optional(),
   ftsFunctionDetails: z
     .string()
     .trim()
@@ -45,12 +51,11 @@ export const CreateFtsFunctionDetailSchema = z.object({
   .max(64, 'Не более 64 символов')
   .nullish(),
   responsibleId: z.number().nullish(),
-  algorithm: z
-    .string()
-    .trim()
-    .max(4096, 'Результат отработки не может превышать 4096 символов')
-    .nullish(),
 });
+
+// .superRefine((data, ctx) => {
+
+// });
 
 export const UpdateFtsFunctionDetailSchema = CreateFtsFunctionDetailSchema.partial();
 

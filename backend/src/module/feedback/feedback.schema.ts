@@ -69,7 +69,7 @@ export const FeedbackBaseSchema = z.object({
   id: positiveInt,
   feedbackQualityMetrics: TypeResponseSchema.nullable(),
   ftsMethodologyStatus: TypeResponseSchema.nullable(),
-  acceptStatus: TypeResponseSchema,
+  acceptStatus: TypeResponseSchema.nullable(),
   problemDescription: z.string().nullable(),
   initiatorRequisites: z.string().nullable(),
   initiatorAcceptance: z.string().nullable(),
