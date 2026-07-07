@@ -26,6 +26,9 @@ import {
   UpdateGeneralInfoActionsDto,
   ReorderActionsSchema,
   ReorderActionsDto,
+  ActionsFeedbackResponseDto,
+  ActionsFeedbackQueryDto,
+  ActionsFeedbackQuerySchema,
 } from './action.schema';
 
 
@@ -211,18 +214,18 @@ export class ActionController {
   @Patch('feedback/create/:id')
   @ApiOkResponse({
     description: MESSAGES.RESOURCE_CREATED,
-    schema: { $ref: getSchemaPath(ActionBaseResponseDto) },
+    schema: { $ref: getSchemaPath(ActionsFeedbackResponseDto) },
   })
   @ApiNotFoundResponse({
     description: MESSAGES.NOT_FOUND,
     schema: { $ref: getSchemaPath(ErrorResponseDto) },
   })
-  @ApiExtraModels(ActionBaseResponseDto)
+  @ApiExtraModels(ActionsFeedbackResponseDto)
   async createFeedback(
     @User() user: UserPayload,
     @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamsDto,
     @Body(new ZodValidationPipe(CreateActionsFeedbackSchema)) data: CreateActionsFeedbackDto,
-  ): Promise<ActionBaseResponseDto> {
+  ): Promise<ActionsFeedbackResponseDto> {
     const id = parseInt(params.id, 10);
 
     if (isNaN(id)) {
@@ -242,18 +245,18 @@ export class ActionController {
   @Patch('feedback/update/:id')
   @ApiOkResponse({
     description: MESSAGES.RESOURCE_UPDATED,
-    schema: { $ref: getSchemaPath(ActionBaseResponseDto) },
+    schema: { $ref: getSchemaPath(ActionsFeedbackResponseDto) },
   })
   @ApiNotFoundResponse({
     description: MESSAGES.NOT_FOUND,
     schema: { $ref: getSchemaPath(ErrorResponseDto) },
   })
-  @ApiExtraModels(ActionBaseResponseDto)
+  @ApiExtraModels(ActionsFeedbackResponseDto)
   async updateFeedback(
     @User() user: UserPayload,
     @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamsDto,
     @Body(new ZodValidationPipe(UpdateActionsFeedbackSchema)) data: UpdateActionsFeedbackDto,
-  ): Promise<ActionBaseResponseDto> {
+  ): Promise<ActionsFeedbackResponseDto> {
     const id = parseInt(params.id, 10);
 
     if (isNaN(id)) {
@@ -273,17 +276,17 @@ export class ActionController {
   @Patch('feedback/delete/:id')
   @ApiOkResponse({
     description: MESSAGES.RESOURCE_DELETED,
-    schema: { $ref: getSchemaPath(ActionBaseResponseDto) },
+    schema: { $ref: getSchemaPath(ActionsFeedbackResponseDto) },
   })
   @ApiNotFoundResponse({
     description: MESSAGES.NOT_FOUND,
     schema: { $ref: getSchemaPath(ErrorResponseDto) },
   })
-  @ApiExtraModels(ActionBaseResponseDto)
+  @ApiExtraModels(ActionsFeedbackResponseDto)
   async deleteFeedback(
     @User() user: UserPayload,
     @Param(new ZodValidationPipe(IdParamSchema)) params: IdParamsDto,
-  ): Promise<ActionBaseResponseDto> {
+  ): Promise<ActionsFeedbackResponseDto> {
     const id = parseInt(params.id, 10);
 
     if (isNaN(id)) {
@@ -312,6 +315,27 @@ export class ActionController {
     @Body(new ZodValidationPipe(ReorderActionsSchema)) data: ReorderActionsDto,
   ): Promise<ActionItemsResponseDto> {
     const result = await this.action.reorderActions(user.id, params.ftsFunctionDetailId, data.orderedIds);
+
+    return {
+      message: MESSAGES.RESOURCE_UPDATED,
+      data: result,
+    };
+  }
+
+
+  /// Изменение порядка расположения обратных связей операции
+  @Patch('feedback/reorder/:actionId')
+  @ApiOkResponse({
+    description: MESSAGES.RESOURCE_UPDATED,
+    schema: { $ref: getSchemaPath(ActionBaseResponseDto) },
+  })
+  @ApiExtraModels(ActionBaseResponseDto)
+  async reorderActionsFeedbacks(
+    @User() user: UserPayload,
+    @Param(new ZodValidationPipe(ActionsFeedbackQuerySchema)) params: ActionsFeedbackQueryDto,
+    @Body(new ZodValidationPipe(ReorderActionsSchema)) data: ReorderActionsDto,
+  ): Promise<ActionBaseResponseDto> {
+    const result = await this.action.reorderActionsFeedbacks(user.id, params.actionId, data.orderedIds);
 
     return {
       message: MESSAGES.RESOURCE_UPDATED,

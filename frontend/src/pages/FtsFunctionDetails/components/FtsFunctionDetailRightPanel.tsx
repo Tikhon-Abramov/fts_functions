@@ -16,6 +16,7 @@ type FtsFunctionDetailRightPanelProps = {
     ftsFunctionComplexityOptions: OptionType[];
     ftsFunctionExecutionFrequencyOptions: OptionType[];
     whoPerformsActionOptions: OptionType[];
+    personPerformingActionOptions: OptionType[];
     ftsFunctionActionTypeOptions: OptionType[];
     ftsFunctionEffectivenessOptions: OptionType[];
     technologicalSolutionOptions: OptionType[];

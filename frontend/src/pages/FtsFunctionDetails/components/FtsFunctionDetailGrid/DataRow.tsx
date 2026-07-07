@@ -96,7 +96,9 @@ export function DataRow({ selectedRowId, row, indexLabel, onClick, onRemove, row
 
 
   const FeedbackStatusDot = useMemo(() => {
-    const acceptStatuses = row.feedbacks.map(({ acceptStatus }) => acceptStatus.code);
+    const acceptStatuses = row.feedbacks
+      .map(({ acceptStatus }) => acceptStatus?.code)
+      .filter(s => s !== undefined);
     const commonStatus = getFinalFeedbacksStatus(acceptStatuses as AcceptStatus[]);
 
     const title = commonStatus && {

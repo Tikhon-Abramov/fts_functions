@@ -37,8 +37,11 @@ export const HistoryEntityType = {
   ACTION: {
     common: 'ACTION',
     generalInfo: 'ACTIONS_GENERAL_INFO',
-    feedback: 'ACTIONS_FEEDBACK',
     order: 'ACTIONS_ORDER',
+    feedback: {
+      common: 'ACTIONS_FEEDBACK',
+      order: 'ACTIONS_FEEDBACKS_ORDER',
+    },
   },
 } as const;
 

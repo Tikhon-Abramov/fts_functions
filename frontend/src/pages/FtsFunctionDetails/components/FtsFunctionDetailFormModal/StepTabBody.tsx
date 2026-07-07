@@ -10,19 +10,21 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Controller, useWatch, type Control, type FieldPath } from "react-hook-form";
+import { Controller, useController, useWatch, type Control, type FieldPath } from "react-hook-form";
 import { FieldLabel } from "../../../../components/FieldLabel";
 import { FileAttachmentInput } from "../../../../components/FileAttachmentInput";
 import type { OptionType } from "../../../../utils/create-options";
 import type { FtsFunctionDetailData } from "./schema";
+import { useEffect, useMemo, useRef, type Ref } from "react";
 
 type StepTabBodyOptions = {
   ftsFunctionCategoryOptions: OptionType[];
   whoPerformsActionOptions: OptionType[];
+  personPerformingActionOptions: OptionType[];
   ftsFunctionComplexityOptions: OptionType[];
   ftsFunctionExecutionFrequencyOptions: OptionType[];
-  ftsFunctionActionTypeOptions: OptionType[]; /////////////
-  ftsFunctionEffectivenessOptions: OptionType[]; //////////
+  ftsFunctionActionTypeOptions: OptionType[];
+  ftsFunctionEffectivenessOptions: OptionType[];
   technologicalSolutionOptions: OptionType[];
   responsibleOptions: OptionType[];
 };
@@ -30,18 +32,13 @@ type StepTabBodyOptions = {
 type StepTabBodyProps = {
   control: Control<FtsFunctionDetailData>;
   options: StepTabBodyOptions;
-  /** Категория = «Фактическое действие» → показываем блок тех. решения. */
   showTechnology: boolean;
-  /** Тип-«задание» → «Номер»/«Ответственный» обязательны и доступны. */
   taskFieldsRequired: boolean;
   theme: Theme;
-  /** Новый выбранный файл алгоритма (поднят в родитель — грузится при сабмите). */
   algorithmFile: File | null;
   onChangeAlgorithmFile: (file: File | null) => void;
-  /** Имя уже сохранённого файла (режим редактирования) — для показа/скачивания. */
   existingAlgorithmFileName?: string | null;
   onDownloadAlgorithmFile?: () => void;
-  /** Пометить существующий файл к удалению (замена / очистка / ввод текста). */
   onRemoveExistingAlgorithmFile?: () => void;
 };
 
@@ -63,7 +60,39 @@ export function StepTabBody({
   const technologySelected =
     technologicalSolutionId != null && !Number.isNaN(technologicalSolutionId);
 
-  // ============ Рендер-хелперы (Controller на FtsFunctionDetailData) ============
+  // Алгоритм теперь только файл (текстовое поле убрано, поля algorithm в форме нет).
+  const hasAlgorithmFile = Boolean(algorithmFile) || Boolean(existingAlgorithmFileName);
+
+  const personPerformingActionId = useWatch({ control, name: "personPerformingActionId" });
+  const personPerformingActionCode = useMemo(() => (
+    options.personPerformingActionOptions.find(({ value }) => value === personPerformingActionId)?.code
+  ), [personPerformingActionId, options])
+
+  // Очищаем «Иное лицо», когда выбрано лицо, отличное от OTHER_PERSON.
+  // setValue сюда не передан, поэтому берём onChange поля через useController.
+  const { field: otherPersonField } = useController({
+    control,
+    name: "otherPersonPerformingAction",
+  });
+  const otherPersonInputRef = useRef<HTMLInputElement>(null);
+  const didMountRef = useRef(false);
+
+  useEffect(() => {
+    // Пропускаем первый прогон (маунт) — реагируем только на смену значения пользователем.
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+
+    if (personPerformingActionCode === "OTHER_PERSON") {
+      otherPersonInputRef.current?.focus();
+    } else if (otherPersonField.value) {
+      otherPersonField.onChange("");
+    }
+  }, [personPerformingActionCode]);
+
+
+  
   const renderSelect = (
     name: FieldPath<FtsFunctionDetailData>,
     label: string,
@@ -144,7 +173,7 @@ export function StepTabBody({
   const renderText = (
     name: FieldPath<FtsFunctionDetailData>,
     label: string,
-    cfg?: { multiline?: boolean; disabled?: boolean },
+    cfg?: { multiline?: boolean; disabled?: boolean; inputRef?: Ref<HTMLInputElement> },
   ) => (
     <Controller
       control={control}
@@ -157,6 +186,7 @@ export function StepTabBody({
           label={label}
           fullWidth
           size="small"
+          inputRef={cfg?.inputRef}
           disabled={cfg?.disabled}
           multiline={cfg?.multiline}
           rows={cfg?.multiline ? 2 : undefined}
@@ -229,7 +259,15 @@ export function StepTabBody({
         <Box sx={{ gridColumn: "1 / -1" }}>
           {renderText("artifactUsage", "Как используется артефакт", { multiline: true })}
         </Box>
-
+        {renderSelect("personPerformingActionId", "Лицо, выполняющее действие", options.personPerformingActionOptions, {
+          allowEmpty: true,
+        })}
+        {
+        renderText("otherPersonPerformingAction", "Иное лицо, выполняющее действие", {
+            disabled: personPerformingActionCode !== 'OTHER_PERSON',
+            inputRef: otherPersonInputRef,
+          }
+        )}
         <Box sx={{ gridColumn: "1 / -1" }}>
           {renderText(
             "actionsСompleteness",
@@ -270,118 +308,54 @@ export function StepTabBody({
               { allowEmpty: true, disabled: !taskFieldsRequired },
             )}
 
-            <Controller
-              control={control}
-              name="algorithm"
-              render={({ field }) => {
-                const text = String(field.value ?? "");
-                const hasText = Boolean(text.trim());
-                const hasFile = Boolean(algorithmFile) || Boolean(existingAlgorithmFileName);
+            <Box sx={{ gridColumn: "1 / -1" }}>
+              <Typography
+                variant="caption"
+                sx={{ display: "block", color: c.textMuted, fontSize: "0.66rem", mb: 0.5 }}
+              >
+                Файл
+              </Typography>
 
-                const handleTextChange = (value: string) => {
-                  field.onChange(value);
-                  if (value.trim()) {
+              <FileAttachmentInput
+                selectedFile={algorithmFile}
+                fileName={existingAlgorithmFileName ?? undefined}
+                disabled={!technologySelected}
+                onChangeFile={onChangeAlgorithmFile}
+                onDownloadFile={onDownloadAlgorithmFile}
+              />
+
+              {hasAlgorithmFile && (
+                <Button
+                  size="small"
+                  onClick={() => {
                     onChangeAlgorithmFile(null);
                     onRemoveExistingAlgorithmFile?.();
-                  }
-                };
+                  }}
+                  sx={{
+                    mt: 0.5,
+                    textTransform: "none",
+                    fontSize: "0.7rem",
+                    color: theme.palette.error.main,
+                    px: 0,
+                    minWidth: 0,
+                  }}
+                >
+                  {"Удалить файл из поля"}
+                </Button>
+              )}
+            </Box>
 
-                const handleFileChange = (file: File | null) => {
-                  onChangeAlgorithmFile(file);
-                  if (file) field.onChange("");
-                };
-
-                return (
-                  <>
-                    <Box sx={{ gridColumn: "1 / -1" }}>
-                      <TextField
-                        value={text}
-                        label="Алгоритм — текст"
-                        onChange={(event) => handleTextChange(event.target.value)}
-                        fullWidth
-                        size="small"
-                        multiline
-                        rows={2}
-                        disabled={!technologySelected || hasFile}
-                        sx={{
-                          "& .MuiOutlinedInput-root": {
-                            bgcolor: c.bgInput,
-                            color: c.textBody,
-                            fontSize: "0.78rem",
-                            "& fieldset": { borderColor: c.borderMedium },
-                            "&:hover fieldset": { borderColor: c.borderHover },
-                            "&.Mui-focused fieldset": { borderColor: theme.palette.primary.main },
-                          },
-                          "& .MuiInputLabel-root": { color: c.textMuted, fontSize: "0.72rem" },
-                          "& .MuiInputLabel-root.Mui-focused": { color: theme.palette.primary.main },
-                        }}
-                      />
-
-                      {hasFile && (
-                        <Typography sx={{ color: c.textMuted, fontSize: "0.68rem", mt: 0.5 }}>
-                          {"Текст недоступен, потому что выбран файл. Чтобы ввести текст, удалите файл."}
-                        </Typography>
-                      )}
-                    </Box>
-
-                    <Box sx={{ gridColumn: "1 / -1" }}>
-                      <Typography
-                        variant="caption"
-                        sx={{ display: "block", color: c.textMuted, fontSize: "0.66rem", mb: 0.5 }}
-                      >
-                        {"Алгоритм — файл"}
-                      </Typography>
-
-                      <FileAttachmentInput
-                        selectedFile={algorithmFile}
-                        fileName={existingAlgorithmFileName ?? undefined}
-                        disabled={!technologySelected || hasText}
-                        onChangeFile={handleFileChange}
-                        onDownloadFile={onDownloadAlgorithmFile}
-                      />
-
-                      {hasText && (
-                        <Typography sx={{ color: c.textMuted, fontSize: "0.68rem", mt: 0.5 }}>
-                          {"Файл недоступен, потому что заполнен текст. Чтобы прикрепить файл, очистите текстовое поле."}
-                        </Typography>
-                      )}
-
-                      {hasFile && !hasText && (
-                        <Button
-                          size="small"
-                          onClick={() => {
-                            onChangeAlgorithmFile(null);
-                            onRemoveExistingAlgorithmFile?.();
-                          }}
-                          sx={{
-                            mt: 0.5,
-                            textTransform: "none",
-                            fontSize: "0.7rem",
-                            color: theme.palette.error.main,
-                            px: 0,
-                            minWidth: 0,
-                          }}
-                        >
-                          {"Удалить файл из поля"}
-                        </Button>
-                      )}
-                    </Box>
-
-                    {technologySelected && !hasText && !hasFile && (
-                      <Typography
-                        sx={{
-                          gridColumn: "1 / -1",
-                          color: theme.palette.warning.main,
-                          fontSize: "0.7rem",
-                        }}
-                      >
-                        {"Введите текст или прикрепите файл."}
-                      </Typography>
-                    )}
-                  </>
-                );
-              }}
-            />
+            {technologySelected && !hasAlgorithmFile && (
+              <Typography
+                sx={{
+                  gridColumn: "1 / -1",
+                  color: theme.palette.warning.main,
+                  fontSize: "0.7rem",
+                }}
+              >
+                {"Прикрепите файл."}
+              </Typography>
+            )}
 
             {taskFieldsRequired && (
               <Typography

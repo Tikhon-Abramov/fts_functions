@@ -136,7 +136,7 @@ export class FeedbackService {
       },
     };
 
-    const isRejected = oldData.acceptStatus.code === Code.FEEDBACK_ACCEPT_STATUS.REJECTED;
+    const isRejected = oldData.acceptStatus?.code === Code.FEEDBACK_ACCEPT_STATUS.REJECTED;
 
     return this.prisma.$transaction(async (tr: Prisma.TransactionClient) => {
       const feedback = await tr.feedback.update({

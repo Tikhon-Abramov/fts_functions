@@ -37,6 +37,7 @@ export function FtsFunctionDetails() {
   const { data: ftsFunctionComplexity } = useConstantControllerGetTypesV1Query({ categories: ['FTS_FUNCTION_COMPLEXITY'] });
   const { data: ftsFunctionExecutionFrequency } = useConstantControllerGetTypesV1Query({ categories: ['FTS_FUNCTION_EXECUTION_FREQUENCY'] });
   const { data: whoPerformsAction } = useConstantControllerGetTypesV1Query({ categories: ['WHO_PERFORMS_ACTION'] });
+  const { data: personPerformingAction } = useConstantControllerGetTypesV1Query({ categories: ['PERSON_PERFORMING_ACTION'] });
   const { data: ftsFunctionActionType } = useConstantControllerGetTypesV1Query({ categories: ['FTS_FUNCTION_ACTION_TYPE'] });
   const { data: ftsFunctionEffectiveness } = useConstantControllerGetTypesV1Query({ categories: ['FTS_FUNCTION_EFFECTIVENESS'] });
   const { data: technologicalSolution } = useConstantControllerGetTypesV1Query({ categories: ['TECHNOLOGICAL_SOLUTION'] });
@@ -49,6 +50,7 @@ export function FtsFunctionDetails() {
   const ftsFunctionComplexityOptions = useMemo(() => createOtionsFromTypes(ftsFunctionComplexity), [ftsFunctionComplexity]);
   const ftsFunctionExecutionFrequencyOptions = useMemo(() => createOtionsFromTypes(ftsFunctionExecutionFrequency), [ftsFunctionExecutionFrequency]);
   const whoPerformsActionOptions = useMemo(() => createOtionsFromTypes(whoPerformsAction), [whoPerformsAction]);
+  const personPerformingActionOptions = useMemo(() => createOtionsFromTypes(personPerformingAction), [personPerformingAction]);
   const ftsFunctionActionTypeOptions = useMemo(() => createOtionsFromTypes(ftsFunctionActionType), [ftsFunctionActionType]);
   const ftsFunctionEffectivenessOptions = useMemo(() => createOtionsFromTypes(ftsFunctionEffectiveness), [ftsFunctionEffectiveness]);
   const technologicalSolutionOptions = useMemo(() => createOtionsFromTypes(technologicalSolution), [technologicalSolution]);
@@ -62,6 +64,7 @@ export function FtsFunctionDetails() {
     ftsFunctionComplexityOptions,
     ftsFunctionExecutionFrequencyOptions,
     whoPerformsActionOptions,
+    personPerformingActionOptions,
     ftsFunctionActionTypeOptions,
     ftsFunctionEffectivenessOptions,
     technologicalSolutionOptions,
@@ -74,6 +77,7 @@ export function FtsFunctionDetails() {
     ftsFunctionComplexityOptions,
     ftsFunctionExecutionFrequencyOptions,
     whoPerformsActionOptions,
+    personPerformingActionOptions,
     ftsFunctionActionTypeOptions,
     ftsFunctionEffectivenessOptions,
     technologicalSolutionOptions,

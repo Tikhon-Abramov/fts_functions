@@ -75,6 +75,8 @@ enum Category {
   FTS_METHODOLOGY_STATUS // Категория "Методологическая позиция ЦА ФНС России (поддержано/нет)
   ACTION_STATUS // Категория "Статус действия"
   PRIORITY_ACTION // Категория "Приоритет выполнения действия"
+  CHARACTER_ACTION // Категория "Характер действия"
+  PERSON_PERFORMING_ACTION // Категория "Лицо, выполняющее действие"
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -119,21 +121,22 @@ model Type {
   ftsFunctionComplexityToFtsFunctionDetails         FtsFunctionDetail[] @relation("fts_function_details__fts_function_complexity")
   ftsFunctionExecutionFrequencyToFtsFunctionDetails FtsFunctionDetail[] @relation("fts_function_details__fts_function_execution_frequency")
   whoPerformsActionToFtsFunctionDetails             FtsFunctionDetail[] @relation("fts_function_details__who_performs_action")
+  personPerformingActionToFtsFunctionDetails        FtsFunctionDetail[] @relation("fts_function_details__person_performing_action")
   ftsFunctionActionTypeToFtsFunctionDetails         FtsFunctionDetail[] @relation("fts_function_details__fts_function_action_type")
   ftsFunctionEffectivenessToFtsFunctionDetails      FtsFunctionDetail[] @relation("fts_function_details__fts_function_effectiveness")
   technologicalSolutionToFtsFunctionDetails         FtsFunctionDetail[] @relation("fts_function_details__technological_solution")  
   responsibleToFtsFunctionDetails                   FtsFunctionDetail[] @relation("fts_function_details__responsible")
   
   /// Связи с таблицей обратной связи для каждой детализации функций ФНС
-  ftsMethodologyStatusToFeedbacks   Feedback[] @relation("feedbacks__fts_methodology_status")
   feedbackQualityMetricsToFeedbacks Feedback[] @relation("feedbacks__feedback_quality_metrics")
+  ftsMethodologyStatusToFeedbacks   Feedback[] @relation("feedbacks__fts_methodology_status")
   acceptStatusToFeedbacks           Feedback[] @relation("feedbacks__feedback_accept_status")
 
   /// Связи с таблицей действий для каждой детализации функций ФНС
   statusToActions                Action[] @relation("actions__status")
-  feedbackQualityMetricsToAction Action[] @relation("actions__feedback_quality_metrics")
-  ftsMethodologyStatusToAction   Action[] @relation("action__fts_methodology_status")
   priorityActionToAction         Action[] @relation("action__priority_action")
+  characterActionToAction        Action[] @relation("action__character_action")
+  personPerformingActionToAction Action[] @relation("action__person_performing_action")
 
   /// Связи с таблицей истории согласований обратной связи для каждой детализации функций ФНС
   feedbackAgreementHistory FeedbackAgreementHistory[]
@@ -339,8 +342,6 @@ model EntityToType {
   ftsFunctionId Int?                     @map("fts_function_id")
   /// Уникальный идентификатор обратной связи
   feedbackId    Int?                     @map("feedback_id")
-  /// Уникальный идентификатор действия
-  actionId      Int?                     @map("action_id")
   /// Уникальный идентификатор DTI
   typeId        Int                      @map("type_id")
   /// Дата создания связи
@@ -350,19 +351,15 @@ model EntityToType {
   ftsFunction FtsFunction? @relation(fields: [ftsFunctionId], references: [id], onDelete: Cascade)
   /// Связь с таблицей обратной связи
   feedback    Feedback?    @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
-  /// Связь с таблицей действий
-  action      Action?      @relation(fields: [actionId], references: [id], onDelete: Cascade)
-
+  
   /// Связь с таблицей типов
   type Type @relation(fields: [typeId], references: [id])
 
   @@index([ftsFunctionId])
   @@index([feedbackId])
-  @@index([actionId])
   @@index([typeId])
   @@unique([typeId, ftsFunctionId])
   @@unique([typeId, feedbackId])
-  @@unique([typeId, actionId])
   @@map("entity_to_types")
 }
 
@@ -464,6 +461,10 @@ model FtsFunctionDetail {
   ftsFunctionExecutionFrequencyId Int?      @map("fts_function_execution_frequency_id")
   /// Уникальный идентификатор выполняющего действия над функции ФНС
   whoPerformsActionId             Int?      @map("who_performs_action_id")
+  /// Уникальный идентификатор лица выполняющего действие над функции ФНС
+  personPerformingActionId        Int?      @map("person_performing_action_id")
+  /// Иное лицо выполняющее действие над функции ФНС
+  otherPersonPerformingAction     String?   @map("other_person_performing_action")
   /// Уникальный идентификатор действия над функции ФНС
   ftsFunctionActionTypeId         Int?      @map("fts_function_action_type_id")
   /// Уникальный идентификатор эффективности функции ФНС
@@ -522,6 +523,7 @@ model FtsFunctionDetail {
   ftsFunctionComplexity         Type? @relation("fts_function_details__fts_function_complexity", fields: [ftsFunctionComplexityId], references: [id])
   ftsFunctionExecutionFrequency Type? @relation("fts_function_details__fts_function_execution_frequency", fields: [ftsFunctionExecutionFrequencyId], references: [id])
   whoPerformsAction             Type? @relation("fts_function_details__who_performs_action", fields: [whoPerformsActionId], references: [id])
+  personPerformingAction        Type? @relation("fts_function_details__person_performing_action", fields: [personPerformingActionId], references: [id])
   ftsFunctionActionType         Type? @relation("fts_function_details__fts_function_action_type", fields: [ftsFunctionActionTypeId], references: [id])
   ftsFunctionEffectiveness      Type? @relation("fts_function_details__fts_function_effectiveness", fields: [ftsFunctionEffectivenessId], references: [id])
   technologicalSolution         Type? @relation("fts_function_details__technological_solution", fields: [technologicalSolutionId], references: [id])
@@ -572,21 +574,23 @@ model Feedback {
   /// Уникальный идентификатор удалившего обратную связь
   deleterId                       Int?      @map("deleter_id")
   /// Уникальный идентификатор строки детализации
-  ftsFunctionDetailId             Int                       @map("fts_function_detail_id")
+  ftsFunctionDetailId             Int?      @map("fts_function_detail_id")
+  /// Уникальный идентификатор строки действиия
+  actionId                        Int?      @map("action_id")
   /// Уникальный идентификатор метрики обратной связи
   feedbackQualityMetricsId        Int?                      @map("feedback_quality_metrics_id")
+  /// Методологическая позиция ЦА ФНС России из справочника
+  ftsMethodologyStatusId          Int?                      @map("fts_methodology_status_id")
   /// Описание проблемы с указанием источника, метрики, способа решения
   problemDescription              String? @db.Text          @map("problem_description")
   /// Реквизиты автора инициативы
   initiatorRequisites             String? @db.Text          @map("initiator_requisites")
-  /// Методологическая позиция ЦА ФНС России из справочника
-  ftsMethodologyStatusId          Int?                      @map("fts_methodology_status_id")
-  /// Срок реализации доработки
-  deadline                        DateTime?                 @map("deadline")
   /// Акцепт автора инициативы
   initiatorAcceptance             String? @db.Text          @map("initiator_acceptance")
+  /// Срок реализации доработки
+  deadline                        DateTime?                 @map("deadline")
   /// Уникальный идентификатор статуса согласования обратной связи
-  acceptStatusId                  Int                       @map("accept_status_id")
+  acceptStatusId                  Int?                      @map("accept_status_id")
   /// Порядок расположения действий
   order                           Int?                      @map("order")
   /// Флаг мягкого удаления
@@ -610,12 +614,15 @@ model Feedback {
   deleter   User? @relation("feedback_deleter", fields: [deleterId], references: [id])
 
   /// Связь с таблицей детализаций функций ФНС
-  ftsFunctionDetail      FtsFunctionDetail @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
+  ftsFunctionDetail FtsFunctionDetail? @relation(fields: [ftsFunctionDetailId], references: [id], onDelete: Cascade)
+
+  /// Связь с таблицей действий
+  action Action? @relation(fields: [actionId], references: [id], onDelete: Cascade)
 
   /// Связи с таблицей типов
   feedbackQualityMetrics Type? @relation("feedbacks__feedback_quality_metrics", fields: [feedbackQualityMetricsId], references: [id])
   ftsMethodologyStatus   Type? @relation("feedbacks__fts_methodology_status", fields: [ftsMethodologyStatusId], references: [id])
-  acceptStatus           Type  @relation("feedbacks__feedback_accept_status", fields: [acceptStatusId], references: [id])
+  acceptStatus           Type?  @relation("feedbacks__feedback_accept_status", fields: [acceptStatusId], references: [id])
 
   /// Связь с набором источников обратной связи
   feedbackSources EntityToType[]
@@ -633,45 +640,39 @@ model Action {
   /// Уникальный идентификатор действия
   id Int @id @default(autoincrement())
   /// Уникальный идентификатор создавшего детализацию функции
-  creatorId                Int?      @map("creator_id")
+  creatorId                   Int?                    @map("creator_id")
   /// Уникальный идентификатор отредактировавшего детализацию функции
-  updaterId                Int?      @map("updater_id")
+  updaterId                   Int?                    @map("updater_id")
   /// Уникальный идентификатор переставившего детализацию функции
-  reordererId              Int?      @map("reorderer_id")
+  reordererId                 Int?                    @map("reorderer_id")
   /// Уникальный идентификатор удалившего детализацию функции
-  deleterId                Int?      @map("deleter_id")
+  deleterId                   Int?                    @map("deleter_id")
   /// Уникальный идентификатор строки детализации
-  ftsFunctionDetailId      Int                     @map("fts_function_detail_id")
+  ftsFunctionDetailId         Int                     @map("fts_function_detail_id")
   /// Уникальный идентификатор статуса действия
-  statusId                 Int                     @map("status_id")
+  statusId                    Int                     @map("status_id")
   /// Описание действия
-  description              String @db.Text         @map("description")
-  /// Уникальный идентификатор метрики обратной связи
-  feedbackQualityMetricsId Int?                    @map("feedback_quality_metrics_id")
-  /// Методологическая позиция ЦА ФНС России из справочника
-  ftsMethodologyStatusId   Int?                    @map("fts_methodology_status_id")
+  description                 String @db.Text         @map("description")
   /// Приоритет выполнения действия
-  priorityActionId         Int?                    @map("priority_action_id")
-  /// Описание проблемы с указанием источника, метрики, способа решения
-  problemDescription       String? @db.Text        @map("problem_description")
-  /// Реквизиты автора инициативы
-  initiatorRequisites      String? @db.Text        @map("initiator_requisites")
-  /// Акцепт автора инициативы
-  initiatorAcceptance      String? @db.Text        @map("initiator_acceptance")
-  /// Срок реализации доработки
-  deadline                 DateTime?               @map("deadline")
+  priorityActionId            Int?                    @map("priority_action_id")
+  /// Характер действия
+  characterActionId           Int?                    @map("character_action_id")
+  /// Уникальный идентификатор лица выполняющего действие над функции ФНС
+  personPerformingActionId    Int?                    @map("person_performing_action_id")
+  /// Иное лицо выполняющее действие над функции ФНС
+  otherPersonPerformingAction String?                 @map("other_person_performing_action")
   /// Порядок расположения действий
-  order                    Int?                    @map("order")
+  order                       Int?                    @map("order")
   /// Флаг мягкого удаления
-  isDeleted                Boolean @default(false) @map("is_deleted")
+  isDeleted                Boolean @default(false)    @map("is_deleted")
   /// Дата создания
-  createdAt                DateTime @default(now()) @map("created_at")
+  createdAt                DateTime @default(now())   @map("created_at")
   /// Дата обновления
   updatedAt                DateTime @default(now()) @updatedAt @map("updated_at")
   /// Дата переупорядочивания
-  reorderedAt              DateTime?                 @map("reordered_at")
+  reorderedAt              DateTime?                  @map("reordered_at")
   /// Дата мягкого удаления (если удалена)
-  deletedAt                DateTime?               @map("deleted_at")
+  deletedAt                DateTime?                  @map("deleted_at")
 
   /// Связи с таблицей пользователей, исполнившие какое-либо действие
   creator   User? @relation("action_creator", fields: [creatorId], references: [id])
@@ -684,12 +685,12 @@ model Action {
 
   /// Связи с таблицей типов
   status                 Type  @relation("actions__status", fields: [statusId], references: [id])
-  feedbackQualityMetrics Type? @relation("actions__feedback_quality_metrics", fields: [feedbackQualityMetricsId], references: [id])
-  ftsMethodologyStatus   Type? @relation("action__fts_methodology_status", fields: [ftsMethodologyStatusId], references: [id])
   priorityAction         Type? @relation("action__priority_action", fields: [priorityActionId], references: [id])
-
-  /// Связь с набором источников обратной связи
-  feedbackSources EntityToType[]
+  characterAction        Type? @relation("action__character_action", fields: [characterActionId], references: [id])
+  personPerformingAction Type? @relation("action__person_performing_action", fields: [personPerformingActionId], references: [id])
+  
+  /// Связь с таблицей обратных связей
+  feedbacks Feedback[]
 
   @@map("actions")
 }

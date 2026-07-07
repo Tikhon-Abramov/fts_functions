@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Prisma } from 'src/generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateActionDto, UpdateActionDto, ActionItemsDto, ActionBaseDto, CreateActionsFeedbackDto, UpdateActionsFeedbackDto, UpdateGeneralInfoActionsDto, GeneralInfoActionsDto } from './action.schema';
-import { ActionPreviewSelect, ActionBaseSelect } from './action.select';
+import { CreateActionDto, UpdateActionDto, ActionItemsDto, ActionBaseDto, CreateActionsFeedbackDto, UpdateActionsFeedbackDto, UpdateGeneralInfoActionsDto, GeneralInfoActionsDto, ActionsFeedbackDto } from './action.schema';
+import { ActionPreviewSelect, ActionBaseSelect, ActionsFeedbackSelect } from './action.select';
 import { Code, HistoryEntityType } from 'src/common/constants';
 
 
@@ -13,28 +13,11 @@ export class ActionService {
   constructor(private readonly prisma: PrismaService) { }
 
 
-  private async ensureExists(id: number) {
-    const existing = await this.prisma.action.findUnique({
-      where: { id },
-      select: {
-        isDeleted: true,
-        ...ActionBaseSelect,
-      },
-    });
-
-    if (!existing || existing.isDeleted) {
-      throw new NotFoundException('Действие не найдено');
-    }
-
-    return existing;
-  }
-
-
   private async ensureExistsFtsFunctionDetail(id: number): Promise<GeneralInfoActionsDto> {
     const existing = await this.prisma.ftsFunctionDetail.findUnique({
       where: { id },
       select: {
-        isDeleted: true, 
+        isDeleted: true,
         actionsInput: true,
         actionsOutput: true,
       },
@@ -48,6 +31,49 @@ export class ActionService {
       actionsInput: existing.actionsInput,
       actionsOutput: existing.actionsOutput,
     };
+  }
+
+
+  private async ensureExists(id: number): Promise<Omit<ActionBaseDto, 'feedbacks'>>;
+  private async ensureExists(id: number, includeFeedbacks: false): Promise<Omit<ActionBaseDto, 'feedbacks'>>;
+  private async ensureExists(id: number, includeFeedbacks: true): Promise<ActionBaseDto>;
+  private async ensureExists(
+    id: number,
+    includeFeedbacks = false,
+  ): Promise<ActionBaseDto | Omit<ActionBaseDto, 'feedbacks'>> {
+    const { feedbacks, ...select } = ActionBaseSelect;
+
+    const existing = await this.prisma.action.findUnique({
+      where: { id },
+      select: {
+        isDeleted: true,
+        ...select,
+        ...(includeFeedbacks ? { feedbacks } : {}),
+      },
+    });
+
+    if (!existing || existing.isDeleted) {
+      throw new NotFoundException('Операция не найдена');
+    }
+
+    return existing as unknown as ActionBaseDto;
+  }
+
+
+  private async ensureExistsFeedback(id: number) {
+    const existing = await this.prisma.feedback.findUnique({
+      where: { id },
+      select: {
+        isDeleted: true,
+        ...ActionsFeedbackSelect
+      },
+    });
+
+    if (!existing || existing.isDeleted) {
+      throw new NotFoundException('Обратная связь операции не найдена');
+    }
+
+    return existing;
   }
 
 
@@ -67,6 +93,11 @@ export class ActionService {
         data: {
           updaterId: userId,
           ...data,
+        },
+        select: {
+          id: true,
+          actionsInput: true,
+          actionsOutput: true,
         },
       });
 
@@ -100,13 +131,27 @@ export class ActionService {
 
   /// Получение действия по ID
   getActionById(id: number): Promise<ActionBaseDto> {
-    return this.ensureExists(id);
+    return this.ensureExists(id, true);
   }
 
 
   /// Создание действия
   async create(userId: number, data: CreateActionDto): Promise<ActionBaseDto> {
     await this.ensureExistsFtsFunctionDetail(data.ftsFunctionDetailId);
+
+    if (data.personPerformingActionId) {
+      const type = await this.prisma.type.findUnique({
+        where: { id: data.personPerformingActionId },
+        select: { code: true },
+      });
+
+      if (
+        (type?.code === Code.PERSON_PERFORMING_ACTION.OTHER_PERSON)
+        && !data.otherPersonPerformingAction?.trim()
+      ) {
+        throw new BadRequestException('Не указано иное лицо, выполняющее действие');
+      }
+    }
 
     return this.prisma.$transaction(async (tr: Prisma.TransactionClient) => {
       const action = await tr.action.create({
@@ -135,6 +180,21 @@ export class ActionService {
   async update(userId: number, id: number, data: UpdateActionDto): Promise<ActionBaseDto> {
     const oldData = await this.ensureExists(id);
 
+    if (data.personPerformingActionId) {
+      const type = await this.prisma.type.findUnique({
+        where: { id: data.personPerformingActionId },
+        select: { code: true },
+      });
+
+      if (
+        !data.otherPersonPerformingAction?.trim()
+        && (type?.code === Code.PERSON_PERFORMING_ACTION.OTHER_PERSON)
+        && (oldData.personPerformingAction?.code === Code.PERSON_PERFORMING_ACTION.OTHER_PERSON)
+      ) {
+        throw new BadRequestException('Необходимо указать иное лицо, выполняющее действие, или выбрать другое значение');
+      }
+    }
+
     return this.prisma.$transaction(async (tr: Prisma.TransactionClient) => {
       const action = await tr.action.update({
         where: { id },
@@ -162,11 +222,20 @@ export class ActionService {
 
   /// Логическое удаление действия
   async delete(userId: number, id: number): Promise<ActionBaseDto> {
-    const oldData = await this.ensureExists(id);
+    const oldData = await this.ensureExists(id, true);
 
     const now = new Date();
 
     return this.prisma.$transaction(async (tr: Prisma.TransactionClient) => {
+      await this.prisma.feedback.updateMany({
+        where: { actionId: id, isDeleted: false },
+        data: {
+          deleterId: userId,
+          isDeleted: true,
+          deletedAt: now,
+        },
+      });
+
       const action = await tr.action.update({
         where: { id },
         data: {
@@ -183,7 +252,7 @@ export class ActionService {
           entityType: this.HISTORY_ENTITY_TYPE.common,
           entityId: action.id,
           actionType: { connect: { code: Code.ACTION_HISTORY_TYPE.DELETE } },
-          oldValue: oldData,
+          oldValue: { ...oldData },
         },
       });
 
@@ -193,8 +262,8 @@ export class ActionService {
 
 
   /// Добавление обратной связи действия
-  async createFeedback(userId: number, id: number, data: CreateActionsFeedbackDto): Promise<ActionBaseDto> {
-    const oldData = await this.ensureExists(id);
+  async createFeedback(userId: number, id: number, data: CreateActionsFeedbackDto): Promise<ActionsFeedbackDto> {
+    await this.ensureExists(id);
 
     const { feedbackSourceIds, ...otherData } = data;
 
@@ -205,102 +274,94 @@ export class ActionService {
     };
 
     return this.prisma.$transaction(async (tr: Prisma.TransactionClient) => {
-      const action = await tr.action.update({
-        where: { id },
+      const feedback = await tr.feedback.create({
         data: {
-          updaterId: userId,
+          creatorId: userId,
+          actionId: id,
           ...otherData,
           ...(feedbackSources.createMany.data.length > 0 ? { feedbackSources } : {}),
         },
-        select: ActionBaseSelect,
+        select: ActionsFeedbackSelect,
       });
 
       await tr.historyLog.create({
         data: {
           user: { connect: { id: userId } },
-          entityType: this.HISTORY_ENTITY_TYPE.feedback,
-          entityId: action.id,
+          entityType: this.HISTORY_ENTITY_TYPE.feedback.common,
+          entityId: feedback.id,
           actionType: { connect: { code: Code.ACTION_HISTORY_TYPE.INSERT } },
-          oldValue: oldData,
         }
       });
 
-      return action;
+      return feedback;
     });
   }
 
 
   /// Обновление обратной связи действия
-  async updateFeedback(userId: number, id: number, data: UpdateActionsFeedbackDto): Promise<ActionBaseDto> {
-    const oldData = await this.ensureExists(id);
+  async updateFeedback(userId: number, id: number, data: UpdateActionsFeedbackDto): Promise<ActionsFeedbackDto> {
+    const oldData = await this.ensureExistsFeedback(id);
 
     const { feedbackSourceIds, ...otherData } = data;
 
-    const feedbackSources = {
-      deleteMany: {},
-      createMany: {
-        data: (feedbackSourceIds ?? []).map(typeId => ({ typeId })),
-      },
-    };
+    const feedbackSourcesData = (feedbackSourceIds ?? []).map(typeId => ({ typeId }));
 
     return this.prisma.$transaction(async (tr: Prisma.TransactionClient) => {
-      const action = await tr.action.update({
+      const feedback = await tr.feedback.update({
         where: { id },
         data: {
           updaterId: userId,
           ...otherData,
-          ...(feedbackSources.createMany.data.length > 0 ? { feedbackSources } : {}),
+          ...(feedbackSourceIds
+            ? { feedbackSources: { deleteMany: {}, createMany: { data: feedbackSourcesData } } }
+            : {}),
         },
-        select: ActionBaseSelect,
+        select: ActionsFeedbackSelect,
       });
 
       await tr.historyLog.create({
         data: {
           user: { connect: { id: userId } },
-          entityType: this.HISTORY_ENTITY_TYPE.feedback,
-          entityId: action.id,
-          actionType: { connect: { code: Code.ACTION_HISTORY_TYPE.INSERT } },
+          entityType: this.HISTORY_ENTITY_TYPE.feedback.common,
+          entityId: feedback.id,
+          actionType: { connect: { code: Code.ACTION_HISTORY_TYPE.UPDATE } },
           oldValue: oldData,
         }
       });
 
-      return action;
+      return feedback;
     });
   }
 
 
   /// Удаление обратной связи действия
-  async deleteFeedback(userId: number, id: number): Promise<ActionBaseDto> {
-    const oldData = await this.ensureExists(id);
+  async deleteFeedback(userId: number, id: number): Promise<ActionsFeedbackDto> {
+    const oldData = await this.ensureExistsFeedback(id);
 
     const now = new Date();
 
     return this.prisma.$transaction(async (tr: Prisma.TransactionClient) => {
-      const action = await tr.action.update({
+      const feedback = await tr.feedback.update({
         where: { id },
         data: {
-          updaterId: userId,
-          feedbackQualityMetricsId: null,
-          ftsMethodologyStatusId: null,
-          problemDescription: null,
-          initiatorRequisites: null,
-          initiatorAcceptance: null,
-          deadline: null,
+          deleterId: userId,
+          isDeleted: true,
+          deletedAt: now,
         },
-        select: ActionBaseSelect,
+        select: ActionsFeedbackSelect,
       });
 
       await tr.historyLog.create({
         data: {
           user: { connect: { id: userId } },
-          entityType: this.HISTORY_ENTITY_TYPE.feedback,
-          entityId: action.id,
+          entityType: this.HISTORY_ENTITY_TYPE.feedback.common,
+          entityId: id,
           actionType: { connect: { code: Code.ACTION_HISTORY_TYPE.DELETE } },
           oldValue: oldData,
         },
       });
 
-      return action;
+      return feedback;
     });
   }
 
@@ -308,7 +369,7 @@ export class ActionService {
   /// Изменение порядка расположения операций
   async reorderActions(userId: number, ftsFunctionDetailId: number, orderedIds: number[]): Promise<ActionItemsDto> {
     await this.ensureExistsFtsFunctionDetail(ftsFunctionDetailId);
-    
+
     return this.prisma.$transaction(async (tr: Prisma.TransactionClient) => {
       const oldData = await tr.action.findMany({
         where: { ftsFunctionDetailId },
@@ -336,6 +397,41 @@ export class ActionService {
       });
 
       return this.getAllActions(ftsFunctionDetailId);
+    });
+  }
+
+
+  /// Изменение порядка расположения обратных связей операции
+  async reorderActionsFeedbacks(userId: number, actionId: number, orderedIds: number[]): Promise<ActionBaseDto> {
+    await this.ensureExists(actionId);
+
+    return this.prisma.$transaction(async (tr: Prisma.TransactionClient) => {
+      const oldData = await tr.feedback.findMany({
+        where: { actionId },
+        select: { id: true, order: true },
+      });
+
+      for (const [order, id] of orderedIds.entries()) {
+        await tr.feedback.update({
+          where: { id },
+          data: {
+            reordererId: userId,
+            updatedAt: new Date(),
+            order,
+          },
+        });
+      }
+
+      await tr.historyLog.create({
+        data: {
+          user: { connect: { id: userId } },
+          entityType: this.HISTORY_ENTITY_TYPE.feedback.order,
+          actionType: { connect: { code: Code.ACTION_HISTORY_TYPE.UPDATE } },
+          oldValue: oldData,
+        },
+      });
+
+      return this.getActionById(actionId);
     });
   }
 }

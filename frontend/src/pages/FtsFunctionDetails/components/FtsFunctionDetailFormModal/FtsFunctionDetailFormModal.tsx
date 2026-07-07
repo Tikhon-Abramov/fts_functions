@@ -30,7 +30,6 @@ const EMPTY_FORM: FtsFunctionDetailData = {
   artifact: "",
   artifactUsage: "",
   number: "",
-  algorithm: "",
 };
 
 // Коды-справочники для условной логики (приходят в OptionType.code).
@@ -46,6 +45,7 @@ type FtsFunctionDetailFormModalProps = {
     ftsFunctionComplexityOptions: OptionType[];
     ftsFunctionExecutionFrequencyOptions: OptionType[];
     whoPerformsActionOptions: OptionType[];
+    personPerformingActionOptions: OptionType[];
     ftsFunctionActionTypeOptions: OptionType[];
     ftsFunctionEffectivenessOptions: OptionType[];
     technologicalSolutionOptions: OptionType[];

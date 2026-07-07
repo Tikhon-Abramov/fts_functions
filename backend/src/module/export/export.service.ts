@@ -4,6 +4,7 @@ import { ExcelService } from "../excel/excel.service";
 import { downloadActionSelect, downloadFeedbackSelect, downloadFtsFunctionDetailSelect, downloadFtsFunctionSelect, downloadFtsFunctionTreeSelect } from "./export.select";
 import { Category } from "src/generated/prisma/client";
 import { DownloadActionEntity, DownloadFeedbackEntity, DownloadFFtsFunctionTreeEntity, DownloadFtsFunctionDetailEntity, DownloadFtsFunctionEntity } from "./export.entity";
+import { Code } from "src/common/constants";
 
 
 @Injectable()
@@ -68,13 +69,15 @@ export class ExportService {
             { parentFtsFunction: { ftsFunctionCategoryId: 'asc' } },
           ],
         }),
-        this.prisma.action.findMany({
+        this.prisma.feedback.findMany({
           where: {
             isDeleted: false,
             ftsFunctionDetail: {
               isDeleted: false,
               ftsFunction: { isDeleted: false },
+              actions: { some: { isDeleted: false } }
             },
+            actionId: { not: null }
           },
           select: downloadActionSelect,
           orderBy: [
@@ -181,6 +184,11 @@ export class ExportService {
                 row.ftsFunction.ftsFunctionName.name,
             },
             {
+              header: 'Центр компетенции',
+              map: (row: DownloadFtsFunctionDetailEntity) =>
+                row.ftsFunction.competencyCenter.name,
+            },
+            {
               header: 'Шаг функции',
               map: (row: DownloadFtsFunctionDetailEntity) =>
                 row.ftsFunctionStep.name,
@@ -215,8 +223,16 @@ export class ExportService {
             },
             {
               header: 'Как используется артефакт',
-              map: (row: DownloadFtsFunctionDetailEntity) =>
-                row.artifactUsage,
+              map: (row: DownloadFtsFunctionDetailEntity) => row.artifactUsage,
+            },
+            {
+              header: 'Лицо, выполняющее действие',
+              map: (row: DownloadFtsFunctionDetailEntity) => {
+                if (row.personPerformingAction?.code === Code.PERSON_PERFORMING_ACTION.OTHER_PERSON)
+                  return `${row.personPerformingAction.name}: ${row.otherPersonPerformingAction}`;
+
+                return row.personPerformingAction?.name;
+              },
             },
             {
               header:
@@ -244,11 +260,6 @@ export class ExportService {
                 row.responsible?.name,
             },
             {
-              header: 'Результат отработки',
-              map: (row: DownloadFtsFunctionDetailEntity) =>
-                row.algorithm,
-            },
-            {
               header: 'Дата создания',
               map: (row: DownloadFtsFunctionDetailEntity) => row.createdAt,
             },
@@ -265,12 +276,12 @@ export class ExportService {
             {
               header: 'ID функции',
               map: (row: DownloadFeedbackEntity) =>
-                row.ftsFunctionDetail.ftsFunction.id,
+                row.ftsFunctionDetail?.ftsFunction.id,
             },
             {
               header: 'ID детализации',
               map: (row: DownloadFeedbackEntity) =>
-                row.ftsFunctionDetail.id,
+                row.ftsFunctionDetail?.id,
             },
             {
               header: 'ID обратной связи',
@@ -279,12 +290,17 @@ export class ExportService {
             {
               header: 'Наименование функции',
               map: (row: DownloadFeedbackEntity) =>
-                row.ftsFunctionDetail.ftsFunction.ftsFunctionName.name,
+                row.ftsFunctionDetail?.ftsFunction.ftsFunctionName.name,
+            },
+            {
+              header: 'Центр компетенции',
+              map: (row: DownloadFeedbackEntity) =>
+                row.ftsFunctionDetail?.ftsFunction.competencyCenter.name,
             },
             {
               header: 'Детализация функции',
               map: (row: DownloadFeedbackEntity) =>
-                row.ftsFunctionDetail.ftsFunctionDetails,
+                row.ftsFunctionDetail?.ftsFunctionDetails,
             },
             {
               header: 'Источники обратной связи',
@@ -322,8 +338,7 @@ export class ExportService {
             },
             {
               header: 'Согласовано',
-              map: (row: DownloadFeedbackEntity) =>
-                row.acceptStatus.name,
+              map: (row: DownloadFeedbackEntity) => row.acceptStatus?.name,
             },
           ],
         },
@@ -345,6 +360,11 @@ export class ExportService {
               header: 'Наименование функции',
               map: (row: DownloadFFtsFunctionTreeEntity) =>
                 row.parentFtsFunction.ftsFunction.ftsFunctionName.name,
+            },
+            {
+              header: 'Центр компетенции',
+              map: (row: DownloadFFtsFunctionTreeEntity) =>
+                row.parentFtsFunction.ftsFunction.competencyCenter.name,
             },
             {
               header: 'Детализация функции',
@@ -372,6 +392,11 @@ export class ExportService {
                 row.childFtsFunction.ftsFunction.ftsFunctionName.name,
             },
             {
+              header: 'Центр компетенции',
+              map: (row: DownloadFFtsFunctionTreeEntity) =>
+                row.childFtsFunction.ftsFunction.competencyCenter.name,
+            },
+            {
               header: 'Детализация функции',
               map: (row: DownloadFFtsFunctionTreeEntity) =>
                 row.childFtsFunction.ftsFunctionDetails,
@@ -385,29 +410,31 @@ export class ExportService {
             {
               header: 'ID функции',
               map: (row: DownloadActionEntity) =>
-                row.ftsFunctionDetail.ftsFunction.id,
+                row.ftsFunctionDetail?.ftsFunction.id,
             },
             {
               header: 'ID детализации',
-              map: (row: DownloadActionEntity) => row.ftsFunctionDetail.id,
+              map: (row: DownloadActionEntity) => row.ftsFunctionDetail?.id,
             },
             {
               header: 'Наименование функции',
-              map: (row: DownloadActionEntity) =>
-                row.ftsFunctionDetail.ftsFunction.ftsFunctionName.name,
+              map: (row: DownloadActionEntity) => row.ftsFunctionDetail?.ftsFunction.ftsFunctionName.name,
+            },
+            {
+              header: 'Центр компетенции',
+              map: (row: DownloadActionEntity) => row.ftsFunctionDetail?.ftsFunction.competencyCenter.name,
             },
             {
               header: 'Детализация функции',
-              map: (row: DownloadActionEntity) =>
-                row.ftsFunctionDetail.ftsFunctionDetails,
+              map: (row: DownloadActionEntity) => row.ftsFunctionDetail?.ftsFunctionDetails,
             },
             {
               header: 'Статус',
-              map: (row: DownloadActionEntity) => row.status.name,
+              map: (row: DownloadActionEntity) => row.action?.status.name,
             },
             {
               header: 'Описание',
-              map: (row: DownloadActionEntity) => row.description,
+              map: (row: DownloadActionEntity) => row.action?.description,
             },
             {
               header: 'Источники обратной связи',

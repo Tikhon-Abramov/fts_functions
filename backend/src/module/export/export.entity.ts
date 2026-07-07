@@ -17,6 +17,6 @@ export type DownloadFFtsFunctionTreeEntity = Prisma.FtsFunctionTreeGetPayload<{
   select: typeof downloadFtsFunctionTreeSelect;
 }>;
 
-export type DownloadActionEntity = Prisma.ActionGetPayload<{
+export type DownloadActionEntity = Prisma.FeedbackGetPayload<{
   select: typeof downloadActionSelect;
 }>;

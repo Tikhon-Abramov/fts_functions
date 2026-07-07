@@ -405,6 +405,17 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["Action"],
       }),
+      actionControllerReorderActionsFeedbacksV1: build.mutation<
+        ActionControllerReorderActionsFeedbacksV1ApiResponse,
+        ActionControllerReorderActionsFeedbacksV1ApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/v1/actions/feedback/reorder/${queryArg.actionId}`,
+          method: "PATCH",
+          body: queryArg.reorderActionsDto,
+        }),
+        invalidatesTags: ["Action"],
+      }),
       fileControllerGetUploadUrlV1: build.mutation<
         FileControllerGetUploadUrlV1ApiResponse,
         FileControllerGetUploadUrlV1ApiArg
@@ -517,6 +528,8 @@ export type ConstantControllerGetTypesV1ApiArg = {
     | "FTS_METHODOLOGY_STATUS"
     | "ACTION_STATUS"
     | "PRIORITY_ACTION"
+    | "CHARACTER_ACTION"
+    | "PERSON_PERFORMING_ACTION"
   )[];
   supertypeIds?: number[];
 };
@@ -729,19 +742,19 @@ export type ActionControllerDeleteV1ApiArg = {
   id: string;
 };
 export type ActionControllerCreateFeedbackV1ApiResponse =
-  /** status 200 Ресурс успешно создан */ ActionBaseResponseDto;
+  /** status 200 Ресурс успешно создан */ ActionsFeedbackResponseDto;
 export type ActionControllerCreateFeedbackV1ApiArg = {
   id: string;
   createActionsFeedbackDto: CreateActionsFeedbackDto;
 };
 export type ActionControllerUpdateFeedbackV1ApiResponse =
-  /** status 200 Ресурс успешно обновлен */ ActionBaseResponseDto;
+  /** status 200 Ресурс успешно обновлен */ ActionsFeedbackResponseDto;
 export type ActionControllerUpdateFeedbackV1ApiArg = {
   id: string;
   updateActionsFeedbackDto: UpdateActionsFeedbackDto;
 };
 export type ActionControllerDeleteFeedbackV1ApiResponse =
-  /** status 200 Ресурс успешно удален */ ActionBaseResponseDto;
+  /** status 200 Ресурс успешно удален */ ActionsFeedbackResponseDto;
 export type ActionControllerDeleteFeedbackV1ApiArg = {
   id: string;
 };
@@ -749,6 +762,12 @@ export type ActionControllerReorderActionsV1ApiResponse =
   /** status 200 Ресурс успешно обновлен */ ActionItemsResponseDto;
 export type ActionControllerReorderActionsV1ApiArg = {
   ftsFunctionDetailId: string | number;
+  reorderActionsDto: ReorderActionsDto;
+};
+export type ActionControllerReorderActionsFeedbacksV1ApiResponse =
+  /** status 200 Ресурс успешно обновлен */ ActionBaseResponseDto;
+export type ActionControllerReorderActionsFeedbacksV1ApiArg = {
+  actionId: string | number;
   reorderActionsDto: ReorderActionsDto;
 };
 export type FileControllerGetUploadUrlV1ApiResponse =
@@ -1089,7 +1108,7 @@ export type FtsFunctionDetailItemsResponseDto = {
                 name: string;
                 description: string | null;
                 supertypeId: number | null;
-              };
+              } | null;
             }[];
             parents: {
               parentFtsFunctionId: number;
@@ -1129,7 +1148,7 @@ export type FtsFunctionDetailItemsResponseDto = {
                 name: string;
                 description: string | null;
                 supertypeId: number | null;
-              };
+              } | null;
             }[];
             parents: {
               parentFtsFunctionId: number;
@@ -1178,7 +1197,7 @@ export type FtsFunctionDetailItemsResponseDto = {
                 name: string;
                 description: string | null;
                 supertypeId: number | null;
-              };
+              } | null;
             }[];
             parents: {
               parentFtsFunctionId: number;
@@ -1218,7 +1237,7 @@ export type FtsFunctionDetailItemsResponseDto = {
                 name: string;
                 description: string | null;
                 supertypeId: number | null;
-              };
+              } | null;
             }[];
             parents: {
               parentFtsFunctionId: number;
@@ -1267,7 +1286,7 @@ export type FtsFunctionDetailItemsResponseDto = {
                 name: string;
                 description: string | null;
                 supertypeId: number | null;
-              };
+              } | null;
             }[];
             parents: {
               parentFtsFunctionId: number;
@@ -1307,7 +1326,7 @@ export type FtsFunctionDetailItemsResponseDto = {
                 name: string;
                 description: string | null;
                 supertypeId: number | null;
-              };
+              } | null;
             }[];
             parents: {
               parentFtsFunctionId: number;
@@ -1370,6 +1389,13 @@ export type FtsFunctionDetailBaseResponseDto = {
       description: string | null;
       supertypeId: number | null;
     } | null;
+    personPerformingAction: {
+      id: number;
+      code: string;
+      name: string;
+      description: string | null;
+      supertypeId: number | null;
+    } | null;
     technologicalSolution: {
       id: number;
       code: string;
@@ -1387,11 +1413,11 @@ export type FtsFunctionDetailBaseResponseDto = {
     ftsFunctionDetails: string;
     actionsСompleteness: string | null;
     actionsEffectiveness: string | null;
+    otherPersonPerformingAction: string | null;
     basis: string | null;
     artifact: string | null;
     artifactUsage: string | null;
     number: string | null;
-    algorithm: string | null;
     createdAt: string;
     updatedAt: string;
     algorithmFiles: {
@@ -1410,16 +1436,17 @@ export type CreateFtsFunctionDetailDto = {
   ftsFunctionComplexityId?: ((string | null) | (number | null)) | null;
   ftsFunctionExecutionFrequencyId?: ((string | null) | (number | null)) | null;
   whoPerformsActionId?: ((string | null) | (number | null)) | null;
+  personPerformingActionId?: ((string | null) | (number | null)) | null;
   technologicalSolutionId?: ((string | null) | (number | null)) | null;
   responsibleId?: ((string | null) | (number | null)) | null;
   ftsFunctionDetails: string;
   actionsСompleteness?: string | null;
   actionsEffectiveness?: string | null;
+  otherPersonPerformingAction?: string | null;
   basis?: string | null;
   artifact?: string | null;
   artifactUsage?: string | null;
   number?: string | null;
-  algorithm?: string | null;
 };
 export type UpdateFtsFunctionDetailDto = {
   ftsFunctionId?: string | number;
@@ -1428,16 +1455,17 @@ export type UpdateFtsFunctionDetailDto = {
   ftsFunctionComplexityId?: ((string | null) | (number | null)) | null;
   ftsFunctionExecutionFrequencyId?: ((string | null) | (number | null)) | null;
   whoPerformsActionId?: ((string | null) | (number | null)) | null;
+  personPerformingActionId?: ((string | null) | (number | null)) | null;
   technologicalSolutionId?: ((string | null) | (number | null)) | null;
   responsibleId?: ((string | null) | (number | null)) | null;
   ftsFunctionDetails?: string;
   actionsСompleteness?: string | null;
   actionsEffectiveness?: string | null;
+  otherPersonPerformingAction?: string | null;
   basis?: string | null;
   artifact?: string | null;
   artifactUsage?: string | null;
   number?: string | null;
-  algorithm?: string | null;
 };
 export type ReorderFtsFunctionDetailDto = {
   orderedIds: (string | number)[];
@@ -1476,7 +1504,7 @@ export type FtsFunctionDetailsRelationResponseDto = {
           name: string;
           description: string | null;
           supertypeId: number | null;
-        };
+        } | null;
       }[];
       parents: {
         relationType: {
@@ -1528,7 +1556,7 @@ export type FtsFunctionDetailsRelationResponseDto = {
           name: string;
           description: string | null;
           supertypeId: number | null;
-        };
+        } | null;
       }[];
       parents: {
         relationType: {
@@ -1580,7 +1608,7 @@ export type FtsFunctionDetailsRelationResponseDto = {
           name: string;
           description: string | null;
           supertypeId: number | null;
-        };
+        } | null;
       }[];
       parents: {
         relationType: {
@@ -1655,7 +1683,7 @@ export type FeedbackBaseResponseDto = {
       name: string;
       description: string | null;
       supertypeId: number | null;
-    };
+    } | null;
     problemDescription: string | null;
     initiatorRequisites: string | null;
     initiatorAcceptance: string | null;
@@ -1742,7 +1770,9 @@ export type ActionItemsResponseDto = {
       supertypeId: number | null;
     } | null;
     description: string;
-    feedbackQualityMetricsId: ((string | null) | (number | null)) | null;
+    feedbacks: {
+      id: string | number;
+    }[];
   }[];
 };
 export type ActionBaseResponseDto = {
@@ -1763,7 +1793,80 @@ export type ActionBaseResponseDto = {
       description: string | null;
       supertypeId: number | null;
     } | null;
+    characterAction: {
+      id: number;
+      code: string;
+      name: string;
+      description: string | null;
+      supertypeId: number | null;
+    } | null;
+    personPerformingAction: {
+      id: number;
+      code: string;
+      name: string;
+      description: string | null;
+      supertypeId: number | null;
+    } | null;
+    otherPersonPerformingAction: string | null;
     description: string;
+    feedbacks: {
+      id: string | number;
+      feedbackQualityMetrics: {
+        id: number;
+        code: string;
+        name: string;
+        description: string | null;
+        supertypeId: number | null;
+      } | null;
+      ftsMethodologyStatus: {
+        id: number;
+        code: string;
+        name: string;
+        description: string | null;
+        supertypeId: number | null;
+      } | null;
+      problemDescription: string | null;
+      initiatorRequisites: string | null;
+      initiatorAcceptance: string | null;
+      feedbackSources: {
+        type: {
+          id: number;
+          code: string;
+          name: string;
+          description: string | null;
+          supertypeId: number | null;
+        };
+      }[];
+      deadline: string | null;
+      createdAt: string;
+      updatedAt: string;
+    }[];
+    createdAt: string;
+    updatedAt: string;
+  };
+};
+export type CreateActionDto = {
+  ftsFunctionDetailId: string | number;
+  statusId: string | number;
+  priorityActionId: string | number;
+  characterActionId: string | number;
+  personPerformingActionId: string | number;
+  otherPersonPerformingAction?: string | null;
+  description: string;
+};
+export type UpdateActionDto = {
+  ftsFunctionDetailId?: string | number;
+  statusId?: string | number;
+  priorityActionId?: string | number;
+  characterActionId?: string | number;
+  personPerformingActionId?: string | number;
+  otherPersonPerformingAction?: string | null;
+  description?: string;
+};
+export type ActionsFeedbackResponseDto = {
+  message: string;
+  data: {
+    id: string | number;
     feedbackQualityMetrics: {
       id: number;
       code: string;
@@ -1795,22 +1898,9 @@ export type ActionBaseResponseDto = {
     updatedAt: string;
   };
 };
-export type CreateActionDto = {
-  ftsFunctionDetailId: string | number;
-  statusId: string | number;
-  priorityActionId: string | number;
-  description: string;
-};
-export type UpdateActionDto = {
-  ftsFunctionDetailId?: string | number;
-  statusId?: string | number;
-  priorityActionId?: string | number;
-  description?: string;
-};
 export type CreateActionsFeedbackDto = {
   feedbackQualityMetricsId: string | number;
   ftsMethodologyStatusId: string | number;
-  priorityActionId: string | number;
   problemDescription: string;
   initiatorRequisites: string;
   initiatorAcceptance: string;
@@ -1820,7 +1910,6 @@ export type CreateActionsFeedbackDto = {
 export type UpdateActionsFeedbackDto = {
   feedbackQualityMetricsId?: string | number;
   ftsMethodologyStatusId?: string | number;
-  priorityActionId?: string | number;
   problemDescription?: string;
   initiatorRequisites?: string;
   initiatorAcceptance?: string;
@@ -1928,6 +2017,7 @@ export const {
   useActionControllerUpdateFeedbackV1Mutation,
   useActionControllerDeleteFeedbackV1Mutation,
   useActionControllerReorderActionsV1Mutation,
+  useActionControllerReorderActionsFeedbacksV1Mutation,
   useFileControllerGetUploadUrlV1Mutation,
   useFileControllerConfirmUploadV1Mutation,
   useFileControllerGetDownloadUrlV1Mutation,

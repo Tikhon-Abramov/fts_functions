@@ -12,14 +12,11 @@ export const ActionPreviewSelect = {
   status: { select: TypeSelect },
   priorityAction: { select: TypeSelect },
   description: true,
-  feedbackQualityMetricsId: true,
+  feedbacks: { select: { id: true } },
 } as const satisfies Prisma.ActionSelect;
 
-export const ActionBaseSelect = {
+export const ActionsFeedbackSelect = {
   id: true,
-  status: { select: TypeSelect },
-  priorityAction: { select: TypeSelect },
-  description: true,
   feedbackQualityMetrics: { select: TypeSelect },
   ftsMethodologyStatus: { select: TypeSelect },
   problemDescription: true,
@@ -31,6 +28,23 @@ export const ActionBaseSelect = {
     },
   },
   deadline: true,
+  createdAt: true,
+  updatedAt: true,
+} as const satisfies Prisma.FeedbackSelect;
+
+export const ActionBaseSelect = {
+  id: true,
+  status: { select: TypeSelect },
+  priorityAction: { select: TypeSelect },
+  characterAction: { select: TypeSelect },
+  personPerformingAction: { select: TypeSelect },
+  otherPersonPerformingAction: true,
+  description: true,
+  feedbacks: {
+    where: { isDeleted: false },
+    select: ActionsFeedbackSelect,
+    orderBy: [{ order: 'asc' }, { id: 'desc' }],
+  },
   createdAt: true,
   updatedAt: true,
 } as const satisfies Prisma.ActionSelect;

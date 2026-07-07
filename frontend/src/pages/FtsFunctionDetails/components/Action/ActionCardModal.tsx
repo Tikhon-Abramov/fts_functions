@@ -1,9 +1,9 @@
-import { Box, Button, Dialog, DialogActions, DialogTitle, FormControl, IconButton, InputLabel, MenuItem, Select, TextField, Tooltip, useTheme } from "@mui/material";
-import { Close, Edit, FeedbackOutlined, Save } from "@mui/icons-material";
-import { useActionControllerCreateV1Mutation, useActionControllerGetActionByIdV1Query, useActionControllerUpdateV1Mutation, useConstantControllerGetTypesV1Query } from "../../../../store/ftsFunctionRegistry";
+import { Box, Button, Dialog, DialogActions, DialogTitle, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, TextField, Tooltip, Typography, useTheme } from "@mui/material";
+import { Add, Close, DragIndicator, Edit, FeedbackOutlined, Save } from "@mui/icons-material";
+import { useActionControllerCreateV1Mutation, useActionControllerGetActionByIdV1Query, useActionControllerReorderActionsFeedbacksV1Mutation, useActionControllerUpdateV1Mutation, useConstantControllerGetTypesV1Query } from "../../../../store/ftsFunctionRegistry";
 import { skipToken } from "@reduxjs/toolkit/query";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Controller, useController, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ActionFormSchema, type ActionFormData, type ActionsFeedbackFormData } from "./schema";
 import { createOtionsFromTypes } from "../../../../utils/create-options";
@@ -17,8 +17,20 @@ const EMPTY_ACTIONS_FORM: ActionFormData = {
     ftsFunctionDetailId: Number.NaN,
     statusId: Number.NaN,
     priorityActionId: Number.NaN,
+    characterActionId: Number.NaN,
+    personPerformingActionId: Number.NaN,
+    otherPersonPerformingAction: '',
     description: '',
 };
+
+
+// Формат срока — по примеру из Feedbacks.tsx.
+function formatDate(value: string | null | undefined): string {
+    if (!value) return "Не указан";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("ru-RU");
+}
 
 
 type ActionCardModalProps = {
@@ -43,30 +55,31 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
     );
     const actionInfo = useMemo(() => actonData?.data, [actonData]);
 
-    // Данные обратной связи для ActionsFeedbackForm — собираем из уже загруженной операции
-    // (типы из schema.ts), чтобы не вызывать getActionById повторно в дочернем компоненте.
-    const feedbackInitial = useMemo<Partial<ActionsFeedbackFormData> | undefined>(() => {
-        if (!actionInfo) return undefined;
+    // Список обратных связей операции (после регенерации клиента у каждой ОС есть id).
+    const feedbacks = useMemo(() => actionInfo?.feedbacks ?? [], [actionInfo]);
 
-        return {
-            feedbackSourceIds: (actionInfo.feedbackSources ?? []).map((source) => source.type.id),
-            feedbackQualityMetricsId: actionInfo.feedbackQualityMetrics?.id,
-            ftsMethodologyStatusId: actionInfo.ftsMethodologyStatus?.id,
-            priorityActionId: actionInfo.priorityAction?.id,
-            problemDescription: actionInfo.problemDescription ?? undefined,
-            initiatorRequisites: actionInfo.initiatorRequisites ?? undefined,
-            initiatorAcceptance: actionInfo.initiatorAcceptance ?? undefined,
-            deadline: actionInfo.deadline ? actionInfo.deadline : undefined,
-        };
-    }, [actionInfo, actionId]);
+    // Начальные данные конкретной ОС для формы (типы из schema.ts) — без повторного getActionById.
+    const buildFeedbackInitial = (fb: (typeof feedbacks)[number]): Partial<ActionsFeedbackFormData> => ({
+        feedbackSourceIds: (fb.feedbackSources ?? []).map((source) => source.type.id),
+        feedbackQualityMetricsId: fb.feedbackQualityMetrics?.id,
+        ftsMethodologyStatusId: fb.ftsMethodologyStatus?.id,
+        problemDescription: fb.problemDescription ?? undefined,
+        initiatorRequisites: fb.initiatorRequisites ?? undefined,
+        initiatorAcceptance: fb.initiatorAcceptance ?? undefined,
+        deadline: fb.deadline ?? undefined,
+    });
 
 
     const { data: actionStatus } = useConstantControllerGetTypesV1Query({ categories: ['ACTION_STATUS'] });
     const { data: priorityAction } = useConstantControllerGetTypesV1Query({ categories: ['PRIORITY_ACTION'] });
+    const { data: characterAction } = useConstantControllerGetTypesV1Query({ categories: ['CHARACTER_ACTION'] });
+    const { data: personPerformingAction } = useConstantControllerGetTypesV1Query({ categories: ['PERSON_PERFORMING_ACTION'] });
 
     const actionStatusOptions = useMemo(() => createOtionsFromTypes(actionStatus), [actionStatus]);
     const priorityActionOptions = useMemo(() => createOtionsFromTypes(priorityAction), [priorityAction]);
-    
+    const characterActionOptions = useMemo(() => createOtionsFromTypes(characterAction), [characterAction]);
+    const personPerformingActionOptions = useMemo(() => createOtionsFromTypes(personPerformingAction), [personPerformingAction]);
+
     const [createAction, { isLoading: isCreatingAction }] = useActionControllerCreateV1Mutation();
     const [updateAction, { isLoading: isUpdatingAction }] = useActionControllerUpdateV1Mutation();
 
@@ -82,11 +95,128 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
     });
 
     const [editingExisting, setEditingExisting] = useState(false);
-    const [feedbackVisible, setFeedbackVisible] = useState(false);
+    const [addingFeedback, setAddingFeedback] = useState(false);
+    const [expandedFeedbackId, setExpandedFeedbackId] = useState<number | null>(null);
+
+    const [reorderFeedbacks] = useActionControllerReorderActionsFeedbacksV1Mutation();
+
+    // ===== Перетаскивание ОС строго по вертикали (обновляет порядок через API) =====
+    const [feedbackItems, setFeedbackItems] = useState(feedbacks);
+    useEffect(() => { setFeedbackItems(feedbacks); }, [feedbacks]);
+
+    const [draggingId, setDraggingId] = useState<number | null>(null);
+    const [dragOffsetY, setDragOffsetY] = useState(0);
+    const [dropBeforeId, setDropBeforeId] = useState<number | "end" | null>(null);
+
+    const rowRefs = useRef<Map<number, HTMLElement>>(new Map());
+    const dragRef = useRef<{ id: number; pointerStartY: number } | null>(null);
+
+    const setRowRef = (id: number) => (element: HTMLElement | null) => {
+        if (element) rowRefs.current.set(id, element);
+        else rowRefs.current.delete(id);
+    };
+
+    const commitFeedbackOrder = async (ordered: typeof feedbackItems) => {
+        if (actionId == null) return;
+
+        const orderedIds = ordered.map((item) => Number(item.id));
+        const serverIds = feedbacks.map((item) => Number(item.id));
+        const changed =
+            orderedIds.length === serverIds.length &&
+            orderedIds.some((id, index) => id !== serverIds[index]);
+
+        if (!changed) return;
+
+        try {
+
+            console.log('1234567898765432')
+            await reorderFeedbacks({ actionId, reorderActionsDto: { orderedIds } }).unwrap();
+        } catch (error) {
+            setFeedbackItems(feedbacks);
+            console.error("Не удалось обновить порядок обратной связи:", error);
+        }
+    };
+
+    useEffect(() => {
+        const computeInsert = (clientY: number, draggedId: number) => {
+            const others = feedbackItems.filter((item) => Number(item.id) !== draggedId);
+            let insertAt = 0;
+            for (const item of others) {
+                const element = rowRefs.current.get(Number(item.id));
+                if (!element) { insertAt += 1; continue; }
+                const rect = element.getBoundingClientRect();
+                if (clientY > rect.top + rect.height / 2) insertAt += 1;
+                else break;
+            }
+            return { others, insertAt };
+        };
+
+        const handleMove = (event: MouseEvent) => {
+            const drag = dragRef.current;
+            if (!drag) return;
+            setDragOffsetY(event.clientY - drag.pointerStartY);
+            const { others, insertAt } = computeInsert(event.clientY, drag.id);
+            setDropBeforeId(insertAt < others.length ? Number(others[insertAt].id) : "end");
+        };
+
+        const handleUp = (event: MouseEvent) => {
+            const drag = dragRef.current;
+            if (!drag) return;
+            const dragged = feedbackItems.find((item) => Number(item.id) === drag.id);
+            if (dragged) {
+                const { others, insertAt } = computeInsert(event.clientY, drag.id);
+                const next = [...others.slice(0, insertAt), dragged, ...others.slice(insertAt)];
+                setFeedbackItems(next);
+                void commitFeedbackOrder(next);
+            }
+            dragRef.current = null;
+            setDraggingId(null);
+            setDragOffsetY(0);
+            setDropBeforeId(null);
+            document.body.style.userSelect = "";
+        };
+
+        window.addEventListener("mousemove", handleMove);
+        window.addEventListener("mouseup", handleUp);
+        return () => {
+            window.removeEventListener("mousemove", handleMove);
+            window.removeEventListener("mouseup", handleUp);
+        };
+    }, [feedbackItems, feedbacks, actionId]);
 
     const saving = isSubmitting || isCreatingAction || isUpdatingAction;
     const isEditable = isCreateMode || editingExisting;
-    const canSaveAction = isValid && !saving;
+
+    // «Иное лицо» — как в StepTabBody: показываем только при OTHER_PERSON,
+    // очищаем при выборе другого лица и фокусируем при переходе на OTHER_PERSON.
+    const personPerformingActionId = useWatch({ control, name: "personPerformingActionId" });
+    const personPerformingActionCode = useMemo(
+        () => personPerformingActionOptions.find(({ value }) => value === personPerformingActionId)?.code,
+        [personPerformingActionId, personPerformingActionOptions],
+    );
+    const { field: otherPersonField } = useController({ control, name: "otherPersonPerformingAction" });
+    const otherPersonInputRef = useRef<HTMLInputElement>(null);
+    const otherPersonDidMountRef = useRef(false);
+
+    // «Иное лицо» обязательно только когда выбран OTHER_PERSON.
+    const otherPersonValid =
+        personPerformingActionCode !== "OTHER_PERSON" || Boolean((otherPersonField.value ?? "").trim());
+        
+    const canSaveAction = isValid && otherPersonValid && !saving;
+
+    useEffect(() => {
+        if (!otherPersonDidMountRef.current) {
+            otherPersonDidMountRef.current = true;
+            return;
+        }
+
+        if (personPerformingActionCode === "OTHER_PERSON") {
+            otherPersonInputRef.current?.focus();
+        } else if (otherPersonField.value) {
+            otherPersonField.onChange("");
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [personPerformingActionCode]);
 
 
     // Префилл формы операции при редактировании / сброс при закрытии.
@@ -94,16 +224,16 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
         if (!open) {
             initialFormData.current = null;
             setEditingExisting(false);
-            setFeedbackVisible(false);
+            setAddingFeedback(false);
+            setExpandedFeedbackId(null);
             reset(EMPTY_ACTIONS_FORM);
             return;
         }
 
         if (isCreateMode) {
             reset({
+                ...EMPTY_ACTIONS_FORM,
                 ftsFunctionDetailId: selectedFtsFunctionDetailId ?? Number.NaN,
-                statusId: Number.NaN,
-                description: "",
             });
             return;
         }
@@ -115,6 +245,13 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                 priorityActionId: actionInfo.priorityAction
                     ? Number(actionInfo.priorityAction.id)
                     : Number.NaN,
+                characterActionId: actionInfo.characterAction
+                    ? Number(actionInfo.characterAction.id)
+                    : Number.NaN,
+                personPerformingActionId: actionInfo.personPerformingAction
+                    ? Number(actionInfo.personPerformingAction.id)
+                    : Number.NaN,
+                otherPersonPerformingAction: actionInfo.otherPersonPerformingAction ?? "",
                 description: actionInfo.description,
             };
             initialFormData.current = data;
@@ -146,6 +283,9 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                 updateActionDto: {
                     statusId: values.statusId,
                     priorityActionId: values.priorityActionId,
+                    characterActionId: values.characterActionId,
+                    personPerformingActionId: values.personPerformingActionId,
+                    otherPersonPerformingAction: values.otherPersonPerformingAction,
                     description: values.description,
                 },
             }).unwrap();
@@ -379,28 +519,313 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                     />
                 </FormControl>
 
-                {!isCreateMode && feedbackVisible && (
-                    <ActionsFeedbackForm
-                        actionId={actionId}
-                        open={open}
-                        onClose={() => setFeedbackVisible(false)}
-                        initialFeedback={feedbackInitial}
+                <FormControl size="small" fullWidth disabled={!isEditable || saving}>
+                    <InputLabel
+                        sx={{
+                            color: c.textMuted,
+                            fontSize: "0.72rem",
+                            "&.Mui-focused": { color: theme.palette.primary.main },
+                        }}
+                    >
+                        {"Характер операции *"}
+                    </InputLabel>
+
+                    <Controller
+                        name="characterActionId"
+                        control={control}
+                        render={({ field }) => (
+                            <Select
+                                value={Number.isNaN(field.value) ? "" : String(field.value)}
+                                label="Характер операции *"
+                                onChange={(event) => field.onChange(Number(event.target.value))}
+                                onBlur={field.onBlur}
+                                sx={{
+                                    bgcolor: c.bgInput,
+                                    color: c.textBody,
+                                    fontSize: "0.78rem",
+                                    "& fieldset": { borderColor: c.borderMedium },
+                                    "&:hover fieldset": { borderColor: c.borderHover },
+                                    "&.Mui-focused fieldset": { borderColor: theme.palette.primary.main },
+                                    "& .MuiSelect-icon": { color: c.textMuted },
+                                }}
+                                MenuProps={{
+                                    slotProps: {
+                                        paper: {
+                                            sx: {
+                                                bgcolor: c.bgMenu,
+                                                color: c.textBody,
+                                                maxHeight: 200,
+                                                border: `1px solid ${c.borderMain}`,
+                                                "& .MuiMenuItem-root": {
+                                                    "&:hover": { bgcolor: c.hoverOverlayStrong },
+                                                    "&.Mui-selected": { bgcolor: c.selectedBg },
+                                                },
+                                            },
+                                        },
+                                    },
+                                }}
+                            >
+                                {characterActionOptions.map((status) => (
+                                    <MenuItem
+                                        key={status.value}
+                                        value={String(status.value)}
+                                        sx={{ fontSize: "0.78rem" }}
+                                    >
+                                        {status.label}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        )}
+                    />
+                </FormControl>
+
+                <FormControl size="small" fullWidth disabled={!isEditable || saving}>
+                    <InputLabel
+                        sx={{
+                            color: c.textMuted,
+                            fontSize: "0.72rem",
+                            "&.Mui-focused": { color: theme.palette.primary.main },
+                        }}
+                    >
+                        {"Лицо, выполняющее действие *"}
+                    </InputLabel>
+
+                    <Controller
+                        name="personPerformingActionId"
+                        control={control}
+                        render={({ field }) => (
+                            <Select
+                                value={Number.isNaN(field.value) ? "" : String(field.value)}
+                                label="Лицо, выполняющее действие *"
+                                onChange={(event) => field.onChange(Number(event.target.value))}
+                                onBlur={field.onBlur}
+                                sx={{
+                                    bgcolor: c.bgInput,
+                                    color: c.textBody,
+                                    fontSize: "0.78rem",
+                                    "& fieldset": { borderColor: c.borderMedium },
+                                    "&:hover fieldset": { borderColor: c.borderHover },
+                                    "&.Mui-focused fieldset": { borderColor: theme.palette.primary.main },
+                                    "& .MuiSelect-icon": { color: c.textMuted },
+                                }}
+                                MenuProps={{
+                                    slotProps: {
+                                        paper: {
+                                            sx: {
+                                                bgcolor: c.bgMenu,
+                                                color: c.textBody,
+                                                maxHeight: 200,
+                                                border: `1px solid ${c.borderMain}`,
+                                                "& .MuiMenuItem-root": {
+                                                    "&:hover": { bgcolor: c.hoverOverlayStrong },
+                                                    "&.Mui-selected": { bgcolor: c.selectedBg },
+                                                },
+                                            },
+                                        },
+                                    },
+                                }}
+                            >
+                                {personPerformingActionOptions.map((status) => (
+                                    <MenuItem
+                                        key={status.value}
+                                        value={String(status.value)}
+                                        sx={{ fontSize: "0.78rem" }}
+                                    >
+                                        {status.label}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        )}
+                    />
+
+                </FormControl>
+
+                {personPerformingActionCode === "OTHER_PERSON" && (
+                    <TextField
+                        value={otherPersonField.value ?? ""}
+                        onChange={(event) => otherPersonField.onChange(event.target.value)}
+                        onBlur={otherPersonField.onBlur}
+                        inputRef={otherPersonInputRef}
+                        label="Иное лицо, выполняющее действие *"
+                        disabled={!isEditable || saving}
+                        fullWidth
+                        size="small"
+                        sx={{
+                            "& .MuiOutlinedInput-root": {
+                                bgcolor: c.bgInput,
+                                color: c.textBody,
+                                fontSize: "0.78rem",
+                                "& fieldset": { borderColor: c.borderMedium },
+                                "&:hover fieldset": { borderColor: c.borderHover },
+                                "&.Mui-focused fieldset": { borderColor: theme.palette.primary.main },
+                            },
+                            "& .MuiInputLabel-root": { color: c.textMuted, fontSize: "0.72rem" },
+                            "& .MuiInputLabel-root.Mui-focused": { color: theme.palette.primary.main },
+                        }}
                     />
                 )}
 
-                {!isCreateMode && !feedbackVisible && (
-                    <Button
-                        startIcon={<FeedbackOutlined sx={{ fontSize: 16 }} />}
-                        onClick={() => setFeedbackVisible(true)}
-                        sx={{
-                            alignSelf: "flex-start",
-                            textTransform: "none",
-                            fontSize: "0.76rem",
-                            color: c.accentBlue,
-                        }}
-                    >
-                        {"Обратная связь"}
-                    </Button>
+                {!isCreateMode && (
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 0.5 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                <FeedbackOutlined sx={{ fontSize: 16, color: c.accentBlue }} />
+                                <Typography sx={{ color: c.textPrimary, fontSize: "0.82rem", fontWeight: 700 }}>
+                                    {`Обратная связь (${feedbacks.length})`}
+                                </Typography>
+                            </Box>
+
+                            <Button
+                                size="small"
+                                startIcon={addingFeedback ? <Close sx={{ fontSize: 16 }} /> : <Add sx={{ fontSize: 16 }} />}
+                                onClick={() => {
+                                    if (addingFeedback) {
+                                        setAddingFeedback(false);
+                                    } else {
+                                        setExpandedFeedbackId(null);
+                                        setAddingFeedback(true);
+                                    }
+                                }}
+                                sx={{
+                                    textTransform: "none",
+                                    fontSize: "0.74rem",
+                                    color: addingFeedback ? c.textSecondary : c.accentBlue,
+                                }}
+                            >
+                                {addingFeedback ? "Отмена" : "Добавить"}
+                            </Button>
+                        </Box>
+
+                        {addingFeedback && (
+                            <ActionsFeedbackForm
+                                actionId={actionId}
+                                feedbackId={null}
+                                open={open}
+                                onClose={() => setAddingFeedback(false)}
+                            />
+                        )}
+
+                        {feedbackItems.map((fb, index) => {
+                            const id = Number(fb.id);
+                            const expanded = expandedFeedbackId === id;
+                            const summary = fb.problemDescription || fb.problemDescription || "Обратная связь";
+
+                            return (
+                                <Fragment key={id}>
+                                    {draggingId !== null && dropBeforeId === id && (
+                                        <Box sx={{ height: 3, borderRadius: 1, bgcolor: theme.palette.primary.main }} />
+                                    )}
+
+                                    <Paper
+                                        ref={setRowRef(id)}
+                                        elevation={0}
+                                        sx={{
+                                            position: "relative",
+                                            border: `1px solid ${c.borderMain}`,
+                                            bgcolor: c.bgPaper,
+                                            borderRadius: 2,
+                                            transform: draggingId === id ? `translateY(${dragOffsetY}px)` : undefined,
+                                            transition: draggingId === id ? "none" : "0.15s ease",
+                                            zIndex: draggingId === id ? 2 : "auto",
+                                            boxShadow: draggingId === id ? 6 : "none",
+                                        }}
+                                    >
+                                        <Box
+                                            onClick={() => { setAddingFeedback(false); setExpandedFeedbackId(expanded ? null : id); }}
+                                            sx={{
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: 0.25,
+                                                minWidth: 0,
+                                                px: 1.25,
+                                                py: 0.75,
+                                                pr: 4,
+                                                cursor: "pointer",
+                                                "&:hover": { bgcolor: c.hoverOverlay },
+                                            }}
+                                        >
+                                            <Typography
+                                                sx={{
+                                                    color: c.textBody,
+                                                    fontSize: "0.76rem",
+                                                    overflow: "hidden",
+                                                    textOverflow: "ellipsis",
+                                                    whiteSpace: "nowrap",
+                                                }}
+                                            >
+
+                                                <Typography sx={{ color: c.textPrimary, fontSize: "0.8rem", fontWeight: 700 }}>
+                                                    {`Обратная связь ${index + 1}`}
+                                                </Typography>
+                                                {summary}
+                                            </Typography>
+
+                                            {(fb.ftsMethodologyStatus || fb.deadline) && (
+                                                <Typography
+                                                    sx={{
+                                                        color: c.textMuted,
+                                                        fontSize: "0.66rem",
+                                                        overflow: "hidden",
+                                                        textOverflow: "ellipsis",
+                                                        whiteSpace: "nowrap",
+                                                    }}
+                                                >
+                                                    {[
+                                                        fb.ftsMethodologyStatus?.name,
+                                                        fb.deadline ? `Срок: ${formatDate(fb.deadline)}` : null,
+                                                    ].filter(Boolean).join(" · ")}
+                                                </Typography>
+                                            )}
+                                        </Box>
+
+                                        <Tooltip title="Перетащите, чтобы изменить порядок">
+                                            <Box
+                                                onMouseDown={(event) => {
+                                                    event.preventDefault();
+                                                    event.stopPropagation();
+                                                    dragRef.current = { id, pointerStartY: event.clientY };
+                                                    setDraggingId(id);
+                                                    setDragOffsetY(0);
+                                                    document.body.style.userSelect = "none";
+                                                }}
+                                                onClick={(event) => event.stopPropagation()}
+                                                sx={{
+                                                    position: "absolute",
+                                                    right: 2,
+                                                    top: 6,
+                                                    p: 0.25,
+                                                    display: "flex",
+                                                    color: c.textMuted,
+                                                    cursor: "grab",
+                                                    opacity: 0.5,
+                                                    "&:hover": { opacity: 1 },
+                                                    "&:active": { cursor: "grabbing" },
+                                                }}
+                                            >
+                                                <DragIndicator sx={{ fontSize: 18 }} />
+                                            </Box>
+                                        </Tooltip>
+
+                                        {expanded && (
+                                            <Box sx={{ px: 1.25, pb: 1.25 }} onClick={(event) => event.stopPropagation()}>
+                                                <ActionsFeedbackForm
+                                                    actionId={actionId}
+                                                    feedbackId={id}
+                                                    open={open}
+                                                    onClose={() => setExpandedFeedbackId(null)}
+                                                    initialFeedback={buildFeedbackInitial(fb)}
+                                                />
+                                            </Box>
+                                        )}
+                                    </Paper>
+                                </Fragment>
+                            );
+                        })}
+
+                        {draggingId !== null && dropBeforeId === "end" && (
+                            <Box sx={{ height: 3, borderRadius: 1, bgcolor: theme.palette.primary.main }} />
+                        )}
+                    </Box>
                 )}
             </Box>
 
