@@ -12,7 +12,7 @@ export class ExportService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly excel: ExcelService<true>,
-  ) {}
+  ) { }
 
   async getDownload(): Promise<Buffer> {
     const [
@@ -23,74 +23,75 @@ export class ExportService {
       actions,
       methodologyStatuses,
     ] = await Promise.all([
-        this.prisma.ftsFunction.findMany({
-          where: { isDeleted: false },
-          select: downloadFtsFunctionSelect,
-          orderBy: { id: 'asc' },
-        }),
-        this.prisma.ftsFunctionDetail.findMany({
-          where: {
+      this.prisma.ftsFunction.findMany({
+        where: { isDeleted: false },
+        select: downloadFtsFunctionSelect,
+        orderBy: { id: 'asc' },
+      }),
+      this.prisma.ftsFunctionDetail.findMany({
+        where: {
+          isDeleted: false,
+          ftsFunction: { isDeleted: false },
+        },
+        select: downloadFtsFunctionDetailSelect,
+        orderBy: [
+          { ftsFunctionId: 'asc' },
+          { ftsFunctionStepId: 'asc' },
+          { ftsFunctionCategoryId: 'asc' },
+        ],
+      }),
+      this.prisma.feedback.findMany({
+        where: {
+          isDeleted: false,
+          ftsFunctionDetail: {
             isDeleted: false,
             ftsFunction: { isDeleted: false },
           },
-          select: downloadFtsFunctionDetailSelect,
-          orderBy: [
-            { ftsFunctionId: 'asc' },
-            { ftsFunctionStepId: 'asc' },
-            { ftsFunctionCategoryId: 'asc' },
-          ],
-        }),
-        this.prisma.feedback.findMany({
-          where: {
+        },
+        select: downloadFeedbackSelect,
+        orderBy: [
+          { ftsFunctionDetail: { ftsFunctionId: 'asc' } },
+          { ftsFunctionDetail: { ftsFunctionStepId: 'asc' } },
+          { ftsFunctionDetail: { ftsFunctionCategoryId: 'asc' } },
+        ],
+      }),
+      this.prisma.ftsFunctionTree.findMany({
+        where: {
+          parentFtsFunction: {
+            isDeleted: false,
+            ftsFunction: { isDeleted: false },
+          },
+        },
+        select: downloadFtsFunctionTreeSelect,
+        orderBy: [
+          { parentFtsFunction: { ftsFunctionId: 'asc' } },
+          { parentFtsFunction: { ftsFunctionStepId: 'asc' } },
+          { parentFtsFunction: { ftsFunctionCategoryId: 'asc' } },
+        ],
+      }),
+      this.prisma.feedback.findMany({
+        where: {
+          isDeleted: false,
+          action: {
             isDeleted: false,
             ftsFunctionDetail: {
               isDeleted: false,
               ftsFunction: { isDeleted: false },
             },
-          },
-          select: downloadFeedbackSelect,
-          orderBy: [
-            { ftsFunctionDetail: { ftsFunctionId: 'asc' } },
-            { ftsFunctionDetail: { ftsFunctionStepId: 'asc' } },
-            { ftsFunctionDetail: { ftsFunctionCategoryId: 'asc' } },
-          ],
-        }),
-        this.prisma.ftsFunctionTree.findMany({
-          where: {
-            parentFtsFunction: {
-              isDeleted: false,
-              ftsFunction: { isDeleted: false },
-            },
-          },
-          select: downloadFtsFunctionTreeSelect,
-          orderBy: [
-            { parentFtsFunction: { ftsFunctionId: 'asc' } },
-            { parentFtsFunction: { ftsFunctionStepId: 'asc' } },
-            { parentFtsFunction: { ftsFunctionCategoryId: 'asc' } },
-          ],
-        }),
-        this.prisma.feedback.findMany({
-          where: {
-            isDeleted: false,
-            ftsFunctionDetail: {
-              isDeleted: false,
-              ftsFunction: { isDeleted: false },
-              actions: { some: { isDeleted: false } }
-            },
-            actionId: { not: null }
-          },
-          select: downloadActionSelect,
-          orderBy: [
-            { ftsFunctionDetail: { ftsFunctionId: 'asc' } },
-            { ftsFunctionDetail: { ftsFunctionStepId: 'asc' } },
-            { ftsFunctionDetail: { ftsFunctionCategoryId: 'asc' } },
-          ],
-        }),
-        this.prisma.type.findMany({
-          where: { category: Category.FTS_METHODOLOGY_STATUS },
-          select: { id: true, name: true },
-        }),
-      ]);
+          }
+        },
+        select: downloadActionSelect,
+        orderBy: [
+          { ftsFunctionDetail: { ftsFunctionId: 'asc' } },
+          { ftsFunctionDetail: { ftsFunctionStepId: 'asc' } },
+          { ftsFunctionDetail: { ftsFunctionCategoryId: 'asc' } },
+        ],
+      }),
+      this.prisma.type.findMany({
+        where: { category: Category.FTS_METHODOLOGY_STATUS },
+        select: { id: true, name: true },
+      }),
+    ]);
 
     const methodologyStatusNameById = new Map(
       methodologyStatuses.map((item) => [item.id, item.name]),
@@ -409,24 +410,23 @@ export class ExportService {
           columns: [
             {
               header: 'ID функции',
-              map: (row: DownloadActionEntity) =>
-                row.ftsFunctionDetail?.ftsFunction.id,
+              map: (row: DownloadActionEntity) => row.action?.ftsFunctionDetail?.ftsFunction.id,
             },
             {
               header: 'ID детализации',
-              map: (row: DownloadActionEntity) => row.ftsFunctionDetail?.id,
+              map: (row: DownloadActionEntity) => row.action?.ftsFunctionDetail?.id,
             },
             {
               header: 'Наименование функции',
-              map: (row: DownloadActionEntity) => row.ftsFunctionDetail?.ftsFunction.ftsFunctionName.name,
+              map: (row: DownloadActionEntity) => row.action?.ftsFunctionDetail?.ftsFunction.ftsFunctionName.name,
             },
             {
               header: 'Центр компетенции',
-              map: (row: DownloadActionEntity) => row.ftsFunctionDetail?.ftsFunction.competencyCenter.name,
+              map: (row: DownloadActionEntity) => row.action?.ftsFunctionDetail?.ftsFunction.competencyCenter.name,
             },
             {
               header: 'Детализация функции',
-              map: (row: DownloadActionEntity) => row.ftsFunctionDetail?.ftsFunctionDetails,
+              map: (row: DownloadActionEntity) => row.action?.ftsFunctionDetail?.ftsFunctionDetails,
             },
             {
               header: 'Статус',
