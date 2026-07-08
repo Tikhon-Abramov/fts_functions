@@ -215,23 +215,6 @@ export const downloadFtsFunctionTreeSelect = {
 } as const satisfies Prisma.FtsFunctionTreeSelect;
 
 export const downloadActionSelect = {
-  ftsFunctionDetail: {
-    select: {
-      id: true,
-      ftsFunction: {
-        select: {
-          id: true,
-          ftsFunctionName: {
-            select: TypeSelect,
-          },
-          competencyCenter: {
-            select: TypeSelect,
-          },
-        },
-      },
-      ftsFunctionDetails: true,
-    },
-  },
   ftsMethodologyStatusId: true,
   problemDescription: true,
   initiatorRequisites: true,
@@ -247,6 +230,23 @@ export const downloadActionSelect = {
   },
   action: {
     select: {
+      ftsFunctionDetail: {
+        select: {
+          id: true,
+          ftsFunction: {
+            select: {
+              id: true,
+              ftsFunctionName: {
+                select: TypeSelect,
+              },
+              competencyCenter: {
+                select: TypeSelect,
+              },
+            },
+          },
+          ftsFunctionDetails: true,
+        },
+      },
       status: { select: TypeSelect },
       description: true,
       priorityAction: { select: TypeSelect },
