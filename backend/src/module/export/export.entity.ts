@@ -9,14 +9,14 @@ export type DownloadFtsFunctionDetailEntity = Prisma.FtsFunctionDetailGetPayload
   select: typeof downloadFtsFunctionDetailSelect;
 }>;
 
-export type DownloadFeedbackEntity = Prisma.FeedbackGetPayload<{
-  select: typeof downloadFeedbackSelect;
-}>;
-
 export type DownloadFFtsFunctionTreeEntity = Prisma.FtsFunctionTreeGetPayload<{
   select: typeof downloadFtsFunctionTreeSelect;
 }>;
 
-export type DownloadActionEntity = Prisma.FeedbackGetPayload<{
+export type DownloadFeedbackEntity = Prisma.FeedbackGetPayload<{
+  select: typeof downloadFeedbackSelect;
+}>;
+
+export type DownloadActionEntity = Prisma.ActionGetPayload<{
   select: typeof downloadActionSelect;
 }>;

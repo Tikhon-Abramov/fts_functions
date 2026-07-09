@@ -32,7 +32,8 @@ export class ExportController {
     },
   })
   async getDownload(): Promise<StreamableFile> {
-    const buffer = await this.service.getDownload();
+    const excelBuffer = await this.service.getDownload();
+    const buffer = Buffer.from(excelBuffer);
 
     return new StreamableFile(buffer, {
       type: XLSX_MIME,

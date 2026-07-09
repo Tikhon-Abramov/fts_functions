@@ -1,57 +1,58 @@
 import { Prisma } from "src/generated/prisma/client";
 import { TypeSelect, UserSelect } from "../constant/constant.select";
 
-export const feedbackSelect = {
+
+
+export const downloadFtsFunctionSelect = {
   id: true,
-  problemDescription: true,
-  initiatorRequisites: true,
-  deadline: true,
-  initiatorAcceptance: true,
-  acceptStatus: {
+  ftsCentralization: {
     select: TypeSelect,
   },
-  ftsMethodologyStatus: {
+  ftsFunctionName: {
     select: TypeSelect,
   },
-  feedbackQualityMetrics: {
+  competencyCenter: {
     select: TypeSelect,
   },
-  feedbackSources: {
+  ftsFunctionMarker: {
+    select: TypeSelect,
+  },
+  curatorCentralOffice: {
+    select: UserSelect,
+  },
+  managerInterregionalInspection: {
+    select: UserSelect,
+  },
+  departmentHeadCentralOffice: {
+    select: UserSelect,
+  },
+  departmentHeadInterregionalInspection: {
+    select: UserSelect,
+  },
+  dtis: {
     select: {
       type: {
         select: TypeSelect,
       },
     },
   },
-} as const satisfies Prisma.FeedbackSelect;
+  createdAt: true,
+  updatedAt: true,
+} as const satisfies Prisma.FtsFunctionSelect;
 
-// export const actionSelect = {
-//   id: true,
-//   ftsFunctionDetailId: true,
-//   statusId: true,
-//   description: true,
-
-
-//   // feedbackQualityMetricsId: true,
-//   // ftsMethodologyStatusId: true,
-//   // problemDescription: true,
-//   // initiatorRequisites: true,
-//   // deadline: true,
-//   // initiatorAcceptance: true,
-//   // status: { select: TypeSelect },
-//   // feedbackQualityMetrics: { select: TypeSelect },
-//   // feedbackSources: {
-//   //   select: {
-//   //     type: {
-//   //       select: TypeSelect,
-//   //     },
-//   //   },
-//   // },
-// } as const satisfies Prisma.ActionSelect;
-
-export const ftsFunctionDetailDetailedSelect = {
+export const downloadFtsFunctionDetailSelect = {
   id: true,
   ftsFunctionId: true,
+  ftsFunction: {
+    select: {
+      ftsFunctionName: {
+        select: TypeSelect,
+      },
+      competencyCenter: {
+        select: TypeSelect,
+      },
+    },
+  },
   ftsFunctionDetails: true,
   basis: true,
   actionsСompleteness: true,
@@ -98,62 +99,7 @@ export const ftsFunctionDetailDetailedSelect = {
   },
 } as const satisfies Prisma.FtsFunctionDetailSelect;
 
-export const downloadFtsFunctionSelect = {
-  id: true,
-  ftsCentralization: {
-    select: TypeSelect,
-  },
-  ftsFunctionName: {
-    select: TypeSelect,
-  },
-  competencyCenter: {
-    select: TypeSelect,
-  },
-  ftsFunctionMarker: {
-    select: TypeSelect,
-  },
-  curatorCentralOffice: {
-    select: UserSelect,
-  },
-  managerInterregionalInspection: {
-    select: UserSelect,
-  },
-  departmentHeadCentralOffice: {
-    select: UserSelect,
-  },
-  departmentHeadInterregionalInspection: {
-    select: UserSelect,
-  },
-  createdAt: true,
-  updatedAt: true,
-  dtis: {
-    select: {
-      type: {
-        select: TypeSelect,
-      },
-    },
-  },
-} as const satisfies Prisma.FtsFunctionSelect;
-
-export const downloadFtsFunctionDetailSelect = {
-  ...ftsFunctionDetailDetailedSelect,
-  feedbacks: undefined,
-  ftsFunction: {
-    select: {
-      ftsFunctionName: {
-        select: TypeSelect,
-      },
-      competencyCenter: {
-        select: TypeSelect,
-      },
-    },
-  },
-  createdAt: true,
-  updatedAt: true,
-} as const satisfies Prisma.FtsFunctionDetailSelect;
-
 export const downloadFeedbackSelect = {
-  ...feedbackSelect,
   ftsFunctionDetail: {
     select: {
       id: true,
@@ -169,6 +115,27 @@ export const downloadFeedbackSelect = {
         },
       },
       ftsFunctionDetails: true,
+    },
+  },
+  id: true,
+  problemDescription: true,
+  initiatorRequisites: true,
+  deadline: true,
+  initiatorAcceptance: true,
+  acceptStatus: {
+    select: TypeSelect,
+  },
+  ftsMethodologyStatus: {
+    select: TypeSelect,
+  },
+  feedbackQualityMetrics: {
+    select: TypeSelect,
+  },
+  feedbackSources: {
+    select: {
+      type: {
+        select: TypeSelect,
+      },
     },
   },
 } as const satisfies Prisma.FeedbackSelect;
@@ -215,44 +182,46 @@ export const downloadFtsFunctionTreeSelect = {
 } as const satisfies Prisma.FtsFunctionTreeSelect;
 
 export const downloadActionSelect = {
-  ftsMethodologyStatusId: true,
-  problemDescription: true,
-  initiatorRequisites: true,
-  initiatorAcceptance: true,
-  deadline: true,
-  feedbackQualityMetrics: { select: TypeSelect },
-  feedbackSources: {
+  ftsFunctionDetail: {
     select: {
-      type: {
-        select: TypeSelect,
-      },
-    },
-  },
-  action: {
-    select: {
-      ftsFunctionDetail: {
+      id: true,
+      ftsFunction: {
         select: {
           id: true,
-          ftsFunction: {
-            select: {
-              id: true,
-              ftsFunctionName: {
-                select: TypeSelect,
-              },
-              competencyCenter: {
-                select: TypeSelect,
-              },
-            },
+          ftsFunctionName: {
+            select: TypeSelect,
           },
-          ftsFunctionDetails: true,
+          competencyCenter: {
+            select: TypeSelect,
+          },
         },
       },
-      status: { select: TypeSelect },
-      description: true,
-      priorityAction: { select: TypeSelect },
-      characterAction: { select: TypeSelect },
-      personPerformingAction: { select: TypeSelect },
-      otherPersonPerformingAction: true,
+      ftsFunctionDetails: true,
     },
   },
-} as const satisfies Prisma.FeedbackSelect;
+  status: { select: TypeSelect },
+  description: true,
+  priorityAction: { select: TypeSelect },
+  characterAction: { select: TypeSelect },
+  personPerformingAction: { select: TypeSelect },
+  otherPersonPerformingAction: true,
+
+  feedbacks: {
+    where: { isDeleted: false },
+    select: {
+      ftsMethodologyStatus: { select: TypeSelect },
+      feedbackQualityMetrics: { select: TypeSelect },
+      problemDescription: true,
+      initiatorRequisites: true,
+      initiatorAcceptance: true,
+      deadline: true,
+      feedbackSources: {
+        select: {
+          type: {
+            select: TypeSelect,
+          },
+        },
+      },
+    },
+  },
+} as const satisfies Prisma.ActionSelect;
