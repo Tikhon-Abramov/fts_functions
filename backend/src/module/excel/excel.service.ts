@@ -74,10 +74,6 @@ export class ExcelService<B extends boolean> {
         worksheet.views = [
             {
                 state: 'frozen',
-                xSplit: 1,
-            },
-            {
-                state: 'frozen',
                 ySplit: 1,
             },
         ];

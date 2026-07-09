@@ -26,19 +26,7 @@ export type RootState = ReturnType<typeof rootReducer>;
 const persistConfig: PersistConfig<RootState> = {
   key: import.meta.env.VITE_REDUX_PERSIST_KEY,
   storage,
-  whitelist: [
-    'auth',
-    // "themeMode",
-    // "panelMode",
-    // "editingId",
-    // "panelExpanded",
-    // "filterModel",
-    // "sortModel",
-    // "searchInput",
-    // "modalFunctionId",
-    // "selectedRowId",
-    // "rightTab",
-  ],
+  whitelist: ['auth'],
   blacklist: [baseApi.reducerPath],
 };
 

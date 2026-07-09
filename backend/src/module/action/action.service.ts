@@ -381,7 +381,7 @@ export class ActionService {
           where: { id },
           data: {
             reordererId: userId,
-            updatedAt: new Date(),
+            reorderedAt: new Date(),
             order,
           },
         });
@@ -416,7 +416,7 @@ export class ActionService {
           where: { id },
           data: {
             reordererId: userId,
-            updatedAt: new Date(),
+            reorderedAt: new Date(),
             order,
           },
         });
