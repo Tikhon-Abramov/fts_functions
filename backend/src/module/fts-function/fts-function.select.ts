@@ -6,6 +6,7 @@ export const FtsFunctionSelect = {
   id: true,
   ftsCentralization: { select: TypeSelect },
   ftsFunctionName: { select: TypeSelect },
+  otherFtsFunctionName: true,
   ftsFunctionMarker: { select: TypeSelect },
   competencyCenter: { select: TypeSelect },
   dtis: { select: { type: { select: TypeSelect } } },

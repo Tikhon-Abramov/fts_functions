@@ -111,15 +111,27 @@ export class FtsFunctionService {
 
   private async ensureFtsFunctionNameIsUnique(
     ftsFunctionNameId: number | undefined,
+    otherFtsFunctionName: string | undefined,
     excludeId?: number,
   ) {
-    if (!ftsFunctionNameId) return;
+    if (!ftsFunctionNameId && !otherFtsFunctionName) return;
+
+    const ftsFunctionNameType = await this.prisma.type.findUnique({
+      where: { id: ftsFunctionNameId },
+      select: { code: true },
+    });
+    const isOtherFtsFunctionName = ftsFunctionNameType?.code === Code.FTS_FUNCTION_NAME.FTS_FUNCTION_OTHER;
+
+    if (isOtherFtsFunctionName && !otherFtsFunctionName) {
+      throw new BadRequestException('Не указано иное наименование функции');
+    }
 
     const existing = await this.prisma.ftsFunction.findFirst({
       where: {
         ...(excludeId ? { id: { not: excludeId } } : {}),
-        ftsFunctionNameId,
         isDeleted: false,
+        ftsFunctionNameId,
+        ...(isOtherFtsFunctionName ? { otherFtsFunctionName } : {})
       },
       select: { id: true },
     });
@@ -161,7 +173,7 @@ export class FtsFunctionService {
   /// Создание функции
   async create(userId:number, data: CreateFtsFunctionDto): Promise<FtsFunctionDto> {
     const { dtiIds, ...otherData } = data;
-    await this.ensureFtsFunctionNameIsUnique(data.ftsFunctionNameId);
+    await this.ensureFtsFunctionNameIsUnique(data.ftsFunctionNameId, data.otherFtsFunctionName);
 
     const dtis = {
       createMany: {
@@ -197,7 +209,7 @@ export class FtsFunctionService {
   async update(userId:number, id: number, data: UpdateFtsFunctionDto): Promise<FtsFunctionDto> {
     const { dtiIds, ...otherData } = data;
     const oldData = await this.ensureExists(id);
-    await this.ensureFtsFunctionNameIsUnique(data.ftsFunctionNameId, id);
+    await this.ensureFtsFunctionNameIsUnique(data.ftsFunctionNameId, data.otherFtsFunctionName, id);
 
     const dtis = {
       createMany: {

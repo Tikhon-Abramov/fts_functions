@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Box, Button, CircularProgress, Collapse, IconButton, Paper, Stack, Typography, useTheme } from "@mui/material";
+import { Box, Button, CircularProgress, Collapse, IconButton, Paper, Stack, TextField, Typography, useTheme } from "@mui/material";
 import { Add, Close, EditOutlined, ExpandLess, ExpandMore } from "@mui/icons-material";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { useAppDispatch, useAppSelector } from "../../store";
@@ -17,6 +17,7 @@ import type { GetColumnsProps } from "./columns";
 
 const EMPTY_FORM: FtsFunctionFormData = {
   ftsFunctionNameId: Number.NaN,
+  otherFtsFunctionName: "",
   ftsFunctionMarkerId: Number.NaN,
   ftsCentralizationId: Number.NaN,
   competencyCenterId: Number.NaN,
@@ -73,6 +74,14 @@ export function FtsFunctionForm({ options, usedFtsFunctionNameIds }: FtsFunction
 
   const selectedFtsFunctionNameId = watch("ftsFunctionNameId");
 
+  // «Иное наименование функции» показываем и сохраняем только для FTS_FUNCTION_OTHER.
+  const isOtherFtsFunctionName = useMemo(
+    () => options.ftsFunctionNameOptions.find(
+      ({ value }) => value === selectedFtsFunctionNameId
+    )?.code === 'FTS_FUNCTION_OTHER',
+    [options.ftsFunctionNameOptions, selectedFtsFunctionNameId],
+  );
+
   // ============ 4. Сброс при открытии/закрытии и смене режима ============
   useEffect(() => {
     initialFormData.current = null;
@@ -89,6 +98,7 @@ export function FtsFunctionForm({ options, usedFtsFunctionNameIds }: FtsFunction
 
     const values = {
       ftsFunctionNameId: ftsFunctionInfo.ftsFunctionName.id,
+      otherFtsFunctionName: ftsFunctionInfo.otherFtsFunctionName ?? "",
       ftsFunctionMarkerId: ftsFunctionInfo.ftsFunctionMarker.id,
       ftsCentralizationId: ftsFunctionInfo.ftsCentralization.id,
       competencyCenterId: ftsFunctionInfo.competencyCenter.id,
@@ -118,15 +128,23 @@ export function FtsFunctionForm({ options, usedFtsFunctionNameIds }: FtsFunction
 
   // ============ 7. Отправка формы ============
   const onSubmit = handleSubmit(async (values) => {
+    // Сохраняем «Иное наименование» только для FTS_FUNCTION_OTHER,
+    // при другом наименовании — очищаем.
+    const payload: FtsFunctionFormData = {
+      ...values,
+      otherFtsFunctionName: isOtherFtsFunctionName
+        ? (values.otherFtsFunctionName ?? "").trim()
+        : "",
+    };
 
     try {
       const result =
         isEditing && editableFtsFunctionId != null
           ? await updateFtsFunction({
             id: String(editableFtsFunctionId),
-            updateFtsFunctionDto: values,
+            updateFtsFunctionDto: payload,
           }).unwrap()
-          : await createFtsFunction({ createFtsFunctionDto: values }).unwrap();
+          : await createFtsFunction({ createFtsFunctionDto: payload }).unwrap();
 
       dispatch(showSnackbar({ message: result.message }));
       closeForm();
@@ -138,7 +156,8 @@ export function FtsFunctionForm({ options, usedFtsFunctionNameIds }: FtsFunction
 
   const filteredFtsFunctionNameOptions = useMemo(() => {
     return options.ftsFunctionNameOptions.filter(
-      ({ value }) => {
+      ({ value, code }) => {
+        if (code === 'FTS_FUNCTION_OTHER') return true;
         if (isEditing && (selectedFtsFunctionNameId === value)) return true;
         return !usedFtsFunctionNameIds.has(value);
       }
@@ -277,6 +296,31 @@ export function FtsFunctionForm({ options, usedFtsFunctionNameIds }: FtsFunction
                     control={control}
                     fullRow
                   />
+                  {isOtherFtsFunctionName && (
+                    <Controller
+                      name="otherFtsFunctionName"
+                      control={control}
+                      render={({ field, fieldState }) => (
+                        <TextField
+                          {...field}
+                          value={field.value ?? ""}
+                          label="Иное наименование функции"
+                          size="small"
+                          fullWidth
+                          error={Boolean(fieldState.error)}
+                          helperText={fieldState.error?.message}
+                          sx={{
+                            gridColumn: "1 / -1",
+                            "& .MuiOutlinedInput-root": {
+                              fontSize: "0.82rem",
+                              bgcolor: c.hoverOverlay,
+                            },
+                            "& .MuiInputLabel-root": { fontSize: "0.82rem" },
+                          }}
+                        />
+                      )}
+                    />
+                  )}
                   <FormSelect
                     name="ftsFunctionMarkerId"
                     label="Маркер функции"

@@ -379,6 +379,8 @@ model FtsFunction {
   ftsCentralizationId                     Int                                 @map("fts_centralization_id")
   /// Уникальный идентификатор названия функции
   ftsFunctionNameId                       Int                                 @map("fts_function_name_id")
+  /// Иное наименование функции
+  otherFtsFunctionName                    String? @db.VarChar(512)            @map("other_fts_function_name")
   /// Уникальный идентификатор маркера функции
   ftsFunctionMarkerId                     Int                                 @map("fts_function_marker_id")
   /// Уникальный идентификатор центра компетенции
@@ -432,6 +434,7 @@ model FtsFunction {
   @@index([departmentHeadCentralOfficeId])
   @@index([departmentHeadInterregionalInspectionId])
   @@index([isDeleted])
+  @@fulltext([otherFtsFunctionName])
   @@map("fts_functions")
 }
 

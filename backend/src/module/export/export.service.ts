@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { Prisma } from "src/generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { ExcelService } from "../excel/excel.service";
 import * as ExcelJS from 'exceljs';
@@ -112,7 +113,14 @@ export class ExportService {
             },
             {
               header: 'Наименование функции',
-              map: (row: DownloadFtsFunctionEntity) => row.ftsFunctionName.name,
+              map: (row: DownloadFtsFunctionEntity) => {
+                const isOtherFtsFunctionName = row.ftsFunctionName.code === Code.FTS_FUNCTION_NAME.FTS_FUNCTION_OTHER;
+
+                if (isOtherFtsFunctionName)
+                  return row.otherFtsFunctionName;
+
+                return row.ftsFunctionName.name;
+              },
             },
             {
               header: 'Маркер функции',
@@ -178,7 +186,14 @@ export class ExportService {
             },
             {
               header: 'Наименование функции',
-              map: (row: DownloadFtsFunctionDetailEntity) => row.ftsFunction.ftsFunctionName.name,
+              map: (row: DownloadFtsFunctionDetailEntity) => {
+                const isOtherFtsFunctionName = row.ftsFunction.ftsFunctionName.code === Code.FTS_FUNCTION_NAME.FTS_FUNCTION_OTHER;
+
+                if (isOtherFtsFunctionName)
+                  return row.ftsFunction.otherFtsFunctionName;
+                
+                return row.ftsFunction.ftsFunctionName.name;
+              },
             },
             {
               header: 'Центр компетенции',
@@ -269,7 +284,14 @@ export class ExportService {
             },
             {
               header: 'Наименование функции',
-              map: (row: DownloadFFtsFunctionTreeEntity) => row.parentFtsFunction.ftsFunction.ftsFunctionName.name,
+              map: (row: DownloadFFtsFunctionTreeEntity) => {
+                const isOtherFtsFunctionName = row.parentFtsFunction.ftsFunction.ftsFunctionName.code === Code.FTS_FUNCTION_NAME.FTS_FUNCTION_OTHER;
+
+                if (isOtherFtsFunctionName)
+                  return row.parentFtsFunction.ftsFunction.otherFtsFunctionName;
+                
+                return row.parentFtsFunction.ftsFunction.ftsFunctionName.name;
+              },
             },
             {
               header: 'Центр компетенции',
@@ -293,7 +315,14 @@ export class ExportService {
             },
             {
               header: 'Наименование функции',
-              map: (row: DownloadFFtsFunctionTreeEntity) => row.childFtsFunction.ftsFunction.ftsFunctionName.name,
+              map: (row: DownloadFFtsFunctionTreeEntity) => {
+                const isOtherFtsFunctionName = row.childFtsFunction.ftsFunction.ftsFunctionName.code === Code.FTS_FUNCTION_NAME.FTS_FUNCTION_OTHER;
+
+                if (isOtherFtsFunctionName)
+                  return row.childFtsFunction.ftsFunction.otherFtsFunctionName;
+                
+                return row.childFtsFunction.ftsFunction.ftsFunctionName.name;
+              },
             },
             {
               header: 'Центр компетенции',
@@ -323,7 +352,14 @@ export class ExportService {
             },
             {
               header: 'Наименование функции',
-              map: (row: DownloadFeedbackEntity) => row.ftsFunctionDetail?.ftsFunction.ftsFunctionName.name,
+              map: (row: DownloadFeedbackEntity) => {
+                const isOtherFtsFunctionName = row.ftsFunctionDetail?.ftsFunction.ftsFunctionName.code === Code.FTS_FUNCTION_NAME.FTS_FUNCTION_OTHER;
+
+                if (isOtherFtsFunctionName)
+                  return row.ftsFunctionDetail?.ftsFunction.otherFtsFunctionName;
+                
+                return row.ftsFunctionDetail?.ftsFunction.ftsFunctionName.name;
+              },
             },
             {
               header: 'Центр компетенции',
@@ -388,7 +424,14 @@ export class ExportService {
             },
             {
               header: 'Наименование функции',
-              map: (row: ActionType) => row?.ftsFunctionDetail?.ftsFunction.ftsFunctionName.name,
+              map: (row: ActionType) => {
+                const isOtherFtsFunctionName = row.ftsFunctionDetail?.ftsFunction.ftsFunctionName.code === Code.FTS_FUNCTION_NAME.FTS_FUNCTION_OTHER;
+
+                if (isOtherFtsFunctionName)
+                  return row.ftsFunctionDetail?.ftsFunction.otherFtsFunctionName;
+                
+                return row.ftsFunctionDetail?.ftsFunction.ftsFunctionName.name;
+              },
             },
             {
               header: 'Центр компетенции',
