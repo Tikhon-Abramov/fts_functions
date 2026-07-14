@@ -64,6 +64,7 @@ export class FtsFunctionQueryDto extends createZodDto(FtsFunctionQuerySchema) {}
 export const CreateFtsFunctionSchema = z.object({
   ftsCentralizationId: positiveInt,
   ftsFunctionNameId: positiveInt,
+  otherFtsFunctionName: z.string().optional(),
   ftsFunctionMarkerId: positiveInt,
   competencyCenterId: positiveInt,
   curatorCentralOfficeId: positiveInt,
@@ -87,6 +88,7 @@ export const FtsFunctionSchema = z.object({
   id: positiveInt,
   ftsCentralization: TypeResponseSchema,
   ftsFunctionName: TypeResponseSchema,
+  otherFtsFunctionName: z.string().nullable(),
   ftsFunctionMarker: TypeResponseSchema,
   competencyCenter: TypeResponseSchema,
   dtis: z.array(

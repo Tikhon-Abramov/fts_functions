@@ -11,6 +11,7 @@ export const downloadFtsFunctionSelect = {
   ftsFunctionName: {
     select: TypeSelect,
   },
+  otherFtsFunctionName: true,
   competencyCenter: {
     select: TypeSelect,
   },
@@ -48,6 +49,7 @@ export const downloadFtsFunctionDetailSelect = {
       ftsFunctionName: {
         select: TypeSelect,
       },
+      otherFtsFunctionName: true,
       competencyCenter: {
         select: TypeSelect,
       },
@@ -109,6 +111,7 @@ export const downloadFeedbackSelect = {
           ftsFunctionName: {
             select: TypeSelect,
           },
+          otherFtsFunctionName: true,
           competencyCenter: {
             select: TypeSelect,
           },
@@ -150,6 +153,7 @@ export const downloadFtsFunctionTreeSelect = {
           ftsFunctionName: {
             select: TypeSelect,
           },
+          otherFtsFunctionName: true,
           competencyCenter: {
             select: TypeSelect,
           },
@@ -167,6 +171,7 @@ export const downloadFtsFunctionTreeSelect = {
           ftsFunctionName: {
             select: TypeSelect,
           },
+          otherFtsFunctionName: true,
           competencyCenter: {
             select: TypeSelect,
           },
@@ -191,6 +196,7 @@ export const downloadActionSelect = {
           ftsFunctionName: {
             select: TypeSelect,
           },
+          otherFtsFunctionName: true,
           competencyCenter: {
             select: TypeSelect,
           },

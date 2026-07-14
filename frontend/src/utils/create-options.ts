@@ -3,7 +3,6 @@ import type { TypeResponseDto, UserResponseDto } from "../store/ftsFunctionRegis
 export type OptionType = {
     value: number;
     label: string;
-    /** Код справочника (для условной логики), если опция построена из типа. */
     code?: string;
 };
 

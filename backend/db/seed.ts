@@ -30,6 +30,8 @@ async function main(): Promise<void> {
     { category: 'PERSON_PERFORMING_ACTION', code: 'DEPUTY_CHIEF', name: 'Заместитель начальника отдела' },
     { category: 'PERSON_PERFORMING_ACTION', code: 'INSPECTOR', name: 'Инспектор' },
     { category: 'PERSON_PERFORMING_ACTION', code: 'OTHER_PERSON', name: 'Иное' },
+
+    { category: 'FTS_FUNCTION_NAME', code: 'FTS_FUNCTION_OTHER', name: 'Иное наименование' },
   ];
 
   for (const t of types) {

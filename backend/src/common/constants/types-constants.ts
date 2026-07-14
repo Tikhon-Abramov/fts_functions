@@ -47,6 +47,7 @@ export const CodesByCategory = {
         'FTS_FUNCTION_34',
         'FTS_FUNCTION_35',
         'FTS_FUNCTION_36',
+        'FTS_FUNCTION_OTHER',
     ],
 
     FTS_FUNCTION_STEP: ['OBJECT_SELECTION', 'CLUSTERING_IMPACT'],

@@ -210,7 +210,14 @@ export const getColumns = (props: GetColumnsProps): Array<GridColDef<FtsFunction
     disableColumnMenu: true,
     align: "center",
     headerAlign: "center",
-    renderCell: (params) => buildActionColumn(Number(params.row.id), params.row.ftsFunctionName.name),
+    renderCell: (params) => {
+      const isOtherFtsFunctionName = params.row.ftsFunctionName.code === 'FTS_FUNCTION_OTHER';
+      const ftsFunctionName = (isOtherFtsFunctionName && !!params.row.otherFtsFunctionName) 
+        ? params.row.otherFtsFunctionName 
+        : params.row.ftsFunctionName.name;
+
+      return buildActionColumn(Number(params.row.id), ftsFunctionName)
+    },
   },
   {
     field: "ftsFunctionName",
@@ -222,11 +229,18 @@ export const getColumns = (props: GetColumnsProps): Array<GridColDef<FtsFunction
     align: "left",
     headerAlign: "left",
     filterOperators: buildColumnFilter(props.ftsFunctionNameOptions),
-    renderCell: (params) => (
-      <TextWrapCell sx={(theme) => ({ fontWeight: 500, color: theme.custom.textPrimary })}>
-        {params.row.ftsFunctionName?.name ?? ""}
-      </TextWrapCell>
-    ),
+    renderCell: (params) => {
+      const isOtherFtsFunctionName = params.row.ftsFunctionName.code === 'FTS_FUNCTION_OTHER';
+      const ftsFunctionName = (isOtherFtsFunctionName && !!params.row.otherFtsFunctionName) 
+        ? params.row.otherFtsFunctionName 
+        : params.row.ftsFunctionName.name;
+
+      return (
+        <TextWrapCell sx={(theme) => ({ fontWeight: 500, color: theme.custom.textPrimary })}>
+          {ftsFunctionName}
+        </TextWrapCell>
+      )
+    },
   },
   {
     field: "ftsFunctionMarker",

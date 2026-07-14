@@ -900,6 +900,7 @@ export type FtsFunctionItemsResponseDto = {
         description: string | null;
         supertypeId: number | null;
       };
+      otherFtsFunctionName: string | null;
       ftsFunctionMarker: {
         id: number;
         code: string;
@@ -986,6 +987,7 @@ export type FtsFunctionBaseResponseDto = {
       description: string | null;
       supertypeId: number | null;
     };
+    otherFtsFunctionName: string | null;
     ftsFunctionMarker: {
       id: number;
       code: string;
@@ -1052,6 +1054,7 @@ export type FtsFunctionBaseResponseDto = {
 export type CreateFtsFunctionDto = {
   ftsCentralizationId: string | number;
   ftsFunctionNameId: string | number;
+  otherFtsFunctionName?: string;
   ftsFunctionMarkerId: string | number;
   competencyCenterId: string | number;
   curatorCentralOfficeId: string | number;
@@ -1063,6 +1066,7 @@ export type CreateFtsFunctionDto = {
 export type UpdateFtsFunctionDto = {
   ftsCentralizationId?: string | number;
   ftsFunctionNameId?: string | number;
+  otherFtsFunctionName?: string;
   ftsFunctionMarkerId?: string | number;
   competencyCenterId?: string | number;
   curatorCentralOfficeId?: string | number;
