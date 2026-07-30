@@ -207,6 +207,38 @@ export function FeedbackCardModal({ feedbackId, open, onClose }: FeedbackCardMod
         },
     };
 
+    // Отображение значения поля в режиме просмотра (как у «Источник обратной связи»).
+    const viewValueSx = {
+        color: c.textBody,
+        fontSize: "0.82rem",
+        whiteSpace: "pre-wrap" as const,
+        wordBreak: "break-word" as const,
+    };
+
+    const renderReadonlyField = (label: string, value: string | string[] | null | undefined) => (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+            <Typography sx={{ color: c.textSecondary, fontSize: "0.72rem", fontWeight: 600, lineHeight: 1.2 }}>
+                {label}
+            </Typography>
+
+            {
+                Array.isArray(value)
+                    ? (
+                        value.map(v => (
+                            <Typography sx={viewValueSx}>
+                                {v && v.trim() ? v : "—"}
+                            </Typography>
+                        ))
+                    )
+                    : (
+                        <Typography sx={viewValueSx}>
+                            {value && value.trim() ? value : "—"}
+                        </Typography>
+                    )
+            }
+        </Box>
+    );
+
     const { data: feedbackSource } = useConstantControllerGetTypesV1Query({ categories: ['FEEDBACK_SOURCE'] });
     const { data: feedbackQualityMetrics } = useConstantControllerGetTypesV1Query({ categories: ['FEEDBACK_QUALITY_METRICS'] });
     const { data: ftsMethodologyStatus } = useConstantControllerGetTypesV1Query({ categories: ['FTS_METHODOLOGY_STATUS'] });
@@ -279,7 +311,7 @@ export function FeedbackCardModal({ feedbackId, open, onClose }: FeedbackCardMod
                 problemDescription: feedbackInfo.problemDescription ?? "",
                 initiatorRequisites: feedbackInfo.initiatorRequisites ?? "",
                 initiatorAcceptance: feedbackInfo.initiatorAcceptance ?? "",
-                deadline: feedbackInfo.deadline ? feedbackInfo.deadline : "",
+                deadline: feedbackInfo.deadline ? feedbackInfo.deadline.slice(0, 10) : "",
             });
         }
     }, [open, isCreateMode, feedbackInfo, selectedFtsFunctionDetailId, reset]);
@@ -381,225 +413,269 @@ export function FeedbackCardModal({ feedbackId, open, onClose }: FeedbackCardMod
                     </Typography>
 
                     <FormControl size="small" fullWidth disabled={readonly}>
-                        <InputLabel shrink sx={formLabelSx}>
-                            {"Источник обратной связи *"}
-                        </InputLabel>
+                        {
+                            dialogMode === 'view'
+                                ? renderReadonlyField(
+                                    'Источник обратной связи', 
+                                    feedbackInfo?.feedbackSources.map(({ type }) => type.name)
+                                )
+                                : (
+                                    <>
+                                        <InputLabel shrink sx={formLabelSx}>
+                                            {"Источник обратной связи *"}
+                                        </InputLabel>
 
-                        <Controller
-                            name="feedbackSourceIds"
-                            control={control}
-                            render={({ field }) => {
-                                const selectedValues = (field.value ?? []).map(String);
+                                        <Controller
+                                            name="feedbackSourceIds"
+                                            control={control}
+                                            render={({ field }) => {
+                                                const selectedValues = (field.value ?? []).map(String);
 
-                                return (
-                                    <Select
-                                        multiple
-                                        notched
-                                        value={selectedValues}
-                                        onChange={(event) => {
-                                            const value = event.target.value;
-                                            const arr = typeof value === "string" ? value.split(",") : value;
-                                            field.onChange(arr.map(Number));
-                                        }}
-                                        renderValue={(selected) => (
-                                            <Box
-                                                sx={{
-                                                    display: "flex",
-                                                    flexDirection: "column",
-                                                    gap: 0.5,
-                                                    pt: 0.25,
-                                                    pb: 0.25,
-                                                }}
-                                            >
-                                                {(selected as string[]).map((id) => (
-                                                    <Chip
-                                                        key={String(id)}
-                                                        variant="outlined"
-                                                        size="small"
-                                                        label={
-                                                            feedbackSourceOptions.find(
-                                                                (option) => String(option.value) === String(id),
-                                                            )?.label ?? String(id)
-                                                        }
+                                                return (
+                                                    <Select
+                                                        multiple
+                                                        notched
+                                                        value={selectedValues}
+                                                        onChange={(event) => {
+                                                            const value = event.target.value;
+                                                            const arr = typeof value === "string" ? value.split(",") : value;
+                                                            field.onChange(arr.map(Number));
+                                                        }}
+                                                        renderValue={(selected) => (
+                                                            <Box
+                                                                sx={{
+                                                                    display: "flex",
+                                                                    flexDirection: "column",
+                                                                    gap: 0.5,
+                                                                    pt: 0.25,
+                                                                    pb: 0.25,
+                                                                }}
+                                                            >
+                                                                {(selected as string[]).map((id) => (
+                                                                    <Chip
+                                                                        key={String(id)}
+                                                                        variant="outlined"
+                                                                        size="small"
+                                                                        label={
+                                                                            feedbackSourceOptions.find(
+                                                                                (option) => String(option.value) === String(id),
+                                                                            )?.label ?? String(id)
+                                                                        }
+                                                                        sx={{
+                                                                            justifyContent: "flex-start",
+                                                                            maxWidth: "100%",
+                                                                            height: "auto",
+                                                                            py: 0.25,
+                                                                            borderRadius: 1,
+                                                                            "& .MuiChip-label": {
+                                                                                display: "block",
+                                                                                whiteSpace: "normal",
+                                                                                lineHeight: 1.25,
+                                                                                py: 0.25,
+                                                                            },
+                                                                        }}
+                                                                    />
+                                                                ))}
+                                                            </Box>
+                                                        )}
+                                                        label={"Источник обратной связи *"}
                                                         sx={{
-                                                            justifyContent: "flex-start",
-                                                            maxWidth: "100%",
-                                                            height: "auto",
-                                                            py: 0.25,
-                                                            borderRadius: 1,
-                                                            "& .MuiChip-label": {
-                                                                display: "block",
-                                                                whiteSpace: "normal",
-                                                                lineHeight: 1.25,
-                                                                py: 0.25,
+                                                            ...formSelectSx,
+                                                            "& .MuiSelect-select": {
+                                                                display: "flex",
+                                                                alignItems: "flex-start",
+                                                                minHeight: 56,
+                                                                py: 1.25,
                                                             },
                                                         }}
-                                                    />
-                                                ))}
-                                            </Box>
-                                        )}
-                                        label={"Источник обратной связи *"}
-                                        sx={{
-                                            ...formSelectSx,
-                                            "& .MuiSelect-select": {
-                                                display: "flex",
-                                                alignItems: "flex-start",
-                                                minHeight: 56,
-                                                py: 1.25,
-                                            },
-                                        }}
-                                        MenuProps={formMenuSx}
-                                    >
-                                        {feedbackSourceOptions.map((option) => {
-                                            const value = String(option.value);
-                                            const checked = selectedValues.includes(value);
+                                                        MenuProps={formMenuSx}
+                                                    >
+                                                        {feedbackSourceOptions.map((option) => {
+                                                            const value = String(option.value);
+                                                            const checked = selectedValues.includes(value);
 
-                                            return (
-                                                <MenuItem key={option.value} value={value}>
-                                                    <Checkbox size="small" checked={checked} sx={{ mr: 0.75 }} />
+                                                            return (
+                                                                <MenuItem key={option.value} value={value}>
+                                                                    <Checkbox size="small" checked={checked} sx={{ mr: 0.75 }} />
 
-                                                    <ListItemText
-                                                        primary={
-                                                            <Typography sx={{ fontSize: "0.8rem" }}>
-                                                                {option.label}
-                                                            </Typography>
-                                                        }
-                                                    />
-                                                </MenuItem>
-                                            );
-                                        })}
-                                    </Select>
-                                );
-                            }}
-                        />
+                                                                    <ListItemText
+                                                                        primary={
+                                                                            <Typography sx={{ fontSize: "0.8rem" }}>
+                                                                                {option.label}
+                                                                            </Typography>
+                                                                        }
+                                                                    />
+                                                                </MenuItem>
+                                                            );
+                                                        })}
+                                                    </Select>
+                                                );
+                                            }}
+                                        />
+                                    </>
+                                )
+                        }
                     </FormControl>
                 </Box>
 
-                <FormControl size="small" fullWidth disabled={readonly}>
-                    <InputLabel sx={formLabelSx}>
-                        {"Метрики качества процесса в рамках обратной связи *"}
-                    </InputLabel>
+                {dialogMode === "view" ? (
+                    renderReadonlyField(
+                        "Метрики качества процесса в рамках обратной связи",
+                        feedbackInfo?.feedbackQualityMetrics?.name,
+                    )
+                ) : (
+                    <FormControl size="small" fullWidth disabled={readonly}>
+                        <InputLabel sx={formLabelSx}>
+                            {"Метрики качества процесса в рамках обратной связи *"}
+                        </InputLabel>
 
+                        <Controller
+                            name="feedbackQualityMetricsId"
+                            control={control}
+                            render={({ field }) => (
+                                <Select
+                                    value={Number.isNaN(field.value) ? "" : String(field.value)}
+                                    onChange={(event) => field.onChange(Number(event.target.value))}
+                                    onBlur={field.onBlur}
+                                    label={"Метрики качества процесса в рамках обратной связи *"}
+                                    sx={formSelectSx}
+                                    MenuProps={formMenuSx}
+                                >
+                                    {qualityMetricOptions.map((option) => (
+                                        <MenuItem key={option.value} value={String(option.value)}>
+                                            {option.label}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            )}
+                        />
+                    </FormControl>
+                )}
+
+                {dialogMode === "view" ? (
+                    renderReadonlyField(
+                        "Описание проблемы с указанием источника, метрики, способа решения",
+                        feedbackInfo?.problemDescription,
+                    )
+                ) : (
                     <Controller
-                        name="feedbackQualityMetricsId"
+                        name="problemDescription"
                         control={control}
                         render={({ field }) => (
-                            <Select
-                                value={Number.isNaN(field.value) ? "" : String(field.value)}
-                                onChange={(event) => field.onChange(Number(event.target.value))}
-                                onBlur={field.onBlur}
-                                label={"Метрики качества процесса в рамках обратной связи *"}
-                                sx={formSelectSx}
-                                MenuProps={formMenuSx}
-                            >
-                                {qualityMetricOptions.map((option) => (
-                                    <MenuItem key={option.value} value={String(option.value)}>
-                                        {option.label}
-                                    </MenuItem>
-                                ))}
-                            </Select>
+                            <TextField
+                                {...field}
+                                value={field.value ?? ""}
+                                label={"Описание проблемы с указанием источника, метрики, способа решения *"}
+                                multiline
+                                rows={3}
+                                fullWidth
+                                size="small"
+                                disabled={readonly}
+                                sx={formInputSx}
+                            />
                         )}
                     />
-                </FormControl>
+                )}
 
-                <Controller
-                    name="problemDescription"
-                    control={control}
-                    render={({ field }) => (
-                        <TextField
-                            {...field}
-                            value={field.value ?? ""}
-                            label={"Описание проблемы с указанием источника, метрики, способа решения *"}
-                            multiline
-                            rows={3}
-                            fullWidth
-                            size="small"
-                            disabled={readonly}
-                            sx={formInputSx}
-                        />
-                    )}
-                />
-
-                <Controller
-                    name="initiatorRequisites"
-                    control={control}
-                    render={({ field }) => (
-                        <TextField
-                            {...field}
-                            value={field.value ?? ""}
-                            label={"Реквизиты автора инициативы *"}
-                            multiline
-                            rows={2}
-                            fullWidth
-                            size="small"
-                            disabled={readonly}
-                            sx={formInputSx}
-                        />
-                    )}
-                />
-
-                <FormControl size="small" fullWidth disabled={readonly}>
-                    <InputLabel sx={formLabelSx}>
-                        {"Методология позиции ЦА ФНС России *"}
-                    </InputLabel>
-
+                {dialogMode === "view" ? (
+                    renderReadonlyField("Реквизиты автора инициативы", feedbackInfo?.initiatorRequisites)
+                ) : (
                     <Controller
-                        name="ftsMethodologyStatusId"
+                        name="initiatorRequisites"
                         control={control}
                         render={({ field }) => (
-                            <Select
-                                value={Number.isNaN(field.value) ? "" : String(field.value)}
-                                onChange={(event) => field.onChange(Number(event.target.value))}
-                                onBlur={field.onBlur}
-                                label={"Методология позиции ЦА ФНС России *"}
-                                sx={formSelectSx}
-                                MenuProps={formMenuSx}
-                            >
-                                {methodologyStatusOptions.map((option) => (
-                                    <MenuItem key={option.value} value={String(option.value)}>
-                                        {option.label}
-                                    </MenuItem>
-                                ))}
-                            </Select>
+                            <TextField
+                                {...field}
+                                value={field.value ?? ""}
+                                label={"Реквизиты автора инициативы *"}
+                                multiline
+                                rows={2}
+                                fullWidth
+                                size="small"
+                                disabled={readonly}
+                                sx={formInputSx}
+                            />
                         )}
                     />
-                </FormControl>
+                )}
 
-                <Controller
-                    name="deadline"
-                    control={control}
-                    render={({ field }) => (
-                        <TextField
-                            {...field}
-                            value={field.value ?? ""}
-                            label={"Срок реализации доработки *"}
-                            type="date"
-                            fullWidth
-                            size="small"
-                            disabled={readonly}
-                            sx={formInputSx}
-                            slotProps={{ inputLabel: { shrink: true } }}
-                        />
-                    )}
-                />
+                {dialogMode === "view" ? (
+                    renderReadonlyField(
+                        "Методология позиции ЦА ФНС России",
+                        feedbackInfo?.ftsMethodologyStatus?.name,
+                    )
+                ) : (
+                    <FormControl size="small" fullWidth disabled={readonly}>
+                        <InputLabel sx={formLabelSx}>
+                            {"Методология позиции ЦА ФНС России *"}
+                        </InputLabel>
 
-                <Controller
-                    name="initiatorAcceptance"
-                    control={control}
-                    render={({ field }) => (
-                        <TextField
-                            {...field}
-                            value={field.value ?? ""}
-                            label={"Акцепт автора инициативы *"}
-                            multiline
-                            rows={2}
-                            fullWidth
-                            size="small"
-                            disabled={readonly}
-                            sx={formInputSx}
+                        <Controller
+                            name="ftsMethodologyStatusId"
+                            control={control}
+                            render={({ field }) => (
+                                <Select
+                                    value={Number.isNaN(field.value) ? "" : String(field.value)}
+                                    onChange={(event) => field.onChange(Number(event.target.value))}
+                                    onBlur={field.onBlur}
+                                    label={"Методология позиции ЦА ФНС России *"}
+                                    sx={formSelectSx}
+                                    MenuProps={formMenuSx}
+                                >
+                                    {methodologyStatusOptions.map((option) => (
+                                        <MenuItem key={option.value} value={String(option.value)}>
+                                            {option.label}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            )}
                         />
-                    )}
-                />
+                    </FormControl>
+                )}
+
+                {dialogMode === "view" ? (
+                    renderReadonlyField("Срок реализации доработки", formatDate(feedbackInfo?.deadline))
+                ) : (
+                    <Controller
+                        name="deadline"
+                        control={control}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                value={field.value ?? ""}
+                                label={"Срок реализации доработки *"}
+                                type="date"
+                                fullWidth
+                                size="small"
+                                disabled={readonly}
+                                sx={formInputSx}
+                                slotProps={{ inputLabel: { shrink: true } }}
+                            />
+                        )}
+                    />
+                )}
+
+                {dialogMode === "view" ? (
+                    renderReadonlyField("Акцепт автора инициативы", feedbackInfo?.initiatorAcceptance)
+                ) : (
+                    <Controller
+                        name="initiatorAcceptance"
+                        control={control}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                value={field.value ?? ""}
+                                label={"Акцепт автора инициативы *"}
+                                multiline
+                                rows={2}
+                                fullWidth
+                                size="small"
+                                disabled={readonly}
+                                sx={formInputSx}
+                            />
+                        )}
+                    />
+                )}
 
                 {feedbackInfo && dialogMode === "view" && (
                     <Accordion

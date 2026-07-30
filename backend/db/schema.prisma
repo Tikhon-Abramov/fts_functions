@@ -95,6 +95,8 @@ model Type {
   description String? @db.VarChar(1024) @map("description")
   /// Уникальный идентификатор родительского типа
   supertypeId Int?                      @map("supertype_id")
+  /// Порядок типов
+  order       Int?                      @map("order")
   /// Флаг удаления
   isDeleted   Boolean  @default(false)  @map("is_deleted")
 

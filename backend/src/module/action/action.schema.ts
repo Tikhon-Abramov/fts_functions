@@ -33,9 +33,9 @@ export const UpdateGeneralInfoActionsSchema = z.object({
 export const CreateActionSchema = z.object({
   ftsFunctionDetailId: positiveInt,
   statusId: positiveInt,
-  priorityActionId: positiveInt,
-  characterActionId: positiveInt,
-  personPerformingActionId: positiveInt,
+  priorityActionId: positiveInt.optional(),
+  characterActionId: positiveInt.optional(),
+  personPerformingActionId: positiveInt.optional(),
   otherPersonPerformingAction: z.string().nullish().optional(),
   description: z.string(),
 });

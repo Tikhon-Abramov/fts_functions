@@ -1852,9 +1852,9 @@ export type ActionBaseResponseDto = {
 export type CreateActionDto = {
   ftsFunctionDetailId: string | number;
   statusId: string | number;
-  priorityActionId: string | number;
-  characterActionId: string | number;
-  personPerformingActionId: string | number;
+  priorityActionId?: string | number;
+  characterActionId?: string | number;
+  personPerformingActionId?: string | number;
   otherPersonPerformingAction?: string | null;
   description: string;
 };

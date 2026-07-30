@@ -9,14 +9,15 @@ export const GeneralInfoActionsFormSchema = z.object({
 export const ActionFormSchema = z.object({
   ftsFunctionDetailId: z.number(),
   statusId: z.number(),
-  priorityActionId: number(),
-  characterActionId: z.number(),
-  personPerformingActionId: z.number(),
+  priorityActionId: number().optional(),
+  characterActionId: z.number().optional(),
+  personPerformingActionId: z.number().optional(),
   // Обязательность проверяется в компоненте только при personPerformingActionCode === "OTHER_PERSON".
   otherPersonPerformingAction: z
     .string()
     .trim()
-    .max(4096, 'Иное лицо, выполняющее действие не может превышать 4096 символов'),
+    .max(4096, 'Иное лицо, выполняющее действие не может превышать 4096 символов')
+    .optional(),
   description: z
     .string()
     .trim()
