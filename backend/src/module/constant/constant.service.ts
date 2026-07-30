@@ -23,6 +23,7 @@ export class ConstantService {
     return this.prisma.type.findMany({
       where,
       select: TypeSelect,
+      orderBy: [{ order: 'asc' }, { id: 'desc' }],
     });
   }
 

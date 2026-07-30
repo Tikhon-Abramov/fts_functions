@@ -317,7 +317,6 @@ export function Actions() {
               sx={{
                 position: "relative",
                 p: 1.25,
-                pb: 3,
                 border: `1px solid ${c.borderMain}`,
                 bgcolor: c.bgPaper,
                 borderRadius: 2,
@@ -334,56 +333,41 @@ export function Actions() {
               data-testid={`action-card-${action.id}`}
             >
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
-                <Box sx={{ minWidth: 0 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0 }}>
                   <Typography sx={{ color: c.textPrimary, fontSize: "0.8rem", fontWeight: 700 }}>
                     {`Операция ${index + 1}`}
                   </Typography>
-                </Box>
 
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                   {(action.feedbacks.length > 0) && (
                     <Tooltip title="Есть обратная связь">
-                      <FeedbackOutlined sx={{ fontSize: 16, color: c.accentBlue, opacity: 0.8 }} />
+                      <FeedbackOutlined sx={{ fontSize: 16, color: c.accentBlue, opacity: 0.8, flexShrink: 0, ml: 1 }} />
                     </Tooltip>
                   )}
-
-                  <Chip
-                    label={action.status.name}
-                    size="small"
-                    sx={{
-                      height: 20,
-                      maxWidth: "100%",
-                      bgcolor: c.selectedBg,
-                      color: c.accentBlue,
-                      fontSize: "0.65rem",
-                      fontWeight: 600,
-                      borderRadius: 1,
-                    }}
-                  />
-
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
                   <Tooltip title="Удалить операцию">
-                      <IconButton
-                        size="small"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setDeletebleActionId(Number(action.id));
-                        }}
-                        sx={{
-                          p: 0.25,
-                          width: 22,
-                          height: 22,
-                          color: c.textMuted,
-                          flexShrink: 0,
-                          "&:hover": {
-                            color: theme.palette.error.main,
-                            bgcolor: "transparent",
-                            opacity: 1,
-                          },
-                        }}
-                        data-testid={`button-delete-action-${action.id}`}
-                      >
-                        <DeleteOutlined sx={{ fontSize: 16 }} />
-                      </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setDeletebleActionId(Number(action.id));
+                      }}
+                      sx={{
+                        p: 0.25,
+                        width: 22,
+                        height: 22,
+                        color: c.textMuted,
+                        flexShrink: 0,
+                        "&:hover": {
+                          color: theme.palette.error.main,
+                          bgcolor: "transparent",
+                          opacity: 1,
+                        },
+                      }}
+                      data-testid={`button-delete-action-${action.id}`}
+                    >
+                      <DeleteOutlined sx={{ fontSize: 16 }} />
+                    </IconButton>
                   </Tooltip>
                 </Box>
               </Box>
@@ -401,38 +385,86 @@ export function Actions() {
                 {action.description}
               </Typography>
 
-              <Tooltip title="Перетащите, чтобы изменить порядок">
-                <Box
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    dragRef.current = { id: Number(action.id), pointerStartY: event.clientY };
-                    pointerYRef.current = event.clientY;
-                    dragScrollRef.current = 0;
-                    setDraggingId(Number(action.id));
-                    setDragOffsetY(0);
-                    document.body.style.userSelect = "none";
-                  }}
-                  onClick={(event) => event.stopPropagation()}
-                  sx={{
-                    position: "absolute",
-                    right: 0,
-                    bottom: 0,
-                    p: 0.5,
-                    display: "flex",
-                    alignItems: "center",
-                    color: c.textMuted,
-                    cursor: "grab",
-                    opacity: 0.5,
-                    transition: "opacity 0.15s ease",
-                    "&:hover": { opacity: 1 },
-                    "&:active": { cursor: "grabbing" },
-                  }}
-                  data-testid={`action-drag-handle-${action.id}`}
-                >
-                  <DragIndicator sx={{ fontSize: 20 }} />
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mt: 1 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap", minWidth: 0 }}>
+                  <Chip
+                    label={action.status.name}
+                    size="small"
+                    sx={{
+                      height: 20,
+                      maxWidth: "100%",
+                      bgcolor: c.selectedBg,
+                      color: c.accentBlue,
+                      fontSize: "0.65rem",
+                      fontWeight: 600,
+                      borderRadius: 1,
+                    }}
+                  />
+
+                  {action.priorityAction && (
+                    <Chip
+                      label={action.priorityAction?.name}
+                      size="small"
+                      sx={{
+                        height: 20,
+                        maxWidth: "100%",
+                        bgcolor: c.chipSubtle,
+                        color: c.textSecondary,
+                        fontSize: "0.65rem",
+                        fontWeight: 600,
+                        borderRadius: 1,
+                      }}
+                    />
+                  )}
                 </Box>
-              </Tooltip>
+
+                <Tooltip title="Перетащите, чтобы изменить порядок">
+                  <Box
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      dragRef.current = { id: Number(action.id), pointerStartY: event.clientY };
+                      pointerYRef.current = event.clientY;
+                      dragScrollRef.current = 0;
+                      setDraggingId(Number(action.id));
+                      setDragOffsetY(0);
+                      document.body.style.userSelect = "none";
+                    }}
+                    onClick={(event) => event.stopPropagation()}
+                    sx={{
+                      p: 0.5,
+                      display: "flex",
+                      alignItems: "center",
+                      flexShrink: 0,
+                      color: c.textMuted,
+                      cursor: "grab",
+                      opacity: 0.5,
+                      transition: "opacity 0.15s ease",
+                      "&:hover": { opacity: 1 },
+                      "&:active": { cursor: "grabbing" },
+                    }}
+                    data-testid={`action-drag-handle-${action.id}`}
+                  >
+                    <DragIndicator sx={{ fontSize: 20 }} />
+                  </Box>
+                </Tooltip>
+              </Box>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             </Paper>
           </Fragment>
         ))}

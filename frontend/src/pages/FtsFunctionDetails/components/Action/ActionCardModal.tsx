@@ -1,5 +1,5 @@
 import { Box, Button, Dialog, DialogActions, DialogTitle, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, TextField, Tooltip, Typography, useTheme } from "@mui/material";
-import { Add, Close, DragIndicator, Edit, FeedbackOutlined, Save } from "@mui/icons-material";
+import { Add, Close, DragIndicator, Edit, EditOff, FeedbackOutlined, Save } from "@mui/icons-material";
 import { useActionControllerCreateV1Mutation, useActionControllerGetActionByIdV1Query, useActionControllerReorderActionsFeedbacksV1Mutation, useActionControllerUpdateV1Mutation, useConstantControllerGetTypesV1Query } from "../../../../store/ftsFunctionRegistry";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -16,10 +16,6 @@ import ActionsFeedbackForm from "./ActionsFeedbackForm";
 const EMPTY_ACTIONS_FORM: ActionFormData = {
     ftsFunctionDetailId: Number.NaN,
     statusId: Number.NaN,
-    priorityActionId: Number.NaN,
-    characterActionId: Number.NaN,
-    personPerformingActionId: Number.NaN,
-    otherPersonPerformingAction: '',
     description: '',
 };
 
@@ -128,8 +124,6 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
         if (!changed) return;
 
         try {
-
-            console.log('1234567898765432')
             await reorderFeedbacks({ actionId, reorderActionsDto: { orderedIds } }).unwrap();
         } catch (error) {
             setFeedbackItems(feedbacks);
@@ -201,7 +195,7 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
     // «Иное лицо» обязательно только когда выбран OTHER_PERSON.
     const otherPersonValid =
         personPerformingActionCode !== "OTHER_PERSON" || Boolean((otherPersonField.value ?? "").trim());
-        
+
     const canSaveAction = isValid && otherPersonValid && !saving;
 
     useEffect(() => {
@@ -242,17 +236,17 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
             const data: ActionFormData = {
                 ftsFunctionDetailId: selectedFtsFunctionDetailId ?? Number.NaN,
                 statusId: Number(actionInfo.status.id),
+                description: actionInfo.description,
                 priorityActionId: actionInfo.priorityAction
                     ? Number(actionInfo.priorityAction.id)
-                    : Number.NaN,
+                    : undefined,
                 characterActionId: actionInfo.characterAction
                     ? Number(actionInfo.characterAction.id)
-                    : Number.NaN,
+                    : undefined,
                 personPerformingActionId: actionInfo.personPerformingAction
                     ? Number(actionInfo.personPerformingAction.id)
-                    : Number.NaN,
-                otherPersonPerformingAction: actionInfo.otherPersonPerformingAction ?? "",
-                description: actionInfo.description,
+                    : undefined,
+                otherPersonPerformingAction: actionInfo.otherPersonPerformingAction ?? undefined,
             };
             initialFormData.current = data;
             reset(data);
@@ -263,6 +257,14 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
     const handleCloseDialog = () => {
         if (saving) return;
         onClose();
+    };
+
+    const handleCancelEdit = () => {
+        if (saving) return;
+        if (initialFormData.current) {
+            reset(initialFormData.current);
+        }
+        setEditingExisting(false);
     };
 
     const handleCreate = handleSubmit(async (values) => {
@@ -290,12 +292,44 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                 },
             }).unwrap();
             setEditingExisting(false);
-            onClose();
+            // onClose();
         } catch (error) {
             console.error("Не удалось обновить операцию:", error);
         }
     });
 
+
+    // Отображение значения поля в режиме просмотра (как у «Источник обратной связи»).
+    const viewValueSx = {
+        color: c.textBody,
+        fontSize: "0.82rem",
+        whiteSpace: "pre-wrap" as const,
+        wordBreak: "break-word" as const,
+    };
+
+    const renderReadonlyField = (label: string, value: string | string[] | null | undefined) => (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+            <Typography sx={{ color: c.textSecondary, fontSize: "0.72rem", fontWeight: 600, lineHeight: 1.2 }}>
+                {label}
+            </Typography>
+
+            {
+                Array.isArray(value)
+                    ? (
+                        value.map(v => (
+                            <Typography sx={viewValueSx}>
+                                {v && v.trim() ? v : "—"}
+                            </Typography>
+                        ))
+                    )
+                    : (
+                        <Typography sx={viewValueSx}>
+                            {value && value.trim() ? value : "—"}
+                        </Typography>
+                    )
+            }
+        </Box>
+    );
 
     return (
 
@@ -342,6 +376,19 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                         </Tooltip>
                     )}
 
+                    {!isCreateMode && editingExisting && (
+                        <Tooltip title="Отменить редактирование">
+                            <IconButton
+                                size="small"
+                                onClick={handleCancelEdit}
+                                disabled={saving}
+                                sx={{ color: c.textMuted }}
+                            >
+                                <EditOff sx={{ fontSize: 18 }} />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+
                     <IconButton
                         onClick={handleCloseDialog}
                         size="small"
@@ -362,44 +409,51 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                     gap: 1.35,
                 }}
             >
-                <Controller
-                    name="description"
-                    control={control}
-                    render={({ field }) => (
-                        <TextField
-                            {...field}
-                            label="Описание операции *"
-                            disabled={!isEditable || saving}
-                            multiline
-                            rows={4}
-                            fullWidth
-                            size="small"
-                            slotProps={{ inputLabel: { shrink: true } }}
-                            sx={{
-                                "& .MuiOutlinedInput-root": {
-                                    bgcolor: c.bgInput,
-                                    color: c.textBody,
-                                    fontSize: "0.78rem",
-                                    "& fieldset": { borderColor: c.borderMedium },
-                                    "&:hover fieldset": { borderColor: c.borderHover },
-                                    "&.Mui-focused fieldset": { borderColor: theme.palette.primary.main },
-                                },
-                                mt: 0.75,
-                                "& .MuiInputLabel-root": {
-                                    color: c.textMuted,
-                                    fontSize: "0.72rem",
-                                    bgcolor: c.bgSurface,
-                                    px: 0.5,
-                                },
-                                "& .MuiInputLabel-root.Mui-focused": {
-                                    color: theme.palette.primary.main,
-                                },
-                            }}
-                        />
-                    )}
-                />
+                {!isEditable ? (
+                    renderReadonlyField("Описание операции", actionInfo?.description)
+                ) : (
+                    <Controller
+                        name="description"
+                        control={control}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                label="Описание операции *"
+                                disabled={!isEditable || saving}
+                                multiline
+                                rows={4}
+                                fullWidth
+                                size="small"
+                                slotProps={{ inputLabel: { shrink: true } }}
+                                sx={{
+                                    "& .MuiOutlinedInput-root": {
+                                        bgcolor: c.bgInput,
+                                        color: c.textBody,
+                                        fontSize: "0.78rem",
+                                        "& fieldset": { borderColor: c.borderMedium },
+                                        "&:hover fieldset": { borderColor: c.borderHover },
+                                        "&.Mui-focused fieldset": { borderColor: theme.palette.primary.main },
+                                    },
+                                    mt: 0.75,
+                                    "& .MuiInputLabel-root": {
+                                        color: c.textMuted,
+                                        fontSize: "0.72rem",
+                                        bgcolor: c.bgSurface,
+                                        px: 0.5,
+                                    },
+                                    "& .MuiInputLabel-root.Mui-focused": {
+                                        color: theme.palette.primary.main,
+                                    },
+                                }}
+                            />
+                        )}
+                    />
+                )}
 
-                <FormControl size="small" fullWidth disabled={!isEditable || saving}>
+                {!isEditable ? (
+                    renderReadonlyField("Статус операции", actionInfo?.status?.name)
+                ) : (
+                    <FormControl size="small" fullWidth disabled={!isEditable || saving}>
                     <InputLabel
                         sx={{
                             color: c.textMuted,
@@ -457,9 +511,13 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                             </Select>
                         )}
                     />
-                </FormControl>
+                    </FormControl>
+                )}
 
-                <FormControl size="small" fullWidth disabled={!isEditable || saving}>
+                {!isEditable ? (
+                    renderReadonlyField("Приоритет выполнения операции", actionInfo?.priorityAction?.name)
+                ) : (
+                    <FormControl size="small" fullWidth disabled={!isEditable || saving}>
                     <InputLabel
                         sx={{
                             color: c.textMuted,
@@ -467,7 +525,7 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                             "&.Mui-focused": { color: theme.palette.primary.main },
                         }}
                     >
-                        {"Приоритет выполнения операции *"}
+                        {"Приоритет выполнения операции"}
                     </InputLabel>
 
                     <Controller
@@ -476,7 +534,7 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                         render={({ field }) => (
                             <Select
                                 value={Number.isNaN(field.value) ? "" : String(field.value)}
-                                label="Приоритет выполнения операции *"
+                                label="Приоритет выполнения операции"
                                 onChange={(event) => field.onChange(Number(event.target.value))}
                                 onBlur={field.onBlur}
                                 sx={{
@@ -517,9 +575,13 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                             </Select>
                         )}
                     />
-                </FormControl>
+                    </FormControl>
+                )}
 
-                <FormControl size="small" fullWidth disabled={!isEditable || saving}>
+                {!isEditable ? (
+                    renderReadonlyField("Характер операции", actionInfo?.characterAction?.name)
+                ) : (
+                    <FormControl size="small" fullWidth disabled={!isEditable || saving}>
                     <InputLabel
                         sx={{
                             color: c.textMuted,
@@ -527,7 +589,7 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                             "&.Mui-focused": { color: theme.palette.primary.main },
                         }}
                     >
-                        {"Характер операции *"}
+                        {"Характер операции"}
                     </InputLabel>
 
                     <Controller
@@ -536,7 +598,7 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                         render={({ field }) => (
                             <Select
                                 value={Number.isNaN(field.value) ? "" : String(field.value)}
-                                label="Характер операции *"
+                                label="Характер операции"
                                 onChange={(event) => field.onChange(Number(event.target.value))}
                                 onBlur={field.onBlur}
                                 sx={{
@@ -577,9 +639,13 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                             </Select>
                         )}
                     />
-                </FormControl>
+                    </FormControl>
+                )}
 
-                <FormControl size="small" fullWidth disabled={!isEditable || saving}>
+                {!isEditable ? (
+                    renderReadonlyField("Лицо, выполняющее действие", actionInfo?.personPerformingAction?.name)
+                ) : (
+                    <FormControl size="small" fullWidth disabled={!isEditable || saving}>
                     <InputLabel
                         sx={{
                             color: c.textMuted,
@@ -587,7 +653,7 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                             "&.Mui-focused": { color: theme.palette.primary.main },
                         }}
                     >
-                        {"Лицо, выполняющее действие *"}
+                        {"Лицо, выполняющее действие"}
                     </InputLabel>
 
                     <Controller
@@ -596,7 +662,7 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                         render={({ field }) => (
                             <Select
                                 value={Number.isNaN(field.value) ? "" : String(field.value)}
-                                label="Лицо, выполняющее действие *"
+                                label="Лицо, выполняющее действие"
                                 onChange={(event) => field.onChange(Number(event.target.value))}
                                 onBlur={field.onBlur}
                                 sx={{
@@ -638,31 +704,36 @@ export function ActionCardModal({ actionId, open, onClose }: ActionCardModalProp
                         )}
                     />
 
-                </FormControl>
+                    </FormControl>
+                )}
 
                 {personPerformingActionCode === "OTHER_PERSON" && (
-                    <TextField
-                        value={otherPersonField.value ?? ""}
-                        onChange={(event) => otherPersonField.onChange(event.target.value)}
-                        onBlur={otherPersonField.onBlur}
-                        inputRef={otherPersonInputRef}
-                        label="Иное лицо, выполняющее действие *"
-                        disabled={!isEditable || saving}
-                        fullWidth
-                        size="small"
-                        sx={{
-                            "& .MuiOutlinedInput-root": {
-                                bgcolor: c.bgInput,
-                                color: c.textBody,
-                                fontSize: "0.78rem",
-                                "& fieldset": { borderColor: c.borderMedium },
-                                "&:hover fieldset": { borderColor: c.borderHover },
-                                "&.Mui-focused fieldset": { borderColor: theme.palette.primary.main },
-                            },
-                            "& .MuiInputLabel-root": { color: c.textMuted, fontSize: "0.72rem" },
-                            "& .MuiInputLabel-root.Mui-focused": { color: theme.palette.primary.main },
-                        }}
-                    />
+                    !isEditable ? (
+                        renderReadonlyField("Иное лицо, выполняющее действие", actionInfo?.otherPersonPerformingAction)
+                    ) : (
+                        <TextField
+                            value={otherPersonField.value ?? ""}
+                            onChange={(event) => otherPersonField.onChange(event.target.value)}
+                            onBlur={otherPersonField.onBlur}
+                            inputRef={otherPersonInputRef}
+                            label="Иное лицо, выполняющее действие"
+                            disabled={!isEditable || saving}
+                            fullWidth
+                            size="small"
+                            sx={{
+                                "& .MuiOutlinedInput-root": {
+                                    bgcolor: c.bgInput,
+                                    color: c.textBody,
+                                    fontSize: "0.78rem",
+                                    "& fieldset": { borderColor: c.borderMedium },
+                                    "&:hover fieldset": { borderColor: c.borderHover },
+                                    "&.Mui-focused fieldset": { borderColor: theme.palette.primary.main },
+                                },
+                                "& .MuiInputLabel-root": { color: c.textMuted, fontSize: "0.72rem" },
+                                "& .MuiInputLabel-root.Mui-focused": { color: theme.palette.primary.main },
+                            }}
+                        />
+                    )
                 )}
 
                 {!isCreateMode && (

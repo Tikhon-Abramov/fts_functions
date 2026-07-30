@@ -18,9 +18,6 @@ const prisma = new PrismaClient({
   adapter,
 });
 
-    // начальник, заместитель начальника отдела, инспектор, иное
-
-
 async function main(): Promise<void> {
   const types: Prisma.TypeCreateManyInput[] = [
     { category: 'CHARACTER_ACTION', code: 'EXCLUDE_ACTION', name: 'Исключить' },
@@ -32,6 +29,8 @@ async function main(): Promise<void> {
     { category: 'PERSON_PERFORMING_ACTION', code: 'OTHER_PERSON', name: 'Иное' },
 
     { category: 'FTS_FUNCTION_NAME', code: 'FTS_FUNCTION_OTHER', name: 'Иное наименование' },
+
+    { category: 'FTS_FUNCTION_EXECUTION_FREQUENCY', code: 'QUARTERLY', name: 'Ежеквартально' },
   ];
 
   for (const t of types) {
