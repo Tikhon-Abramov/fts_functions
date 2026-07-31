@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Box, Button, CircularProgress, Dialog, Typography, useTheme } from "@mui/material";
 import { Save } from "@mui/icons-material";
 import { useForm } from "react-hook-form";
@@ -104,8 +104,10 @@ export function FtsFunctionDetailFormModal({
   const [activeStep, setActiveStep] = useState<"OBJECT_SELECTION" | "CLUSTERING_IMPACT">(
     "OBJECT_SELECTION",
   );
-  const isStep1 = activeStep === "OBJECT_SELECTION";
-  const stepId = isStep1 ? stepOptions[0]?.value : stepOptions[1]?.value;
+  
+  const stepId = useMemo(() => {
+    return stepOptions.find(({ code }) => code === activeStep)?.value || null;
+  }, [stepOptions, activeStep]);
 
   useEffect(() => {
     if (stepId != null) {
